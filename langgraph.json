@@ -1,0 +1,10 @@
+{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "agentic_graph": "./src/workflows/graph.py:graph",
+    "text_edit_graph": "./src/workflows/agents/text_edit_agent/graph.py:text_edit_workflow"
+  },
+  "env": ".env"
+}
