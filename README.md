@@ -1,6 +1,6 @@
 # UNICEF Future Textbooks - ADT Chat Editor
 
-A collaborative project between UNICEF and Marvike to develop and improve Accessible Digital Textbooks (ADTs) through an AI-powered editing system.
+A collaborative project between UNICEF and Marvik to develop and improve Accessible Digital Textbooks (ADTs) through an AI-powered editing system.
 
 ## Project Overview
 
