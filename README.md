@@ -98,3 +98,17 @@ To run any experiment, you can start a Jupyter Lab environment:
 ```bash
 (env)$ jupyter-lab
 ```
+
+### Running LangGraph Studio Server
+
+#### Running LangGraph
+After completing the basic setup, you can run the LangGraph Server locally:
+```bash
+(env)$ langgraph dev
+```
+
+#### Running local server 
+To visualize changes on a local website, you can also run a local server inside the web project:
+```bash
+(env)$ python3 -m http.server 8000
+```
