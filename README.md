@@ -39,3 +39,62 @@ This repository contains the initial implementation of the ADT Chat Editor, incl
 - **Development tools**: Includes linting and testing setup (Ruff, pytest).
 
 The codebase is **under active development** and may include experimental features and prototypes. Documentation and structure will evolve as the project progresses.
+
+## Getting Started
+
+### Prerequisites
+
+This project requires:
+
+- A Python version >= 3.10 (Pyenv is recommended)
+
+### Credentials
+
+In order to run the langgraph, you need to set OpenAI & LangSmith credentials.
+
+To do so, create a `.env` file in the repository's root and save your credentials as follows:
+
+```bash
+# Langsmith
+LANGSMITH_API_KEY=dummy_key
+
+# OpenAI
+OPENAI_API_KEY=sk-proj-...
+OPENAI_MODEL=gpt-4.1-mini
+```
+
+### Basic Setup
+
+#### Python Setup
+
+1. Install a Python version >= 3.10.
+
+2. Create a Python virtual environment:
+   ```bash
+   $ python3.10 -m venv /path/to/new/virtual/name_environment
+   ```
+
+3. Activate the virtual environment:
+   ```bash
+   $ source /path/to/new/virtual/name_environment/bin/activate
+   ```
+
+4. Install the project dependencies:
+   ```bash
+   (env)$ pip install -e .
+   ```
+
+#### Pre-Commit Hooks (Recommended)
+
+If working locally and want to use pre-commit hooks (recommended), run:
+```bash
+(env)$ pip install -e '.[dev]'
+(env)$ pre-commit install
+```
+
+#### Jupyter Labs
+
+To run any experiment, you can start a Jupyter Lab environment:
+```bash
+(env)$ jupyter-lab
+```
