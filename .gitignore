@@ -172,3 +172,10 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# LangGraph
+.langgraph_api/
+
+# Data
+data/input/*
+data/output/*
