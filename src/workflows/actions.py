@@ -78,7 +78,7 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
         {
             "user_query": state.user_query,
             "available_agents": [
-                f"- {agent['name']}: {agent['description']}"
+                f"{agent['name']}: {agent['description']}"
                 for agent in available_agents
             ],
             "previous_conversation": previous_conversation,
@@ -196,7 +196,7 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
         {
             "user_query": last_message,
             "available_agents": [
-                f"- {agent['name']}: {agent['description']}"
+                f"{agent['name']}: {agent['description']}"
                 for agent in available_agents
             ],
             "previous_conversation": previous_conversation,
