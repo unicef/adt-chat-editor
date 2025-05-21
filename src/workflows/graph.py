@@ -76,7 +76,9 @@ def route_to_agent(state: ADTState) -> str:
         return END
 
     current_step: PlanningStep = state.steps[state.current_step_index]
-    if current_step.agent == "Text Edit Agent":
+    # Strip any leading dash and whitespace from the agent name
+    agent_name = current_step.agent.lstrip("- ").strip()
+    if agent_name == "Text Edit Agent":
         return "text_edit_agent"
     return END
 

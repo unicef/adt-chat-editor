@@ -255,11 +255,4 @@ async def execute_step(state: ADTState, config: RunnableConfig) -> ADTState:
     current_step = state.steps[state.current_step_index]
     logger.info(f"Processing step {state.current_step_index + 1}: {current_step.step}")
 
-    # Add a message about the current step
-    state.add_message(
-        HumanMessage(
-            content=f"Processing step {state.current_step_index + 1}: {current_step.step}"
-        )
-    )
-
     return state
