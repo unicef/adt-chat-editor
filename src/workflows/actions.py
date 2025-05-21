@@ -1,18 +1,17 @@
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import HumanMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 from langgraph.types import interrupt
 
-from src.llm.llm_client import llm_client
 from src.llm.llm_call import async_model_call
+from src.llm.llm_client import llm_client
 from src.prompts import (
     ORCHESTRATOR_PLANNING_PROMPT,
     ORCHESTRATOR_SYSTEM_PROMPT,
 )
 from src.settings import custom_logger
 from src.structs import OrchestratorPlanningOutput, PlanningStep
-from src.structs.status import WorkflowStatus
 from src.workflows.state import ADTState
 
 logger = custom_logger("Main Workflow Actions")
@@ -34,16 +33,15 @@ available_agents = [
         "graph": None,
     },
     {
-        "name": "Image Edit Agent",
-        "description": "Edit the images of the pages",
+        "name": "Layout Edit Agent",
+        "description": "Edit the layout of the pages",
         "graph": None,
     },
 ]
 
 
 async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
-    """
-    Plan the steps for the report.
+    """Plan the steps for the report.
 
     Args:
         state: The state of the agent.
@@ -52,7 +50,6 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
     Returns:
         The state of the agent.
     """
-
     logger.info("Planning steps")
     logger.info(f"Initial state: {state}")
 
@@ -136,8 +133,7 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
 
 
 async def show_plan_to_user(state: ADTState, config: RunnableConfig) -> ADTState:
-    """
-    Show the planned steps to the user and allow for adjustments.
+    """Show the planned steps to the user and allow for adjustments.
 
     Args:
         state: The state of the agent.
@@ -168,8 +164,7 @@ async def show_plan_to_user(state: ADTState, config: RunnableConfig) -> ADTState
 
 
 async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTState:
-    """
-    Handle the user's response to the plan and make adjustments if needed.
+    """Handle the user's response to the plan and make adjustments if needed.
 
     Args:
         state: The state of the agent.
@@ -234,8 +229,7 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
 
 
 async def execute_step(state: ADTState, config: RunnableConfig) -> ADTState:
-    """
-    Execute the current step in the plan.
+    """Execute the current step in the plan.
 
     Args:
         state: The state of the agent.
