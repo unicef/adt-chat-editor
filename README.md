@@ -104,7 +104,7 @@ To run any experiment, you can start a Jupyter Lab environment:
 #### Installing LangGraph Studio (CLI)
 Fist, you need to install the LangGraph CLI (Python >= 3.11 is required).
 ```bash
-pip install --upgrade "langgraph-cli[inmem]"
+(env)$ pip install --upgrade "langgraph-cli[inmem]"
 ```
 
 #### LangSmith Credentials
