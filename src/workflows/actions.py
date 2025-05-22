@@ -11,7 +11,7 @@ from src.prompts import (
     ORCHESTRATOR_SYSTEM_PROMPT,
 )
 from src.settings import custom_logger
-from src.structs import OrchestratorPlanningOutput, PlanningStep
+from src.structs import OrchestratorPlanningOutput, PlanningStep, StepStatus
 from src.workflows.state import ADTState
 
 logger = custom_logger("Main Workflow Actions")
@@ -146,8 +146,13 @@ async def show_plan_to_user(state: ADTState, config: RunnableConfig) -> ADTState
 
     # Format the plan for display
     plan_display = "Here's the planned steps:\n\n"
-    for i, step in enumerate(state.steps, 1):
-        plan_display += f"{i}. {step.step}\n"
+
+    pending_states = [
+        step for step in state.steps if step.step_status == StepStatus.PENDING
+    ]
+    
+    for i, step in enumerate(pending_states, 1):            
+            plan_display += f"{i}. {step.step}\n"
 
     # Use interrupt to get user input
     user_response = interrupt(
