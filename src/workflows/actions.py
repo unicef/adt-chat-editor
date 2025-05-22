@@ -65,6 +65,17 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
         f"- {message.type}: {message.content}" for message in state.messages
     )
 
+    # manage completed steps on previoy iteration
+    state.completed_steps.extend(
+       state.steps
+    )
+    
+    state.steps = []
+    
+    completed_steps = "\n".join(
+        f"- {step.step}" for step in state.completed_steps if step.step_status == StepStatus.SUCCESS
+    )
+    
     # Format messages
     messages = ChatPromptTemplate(
         messages=[
@@ -83,6 +94,7 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
             ],
             "previous_conversation": previous_conversation,
             "user_feedback": "",  # Empty string for initial planning
+            "completed_steps": completed_steps
         },
         config,
     )
@@ -151,8 +163,8 @@ async def show_plan_to_user(state: ADTState, config: RunnableConfig) -> ADTState
         step for step in state.steps if step.step_status == StepStatus.PENDING
     ]
     
-    for i, step in enumerate(pending_states, 1):            
-            plan_display += f"{i}. {step.step}\n"
+    for i, step in enumerate(state.steps, 1):
+        plan_display += f"{i}. {step.step}\n"
 
     # Use interrupt to get user input
     user_response = interrupt(
@@ -187,6 +199,10 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
     previous_conversation = "\n".join(
         f"- {message.type}: {message.content}" for message in state.messages
     )
+    
+    completed_steps = "\n".join(
+        f"- {step.step}" for step in state.completed_steps if step.step_status == StepStatus.SUCCESS
+    )
 
     # Format messages
     messages = ChatPromptTemplate(
@@ -206,6 +222,7 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
             ],
             "previous_conversation": previous_conversation,
             "user_feedback": last_message,
+            "completed_steps": completed_steps
         },
         config,
     )

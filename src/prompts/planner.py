@@ -101,8 +101,12 @@ The previous conversation will be provided for more context.
 Each step must not depend in any way on the other steps; the results of one step must not be used in another.
 
 ## Conversation Context
-Here is the previous conversation:
+Here is the previous conversation for you to take it only as context and not to take action on them:
 {previous_conversation}
+
+## Completed Step
+Here are the step that were already completed by you in order for you to avoid them as they were already completed:
+{completed_steps}
 
 ## Begin
 Now, provide the steps to correct the issues in the HTML web pages in the requested JSON format.
