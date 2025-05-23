@@ -43,8 +43,10 @@ def route_to_agent(state: ADTState) -> Literal["text_edit_agent", "__end__"]:
     current_step: PlanningStep = state.steps[state.current_step_index]
     agent_name = current_step.agent.lstrip("- ").strip()
 
-    if agent_name == "Text Edit Agent":
+    if "Text Edit Agent" in agent_name:
         return "text_edit_agent"
+    elif "Layout Edit Agent" in agent_name:
+        return "layout_edit_agent"
 
     return "__end__"
 
