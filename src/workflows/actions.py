@@ -181,11 +181,7 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
     logger.info("Handling user's plan response")
 
     # Get the last message from the user
-    last_message = str(state.messages[-1].content).lower().strip()
-
-    # If it's a simple "no", just return the state
-    if last_message == "no":
-        return state
+    last_message = str(state.messages[-1].content)
 
     # Get previous conversation
     previous_conversation = "\n".join(
@@ -226,6 +222,9 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
     last_message = list(response.messages)[-1]
     parsed_response = orchestrator_planning_parser.parse(str(last_message.content))
     logger.info(f"Planning response: {parsed_response}")
+
+    # Check if the plan was accepted
+    state.plan_accepted = not parsed_response.modified
 
     return state
 

@@ -50,22 +50,12 @@ def check_irrelevant_query(state: ADTState) -> str:
 
 def should_adjust_plan(state: ADTState) -> str:
     """
-    Determine if we need to show the plan again based on the PlanAdjustment response.
-    If the plan was modified, we show it again. If not, we proceed to execution.
+    Determine if we should adjust the plan or proceed with execution.
     """
-    # Get the last message from the user
-    last_message = str(state.messages[-1].content).lower().strip()
-
-    # If it's a simple "no", proceed with execution
-    if last_message == "no":
+    if state.plan_accepted:
         return "execute_step"
-
-    # If the last message indicates the plan was modified, show it
-    if "Plan has been modified" in str(state.messages[-1].content):
+    else:
         return "show_plan"
-
-    # Otherwise proceed with execution
-    return "execute_step"
 
 
 def route_to_agent(state: ADTState) -> str:
