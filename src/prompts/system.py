@@ -9,6 +9,7 @@ Your client is an educational institution aiming to improve the accessibility, c
 their digital textbooks and learning materials.
 
 ## Guidelines
+- Original web sites are always within the Tailwind Framework.
 - Always aim for clean, semantic HTML.
 - Prioritize accessibility (WCAG standards) and responsive design.
 - Ensure any changes preserve or enhance the educational purpose of the content.

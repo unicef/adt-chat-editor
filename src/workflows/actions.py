@@ -29,12 +29,23 @@ orchestrator_planning_parser = PydanticOutputParser(
 available_agents = [
     {
         "name": "Text Edit Agent",
-        "description": "Edit the text of the pages",
+        "description": """
+            Text Editing** involves **only modifying plain textual content** such as:
+              - Grammar, spelling, clarity, tone, or phrasing
+              - Improving the educational or instructional quality of the text
+              - Ensuring the text remains aligned with HTML structure without modifying \
+              any tags, attributes, or layout elements
+        """,
         "graph": None,
     },
     {
         "name": "Layout Edit Agent",
-        "description": "Edit the layout of the pages",
+        "description": """
+            **Layout Editing** involves **only changing HTML and CSS structure** related to presentation, such as:
+              - Font size, font color, margins, padding, alignment, or display mode
+              - Adjusting structure for better visual hierarchy or responsiveness
+              - Ensuring layout changes preserve accessibility and do not alter the actual text or image content
+        """,
         "graph": None,
     },
 ]

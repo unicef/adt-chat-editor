@@ -71,24 +71,6 @@ Where `<step description>` is a JSON object in the following format:
   * If the user feedback does not require any changes, you should keep the original plan and set the `modified` field to `false`. E.g. "Its okay" means the plan is good, no changes are needed.
   * The user changes could be in different languages, so you should always translate the user feedback to English before making any changes.
   * If the user says the plan is good, you should keep the original plan and set the `modified` field to `false`.
-
-## Additional Context
-Below are the responsibilities and boundaries of each type of agent:
-
-- **Text Editing** involves **only modifying plain textual content** such as:
-  - Grammar, spelling, clarity, tone, or phrasing
-  - Improving the educational or instructional quality of the text
-  - Ensuring the text remains aligned with HTML structure without modifying any tags, attributes, or layout elements
-
-- **Layout Editing** involves **only changing HTML and CSS structure** related to presentation, such as:
-  - Font size, font color, margins, padding, alignment, or display mode
-  - Adjusting structure for better visual hierarchy or responsiveness
-  - Ensuring layout changes preserve accessibility and do not alter the actual text or image content
-
-- **Image Editing** involves **only working with image elements**, including:
-  - Replacing or enhancing image files for better quality or appropriateness
-  - Adjusting image resolution, compression, or responsiveness
-  - Never modifying non-image content or layout elements
 """
 )
 
