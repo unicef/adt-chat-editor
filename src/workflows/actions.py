@@ -157,7 +157,7 @@ async def show_plan_to_user(state: ADTState, config: RunnableConfig) -> ADTState
     user_response = interrupt(
         {
             "type": "plan_review",
-            "content": f"{plan_display}\nWould you like to make any adjustments to this plan? Please respond with 'yes' if you want to modify the plan and provide specific feedback, or 'no' to proceed with the previous plan.",
+            "content": f"{plan_display}\nIs there anything you would like to change about this plan?",
         }
     )
 
@@ -225,6 +225,10 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
 
     # Check if the plan was accepted
     state.plan_accepted = not parsed_response.modified
+
+    # Change the new steps if needed
+    if parsed_response.modified:
+        state.steps = parsed_response.steps
 
     return state
 
