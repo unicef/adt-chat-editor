@@ -1,18 +1,17 @@
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import HumanMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 from langgraph.types import interrupt
 
-from src.llm.llm_client import llm_client
 from src.llm.llm_call import async_model_call
+from src.llm.llm_client import llm_client
 from src.prompts import (
     ORCHESTRATOR_PLANNING_PROMPT,
     ORCHESTRATOR_SYSTEM_PROMPT,
 )
 from src.settings import custom_logger
-from src.structs import OrchestratorPlanningOutput, PlanningStep
-from src.structs.status import WorkflowStatus
+from src.structs import OrchestratorPlanningOutput, PlanningStep, StepStatus
 from src.workflows.state import ADTState
 
 logger = custom_logger("Main Workflow Actions")
@@ -30,20 +29,30 @@ orchestrator_planning_parser = PydanticOutputParser(
 available_agents = [
     {
         "name": "Text Edit Agent",
-        "description": "Edit the text of the pages",
+        "description": """
+            Text Editing** involves **only modifying plain textual content** such as:
+              - Grammar, spelling, clarity, tone, or phrasing
+              - Improving the educational or instructional quality of the text
+              - Ensuring the text remains aligned with HTML structure without modifying \
+              any tags, attributes, or layout elements
+        """,
         "graph": None,
     },
     {
-        "name": "Image Edit Agent",
-        "description": "Edit the images of the pages",
+        "name": "Layout Edit Agent",
+        "description": """
+            **Layout Editing** involves **only changing HTML and CSS structure** related to presentation, such as:
+              - Font size, font color, margins, padding, alignment, or display mode
+              - Adjusting structure for better visual hierarchy or responsiveness
+              - Ensuring layout changes preserve accessibility and do not alter the actual text or image content
+        """,
         "graph": None,
     },
 ]
 
 
 async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
-    """
-    Plan the steps for the report.
+    """Plan the steps for the report.
 
     Args:
         state: The state of the agent.
@@ -52,7 +61,6 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
     Returns:
         The state of the agent.
     """
-
     logger.info("Planning steps")
     logger.info(f"Initial state: {state}")
 
@@ -68,6 +76,17 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
         f"- {message.type}: {message.content}" for message in state.messages
     )
 
+    # manage completed steps on previoy iteration
+    state.completed_steps.extend(
+       state.steps
+    )
+    
+    state.steps = []
+    
+    completed_steps = "\n".join(
+        f"- {step.step}" for step in state.completed_steps if step.step_status == StepStatus.SUCCESS
+    )
+    
     # Format messages
     messages = ChatPromptTemplate(
         messages=[
@@ -81,11 +100,12 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
         {
             "user_query": state.user_query,
             "available_agents": [
-                f"- {agent['name']}: {agent['description']}"
+                f"{agent['name']}: {agent['description']}"
                 for agent in available_agents
             ],
             "previous_conversation": previous_conversation,
             "user_feedback": "",  # Empty string for initial planning
+            "completed_steps": completed_steps
         },
         config,
     )
@@ -136,8 +156,7 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
 
 
 async def show_plan_to_user(state: ADTState, config: RunnableConfig) -> ADTState:
-    """
-    Show the planned steps to the user and allow for adjustments.
+    """Show the planned steps to the user and allow for adjustments.
 
     Args:
         state: The state of the agent.
@@ -150,6 +169,11 @@ async def show_plan_to_user(state: ADTState, config: RunnableConfig) -> ADTState
 
     # Format the plan for display
     plan_display = "Here's the planned steps:\n\n"
+
+    pending_states = [
+        step for step in state.steps if step.step_status == StepStatus.PENDING
+    ]
+    
     for i, step in enumerate(state.steps, 1):
         plan_display += f"{i}. {step.step}\n"
 
@@ -168,8 +192,7 @@ async def show_plan_to_user(state: ADTState, config: RunnableConfig) -> ADTState
 
 
 async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTState:
-    """
-    Handle the user's response to the plan and make adjustments if needed.
+    """Handle the user's response to the plan and make adjustments if needed.
 
     Args:
         state: The state of the agent.
@@ -187,6 +210,10 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
     previous_conversation = "\n".join(
         f"- {message.type}: {message.content}" for message in state.messages
     )
+    
+    completed_steps = "\n".join(
+        f"- {step.step}" for step in state.completed_steps if step.step_status == StepStatus.SUCCESS
+    )
 
     # Format messages
     messages = ChatPromptTemplate(
@@ -201,11 +228,12 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
         {
             "user_query": last_message,
             "available_agents": [
-                f"- {agent['name']}: {agent['description']}"
+                f"{agent['name']}: {agent['description']}"
                 for agent in available_agents
             ],
             "previous_conversation": previous_conversation,
             "user_feedback": last_message,
+            "completed_steps": completed_steps
         },
         config,
     )
@@ -234,8 +262,7 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
 
 
 async def execute_step(state: ADTState, config: RunnableConfig) -> ADTState:
-    """
-    Execute the current step in the plan.
+    """Execute the current step in the plan.
 
     Args:
         state: The state of the agent.

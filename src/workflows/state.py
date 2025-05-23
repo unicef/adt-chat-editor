@@ -37,6 +37,7 @@ class ADTState(BaseState):
     # Steps
     steps: list[PlanningStep] = field(default_factory=list)
     current_step_index: int = field(default=-1)
+    completed_steps: list[PlanningStep] = field(default_factory=list)
     plan_accepted: bool = field(default=False)
 
     # Flags

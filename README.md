@@ -101,14 +101,26 @@ To run any experiment, you can start a Jupyter Lab environment:
 
 ### Running LangGraph Studio Server
 
-#### Running LangGraph
-After completing the basic setup, you can run the LangGraph Server locally:
+#### Installing LangGraph Studio (CLI)
+First, you need to install the LangGraph CLI (Python >= 3.11 is required).
+```bash
+(env)$ pip install --upgrade "langgraph-cli[inmem]"
+```
+
+#### LangSmith Credentials
+After installing LangGraph CLI, make sure you have the `LANGSMITH_API_KEY` in the `.env` file:
+```bash
+(env)$ LANGSMITH_API_KEY=lsv2...
+```
+
+#### Running LangGraph Studio
+After completing the basic setup, you can run the LangGraph Studio Server locally:
 ```bash
 (env)$ langgraph dev
 ```
 
-#### Running local server 
-To visualize changes on a local website, you can also run a local server inside the web project:
+### Running local server 
+To visualize changes properly on a local website, you can also run a local server inside the web project:
 ```bash
 (env)$ python3 -m http.server 8000
 ```
