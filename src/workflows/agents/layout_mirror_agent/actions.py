@@ -41,7 +41,7 @@ async def mirror_layout(state: ADTState, config: RunnableConfig) -> ADTState:
     current_step = state.steps[state.current_step_index]
 
     # Get the relevant html files 
-    filteres_files = current_step.html_files
+    filtered_files = current_step.html_files
 
     # Get all HTML files from output directory
     html_files = await get_html_files(OUTPUT_DIR)
@@ -56,7 +56,7 @@ async def mirror_layout(state: ADTState, config: RunnableConfig) -> ADTState:
     # Filter relevant HTML to be changed
     html_files = [
         html_file for html_file in html_files if (
-            html_file in filteres_files and html_file not in html_templates
+            html_file in filtered_files and html_file not in html_templates
         )
     ]
 

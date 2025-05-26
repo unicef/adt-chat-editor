@@ -35,14 +35,14 @@ async def edit_text(state: ADTState, config: RunnableConfig) -> ADTState:
     current_step = state.steps[state.current_step_index]
 
     # Get the relevant and layout-base-template html files 
-    filteres_files = current_step.html_files
+    filtered_files = current_step.html_files
 
     # Get all HTML files from output directory
     html_files = await get_html_files(OUTPUT_DIR)
 
     # Filter relevant HTML to be changed
     html_files = [
-        html_file for html_file in html_files if html_file in filteres_files
+        html_file for html_file in html_files if html_file in filtered_files
     ]
 
     # Process each file
