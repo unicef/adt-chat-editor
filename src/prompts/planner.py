@@ -44,7 +44,7 @@ Where `<step description>` is a JSON object in the following format:
     "agent": str, # <only the name of the agent to use>
     "description": str,  # <description of the step to be executed>
     "html_files": list,  # <List of HTML files that will be directly modified>
-    "layout_template_files": list  # <List of HTML files used as layout references for mirroring, if applicable>
+    "layout_template_files": list  # <List of HTML files used as template, if applicable>
 }}
 ```
 
@@ -75,8 +75,8 @@ Where `<step description>` is a JSON object in the following format:
 
 6. File Comparison for Layout Mirroring:
   * Only populate the layout_template_files field when the task explicitly requires using the layout structure of one or more files to guide changes in other files
-  * When layout mirroring is required, ensure both the source (template) and target files are included in the html_files list
   * Never include layout_template_files for tasks that do not require direct layout reference or alignment between files
+  * When layout mirroring is required, ensure that the target files are included in the html_files list
 
 ## Context Awareness
 Your client is an educational institution. Their goal is to improve the clarity and quality of digital textbooks and learning materials.

@@ -3,7 +3,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
 from src.llm.llm_client import llm_client
-from src.settings import custom_logger
+from src.settings import custom_logger, OUTPUT_DIR
 from src.prompts import (
     TEXT_EDIT_SYSTEM_PROMPT,
     TEXT_EDIT_USER_PROMPT,
@@ -31,10 +31,16 @@ async def edit_text(state: ADTState, config: RunnableConfig) -> ADTState:
         ]
     )
 
+    # Define current state step
+    current_step = state.steps[state.current_step_index]
+
+    # Get the relevant and layout-base-template html files 
+    filteres_files = current_step.html_files
+
     # Get all HTML files from output directory
-    output_dir = "data/output"
-    html_files = await get_html_files(output_dir)
-    filteres_files = [step.html_files for step in state.steps]
+    html_files = await get_html_files(OUTPUT_DIR)
+
+    # Filter relevant HTML to be changed
     html_files = [
         html_file for html_file in html_files if html_file in filteres_files
     ]

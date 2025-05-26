@@ -10,7 +10,7 @@ from src.prompts import (
     ORCHESTRATOR_PLANNING_PROMPT,
     ORCHESTRATOR_SYSTEM_PROMPT,
 )
-from src.settings import custom_logger
+from src.settings import custom_logger, OUTPUT_DIR
 from src.structs import OrchestratorPlanningOutput, PlanningStep, StepStatus
 from src.workflows.state import ADTState
 from src.workflows.utils import get_html_files, extract_html_content_async
@@ -46,6 +46,16 @@ available_agents = [
               - Font size, font color, margins, padding, alignment, or display mode
               - Adjusting structure for better visual hierarchy or responsiveness
               - Ensuring layout changes preserve accessibility and do not alter the actual text or image content
+        """,
+        "graph": None,
+    },
+    {
+        "name": "Layout Mirror Agent",
+        "description": """
+            **Layout Mirroring** involves **copying the layout structure and visual styling** from one or more base (template) HTML files and applying them to other target HTML files. This includes:
+              - Replicating class names, spacing, alignment, and structural elements
+              - The base template files must remain unchanged and are used strictly as references
+              - No textual content should be modified during this process
         """,
         "graph": None,
     },
@@ -89,8 +99,7 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
     )
 
     # Define available html files
-    output_dir = "data/output"
-    html_files = await get_html_files(output_dir)
+    html_files = await get_html_files(OUTPUT_DIR)
     available_html_files = [
         {
             "html_name": html_file, 
@@ -226,8 +235,7 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
     )
 
     # Define available html files
-    output_dir = "data/output"
-    html_files = await get_html_files(output_dir)
+    html_files = await get_html_files(OUTPUT_DIR)
     available_html_files = [
         {
             "html_name": html_file, 
