@@ -1,9 +1,3 @@
-import os
-import aiofiles
-import asyncio
-from pathlib import Path
-from typing import List
-
 from langchain_core.messages import HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
@@ -16,22 +10,14 @@ from src.prompts import (
 )
 from src.structs.status import StepStatus
 from src.workflows.state import ADTState
-
+from src.workflows.utils import (
+    get_relative_path,
+    get_html_files,
+    read_html_file,
+    write_html_file,
+)
 
 logger = custom_logger("Text Edit Agent")
-
-
-async def get_html_files(output_dir: str) -> List[str]:
-    """Get all HTML files from the output directory asynchronously."""
-    output_path = Path(output_dir)
-    # Use asyncio.to_thread to run the blocking glob operation in a thread pool
-    files = await asyncio.to_thread(lambda: list(output_path.glob("*.html")))
-    return [str(f) for f in files]
-
-
-async def get_relative_path(path: str, start: str) -> str:
-    """Get relative path asynchronously."""
-    return await asyncio.to_thread(os.path.relpath, path, start)
 
 
 async def edit_text(state: ADTState, config: RunnableConfig) -> ADTState:
@@ -48,15 +34,18 @@ async def edit_text(state: ADTState, config: RunnableConfig) -> ADTState:
     # Get all HTML files from output directory
     output_dir = "data/output"
     html_files = await get_html_files(output_dir)
+    filteres_files = [step.html_files for step in state.steps]
+    html_files = [
+        html_file for html_file in html_files if html_file in filteres_files
+    ]
 
     # Process each file
     for html_file in html_files:
         # Get relative path for logging
         rel_path = await get_relative_path(html_file, "data")
 
-        # Read the file content
-        async with aiofiles.open(html_file, "r", encoding="utf-8") as f:
-            html_content = await f.read()
+        # Read the file content using the new async function
+        html_content = await read_html_file(html_file)
 
         # Format messages
         formatted_messages = await messages.ainvoke(
@@ -74,8 +63,7 @@ async def edit_text(state: ADTState, config: RunnableConfig) -> ADTState:
         edited_text = str(response.content)
 
         # Save edited text back to the same file
-        async with aiofiles.open(html_file, "w", encoding="utf-8") as f:
-            await f.write(edited_text)
+        await write_html_file(html_file, edited_text)
 
         # Add message about the file being processed
         state.add_message(HumanMessage(content=f"Processed and updated {rel_path}"))

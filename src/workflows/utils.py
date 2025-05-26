@@ -1,0 +1,166 @@
+import os
+import re
+import aiofiles
+import asyncio
+
+from bs4 import BeautifulSoup, Tag
+from pathlib import Path
+from typing import Dict, List, Union, Optional
+
+from src.settings import custom_logger
+
+logger = custom_logger("Sub-agents Workflow Routes")
+
+
+async def get_relative_path(path: str, start: str) -> str:
+    """Get relative path asynchronously."""
+    return await asyncio.to_thread(os.path.relpath, path, start)
+
+
+async def get_html_files(output_dir: str) -> List[str]:
+    """Get all HTML files from the output directory asynchronously."""
+    output_path = Path(output_dir)
+    # Use asyncio.to_thread to run the blocking glob operation in a thread pool
+    files = await asyncio.to_thread(lambda: list(output_path.glob("*.html")))
+    return [str(f) for f in files]
+
+
+async def read_html_file(file_path: str) -> str:
+    """Read HTML file content asynchronously."""
+    async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
+        return await f.read()
+
+
+async def write_html_file(file_path: str, content: str) -> None:
+    """Write content to HTML file asynchronously."""
+    async with aiofiles.open(file_path, "w", encoding="utf-8") as f:
+        await f.write(content)
+
+
+async def extract_html_content_async(
+    html: str, 
+    include_links: bool = False, 
+    include_images: bool = False, 
+    clean_whitespace: bool = True
+) -> str:
+    """
+    Async version of HTML content extraction.
+    
+    Parameters:
+        html (str): HTML string to parse
+        include_links (bool): Whether to include link text and URLs
+        include_images (bool): Whether to include image alt text
+        clean_whitespace (bool): Whether to clean excess whitespace
+    
+    Returns:
+        str: Extracted text content
+    """
+    def sync_extract(html_content):
+        soup = BeautifulSoup(html_content, 'html.parser')
+        
+        # Remove unwanted elements
+        for element in soup(['script', 'style', 'noscript', 'iframe']):
+            element.decompose()
+        
+        # Handle links
+        if include_links:
+            for a in soup.find_all('a'):
+                href = a.get('href', '')
+                if href:
+                    a.append(f" [{href}]")
+        else:
+            for a in soup.find_all('a'):
+                a.unwrap()
+        
+        # Handle images
+        if include_images:
+            for img in soup.find_all('img'):
+                alt = img.get('alt', '')
+                src = img.get('src', '')
+                if alt or src:
+                    img.replace_with(f"[Image: {alt or 'no alt text'} {src or 'no source'}]")
+        
+        text = soup.get_text(separator=' ', strip=False)
+        
+        if clean_whitespace:
+            text = re.sub(r'\s+', ' ', text).strip()
+        
+        return text
+    
+    return await asyncio.to_thread(sync_extract, html)
+
+
+async def extract_layout_properties_async(
+    html: str,
+    include_element_type: bool = True,
+    include_dimensions: bool = True,
+    include_classes: bool = True,
+    include_styles: bool = False,
+    include_position: bool = True,
+    max_depth: Optional[int] = None
+) -> List[Dict[str, Union[str, Dict[str, str]]]]:
+    """
+    Async version of HTML layout properties extraction.
+    
+    Parameters:
+        html (str): HTML string to parse
+        include_element_type (bool): Include HTML tag type
+        include_dimensions (bool): Include width/height if available
+        include_classes (bool): Include class list if available
+        include_styles (bool): Include style attributes if available
+        include_position (bool): Include position in DOM (parent-child relationships)
+        max_depth (Optional[int]): Maximum depth to traverse in DOM tree (None for unlimited)
+    
+    Returns:
+        List[Dict]: List of elements with their layout properties
+    """
+    def sync_extract(html_content):
+        soup = BeautifulSoup(html_content, 'html.parser')
+        elements = []
+        
+        def traverse(node: Tag, depth: int = 0, parent_id: Optional[str] = None):
+            if max_depth is not None and depth > max_depth:
+                return
+            
+            element_data = {
+                "id": f"element-{len(elements)}",
+                "tag": node.name if include_element_type else None
+            }
+            
+            if include_dimensions:
+                element_data.update({
+                    "width": node.get('width'),
+                    "height": node.get('height')
+                })
+                
+            if include_classes and node.get('class'):
+                element_data["classes"] = ' '.join(node.get('class'))
+                
+            if include_styles and node.get('style'):
+                styles = {}
+                for style in node.get('style', '').split(';'):
+                    if ':' in style:
+                        prop, val = style.split(':', 1)
+                        styles[prop.strip()] = val.strip()
+                element_data["styles"] = styles
+                
+            if include_position:
+                element_data.update({
+                    "depth": depth,
+                    "parent_id": parent_id,
+                    "child_count": len(list(node.children))
+                })
+            
+            # Only include if we have at least one property
+            if any(v is not None for v in element_data.values() if v != {}):
+                elements.append({k: v for k, v in element_data.items() if v is not None})
+                current_id = element_data["id"]
+                
+                for child in node.children:
+                    if isinstance(child, Tag):
+                        traverse(child, depth + 1, current_id)
+        
+        traverse(soup)
+        return elements
+    
+    return await asyncio.to_thread(sync_extract, html)

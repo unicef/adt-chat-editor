@@ -13,6 +13,7 @@ from src.prompts import (
 from src.settings import custom_logger
 from src.structs import OrchestratorPlanningOutput, PlanningStep, StepStatus
 from src.workflows.state import ADTState
+from src.workflows.utils import get_html_files, extract_html_content_async
 
 logger = custom_logger("Main Workflow Actions")
 
@@ -86,7 +87,17 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
     completed_steps = "\n".join(
         f"- {step.step}" for step in state.completed_steps if step.step_status == StepStatus.SUCCESS
     )
-    
+
+    # Define available html files
+    output_dir = "data/output"
+    html_files = await get_html_files(output_dir)
+    available_html_files = [
+        {
+            "html_name": html_file, 
+            "html_content": await extract_html_content_async(html_file)
+        } for html_file in html_files
+    ]
+
     # Format messages
     messages = ChatPromptTemplate(
         messages=[
@@ -103,9 +114,10 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
                 f"{agent['name']}: {agent['description']}"
                 for agent in available_agents
             ],
+            "available_html_files": available_html_files,
             "previous_conversation": previous_conversation,
             "user_feedback": "",  # Empty string for initial planning
-            "completed_steps": completed_steps
+            "completed_steps": completed_steps,
         },
         config,
     )
@@ -138,6 +150,8 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
             PlanningStep(
                 step=step.step,
                 agent=step.agent,
+                html_files=step.html_files,
+                layout_template_files=step.layout_template_files,
             )
         )
 
@@ -169,10 +183,6 @@ async def show_plan_to_user(state: ADTState, config: RunnableConfig) -> ADTState
 
     # Format the plan for display
     plan_display = "Here's the planned steps:\n\n"
-
-    pending_states = [
-        step for step in state.steps if step.step_status == StepStatus.PENDING
-    ]
     
     for i, step in enumerate(state.steps, 1):
         plan_display += f"{i}. {step.step}\n"
@@ -215,6 +225,16 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
         f"- {step.step}" for step in state.completed_steps if step.step_status == StepStatus.SUCCESS
     )
 
+    # Define available html files
+    output_dir = "data/output"
+    html_files = await get_html_files(output_dir)
+    available_html_files = [
+        {
+            "html_name": html_file, 
+            "html_content": await extract_html_content_async(html_file)
+        } for html_file in html_files
+    ]
+
     # Format messages
     messages = ChatPromptTemplate(
         messages=[
@@ -231,6 +251,7 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
                 f"{agent['name']}: {agent['description']}"
                 for agent in available_agents
             ],
+            "available_html_files": available_html_files,
             "previous_conversation": previous_conversation,
             "user_feedback": last_message,
             "completed_steps": completed_steps
