@@ -10,6 +10,9 @@ from src.workflows.actions import (
 from src.workflows.agents.layout_edit_agent.graph import layout_edit_workflow
 from src.workflows.agents.layout_mirror_agent.graph import layout_mirror_workflow
 from src.workflows.agents.text_edit_agent.graph import text_edit_workflow
+from src.workflows.agents.web_merge_agent.graph import web_merge_workflow
+from src.workflows.agents.web_split_agent.graph import web_split_workflow
+
 from src.workflows.routes import (
     check_irrelevant_query,
     should_adjust_plan,
@@ -33,6 +36,9 @@ workflow.add_node("execute_step", execute_step)
 workflow.add_node("text_edit_agent", text_edit_workflow)
 workflow.add_node("layout_edit_agent", layout_edit_workflow)
 workflow.add_node("layout_mirror_agent", layout_mirror_workflow)
+workflow.add_node("web_merge_agent", web_merge_workflow)
+workflow.add_node("web_split_agent", web_split_workflow)
+
 
 # Define the graph edges
 logger.info("Defining graph edges")
@@ -61,6 +67,8 @@ workflow.add_conditional_edges(
         "text_edit_agent": "text_edit_agent",
         "layout_edit_agent": "layout_edit_agent",
         "layout_mirror_agent": "layout_mirror_agent",
+        "web_merge_agent": "web_merge_agent",
+        "web_split_agent": "web_split_agent",
         END: END
     },
 )
@@ -82,6 +90,22 @@ workflow.add_conditional_edges(
 )
 workflow.add_conditional_edges(
     "layout_mirror_agent",
+    should_continue_execution,
+    {
+        "execute_step": "execute_step",
+        END: END,
+    },
+)
+workflow.add_conditional_edges(
+    "web_merge_agent",
+    should_continue_execution,
+    {
+        "execute_step": "execute_step",
+        END: END,
+    },
+)
+workflow.add_conditional_edges(
+    "web_split_agent",
     should_continue_execution,
     {
         "execute_step": "execute_step",
