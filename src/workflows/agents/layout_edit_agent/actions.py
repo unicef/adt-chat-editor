@@ -9,27 +9,21 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
 from src.llm.llm_client import llm_client
-from src.settings import custom_logger
+from src.settings import custom_logger, OUTPUT_DIR
 from src.prompts import (
     LAYOUT_EDIT_SYSTEM_PROMPT,
     LAYOUT_EDIT_USER_PROMPT,
 )
 from src.structs.status import StepStatus
 from src.workflows.state import ADTState
+from src.workflows.utils import (
+    get_relative_path,
+    get_html_files,
+    read_html_file,
+    write_html_file,
+)
 
 logger = custom_logger("Layout Edit Agent")
-
-
-async def get_html_files(output_dir: str) -> List[str]:
-    """Get all HTML files from the output directory asynchronously."""
-    output_path = Path(output_dir)
-    files = await asyncio.to_thread(lambda: list(output_path.glob("*.html")))
-    return [str(f) for f in files]
-
-
-async def get_relative_path(path: str, start: str) -> str:
-    """Get relative path asynchronously."""
-    return await asyncio.to_thread(os.path.relpath, path, start)
 
 
 async def edit_layout(state: ADTState, config: RunnableConfig) -> ADTState:
@@ -43,17 +37,29 @@ async def edit_layout(state: ADTState, config: RunnableConfig) -> ADTState:
         ]
     )
 
-    # Get all HTML files from output directory
-    output_dir = "data/output"
-    html_files = await get_html_files(output_dir)
+    # Define current state step
+    current_step = state.steps[state.current_step_index]
 
-    # Process each file
+    # Get the relevant and layout-base-template html files 
+    filtered_files = current_step.html_files
+
+    # Get all HTML files from output directory
+    html_files = await get_html_files(OUTPUT_DIR)
+
+    # Filter relevant HTML to be changed
+    html_files = [
+        html_file for html_file in html_files if html_file in filtered_files
+    ]
+
+    # Process each relevant HTML file
     for html_file in html_files:
+        # Get relative path for logging
         rel_path = await get_relative_path(html_file, "data")
 
-        async with aiofiles.open(html_file, "r", encoding="utf-8") as f:
-            html_content = await f.read()
+        # Read the file content using the new async function
+        html_content = await read_html_file(html_file)
 
+        # Format messages
         formatted_messages = await messages.ainvoke(
             {
                 "text": html_content,
@@ -62,11 +68,14 @@ async def edit_layout(state: ADTState, config: RunnableConfig) -> ADTState:
             config,
         )
 
+        # Call model
         response = await llm_client.ainvoke(formatted_messages, config)
+
+        # Get edited layout from response
         edited_html = str(response.content)
 
-        async with aiofiles.open(html_file, "w", encoding="utf-8") as f:
-            await f.write(edited_html)
+        # Save edited text back to the same file
+        await write_html_file(html_file, edited_html)
 
         state.add_message(HumanMessage(content=f"Processed and updated layout for {rel_path}"))
 

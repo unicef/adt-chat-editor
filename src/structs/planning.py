@@ -1,3 +1,5 @@
+from typing import List
+
 from pydantic import BaseModel
 
 from src.structs.step import BaseStep
@@ -5,6 +7,8 @@ from src.structs.step import BaseStep
 
 class PlanningStep(BaseStep):
     agent: str
+    html_files: List
+    layout_template_files: List
 
 
 class OrchestratorPlanningOutput(BaseModel):

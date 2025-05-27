@@ -47,6 +47,8 @@ def route_to_agent(state: ADTState) -> Literal["text_edit_agent", "__end__"]:
         return "text_edit_agent"
     elif "Layout Edit Agent" in agent_name:
         return "layout_edit_agent"
+    elif "Layout Mirror Agent" in agent_name:
+        return "layout_mirror_agent"
 
     return "__end__"
 

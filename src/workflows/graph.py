@@ -8,6 +8,7 @@ from src.workflows.actions import (
     show_plan_to_user,
 )
 from src.workflows.agents.layout_edit_agent.graph import layout_edit_workflow
+from src.workflows.agents.layout_mirror_agent.graph import layout_mirror_workflow
 from src.workflows.agents.text_edit_agent.graph import text_edit_workflow
 from src.workflows.routes import (
     check_irrelevant_query,
@@ -31,7 +32,7 @@ workflow.add_node("handle_plan_response", handle_plan_response)
 workflow.add_node("execute_step", execute_step)
 workflow.add_node("text_edit_agent", text_edit_workflow)
 workflow.add_node("layout_edit_agent", layout_edit_workflow)
-
+workflow.add_node("layout_mirror_agent", layout_mirror_workflow)
 
 # Define the graph edges
 logger.info("Defining graph edges")
@@ -59,6 +60,7 @@ workflow.add_conditional_edges(
     {
         "text_edit_agent": "text_edit_agent",
         "layout_edit_agent": "layout_edit_agent",
+        "layout_mirror_agent": "layout_mirror_agent",
         END: END
     },
 )
@@ -72,6 +74,14 @@ workflow.add_conditional_edges(
 )
 workflow.add_conditional_edges(
     "layout_edit_agent",
+    should_continue_execution,
+    {
+        "execute_step": "execute_step",
+        END: END,
+    },
+)
+workflow.add_conditional_edges(
+    "layout_mirror_agent",
     should_continue_execution,
     {
         "execute_step": "execute_step",
