@@ -1,23 +1,18 @@
 import ast
-import os
-import aiofiles
-import asyncio
-from pathlib import Path
-from typing import List
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
 from src.llm.llm_client import llm_client
-from src.settings import custom_logger, OUTPUT_DIR
 from src.prompts import (
     WEB_SPLIT_SYSTEM_PROMPT,
     WEB_SPLIT_USER_PROMPT,
 )
+from src.settings import custom_logger, OUTPUT_DIR
 from src.structs.status import StepStatus
 from src.workflows.state import ADTState
-from src.workflows.utils import (
+from src.utils import (
     get_relative_path,
     get_html_files,
     read_html_file,
@@ -44,14 +39,10 @@ async def web_split(state: ADTState, config: RunnableConfig) -> ADTState:
     # Get the relevant and layout-base-template html files 
     filtered_files = current_step.html_files
 
-    # Get all HTML files from output directory
+    # Get all relevant HTML files from output directory
     html_files = await get_html_files(OUTPUT_DIR)
-
-    # Filter relevant HTML to be changed
-    html_files = [
-        html_file for html_file in html_files if html_file in filtered_files
-    ]
-
+    html_files = [html_file for html_file in html_files if html_file in filtered_files]
+    
     # Process the relevant HTML file to get its content
     html_file = html_files[-1]
     rel_path = await get_relative_path(html_file, "data")
@@ -73,7 +64,9 @@ async def web_split(state: ADTState, config: RunnableConfig) -> ADTState:
     splitted_htmls = ast.literal_eval(response.content) 
 
     # Extract file name & splitted HTML contents from list
+    splitted_files = []
     for index, splitted_html in enumerate(splitted_htmls):
+        
         # Define the file name and path
         file_name = html_file.split("/")[-1].replace(".html", "")
         joined_name = file_name + f"_split_{index + 1}"
@@ -81,11 +74,19 @@ async def web_split(state: ADTState, config: RunnableConfig) -> ADTState:
 
         # Save edited text back to the same file
         await write_html_file(splitted_file_name, splitted_html)
+
+        # Save file path to modified files
+        splitted_files.append(splitted_file_name)
     
-    state.add_message(HumanMessage(content=f"Processed and updated layout for {rel_path}"))
+    # Add message about the file being processed
+    message = f"The following files have been processed and updated based on the instruction: '{current_step.step}'\n"
+    for file in splitted_files:
+        message += f"- {file}\n"
+    state.add_message(AIMessage(content=message))
+    logger.info(f"Total files modified: {len(splitted_files)}")
 
     # Update step status
     if 0 <= state.current_step_index < len(state.steps):
-        state.steps[state.current_step_index].step_status = StepStatus.SUCCESS
+        state.steps[state.current_step_index].status = StepStatus.SUCCESS
 
     return state

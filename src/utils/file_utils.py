@@ -229,3 +229,40 @@ async def get_language_from_translation_files() -> List[str]:
     ]
 
     return languages
+
+
+async def delete_html_files_async(file_paths: List[str]) -> Dict[str, List[str]]:
+    """
+    Async function to delete HTML files from the file system.
+
+    Args:
+        file_paths (List[str]): List of file paths to HTML files that should be deleted.
+
+    Returns:
+        Dict[str, List[str]]: Dictionary summarizing successful deletions and failures.
+            {
+                "deleted": [...],
+                "failed": [...]
+            }
+    """
+    def sync_delete(paths: List[str]) -> Dict[str, List[str]]:
+        deleted = []
+        failed = []
+
+        for path in paths:
+            if not path.endswith(".html"):
+                failed.append(f"{path} (not an .html file)")
+                continue
+
+            try:
+                if os.path.exists(path):
+                    os.remove(path)
+                    deleted.append(path)
+                else:
+                    failed.append(f"{path} (file not found)")
+            except Exception as e:
+                failed.append(f"{path} (error: {str(e)})")
+
+        return {"deleted": deleted, "failed": failed}
+
+    return await asyncio.to_thread(sync_delete, file_paths)
