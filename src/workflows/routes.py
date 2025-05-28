@@ -64,6 +64,10 @@ def route_to_agent(
         return "layout_edit_agent"
     elif "Layout Mirror Agent" in agent_name:
         return "layout_mirror_agent"
+    elif "Web Merge Agent" in agent_name:
+        return "web_merge_agent"
+    elif "Web Split Agent" in agent_name:
+        return "web_split_agent"
 
     return "__end__"
 
