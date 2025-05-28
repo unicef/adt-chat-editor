@@ -5,6 +5,7 @@ from src.workflows.actions import (
     execute_step,
     handle_plan_response,
     plan_steps,
+    rephrase_query,
     show_plan_to_user,
 )
 from src.workflows.agents.layout_edit_agent.graph import layout_edit_workflow
@@ -14,12 +15,14 @@ from src.workflows.agents.web_merge_agent.graph import web_merge_workflow
 from src.workflows.agents.web_split_agent.graph import web_split_workflow
 
 from src.workflows.routes import (
-    check_irrelevant_query,
+    check_valid_query,
     should_adjust_plan,
-    route_to_agent,
     should_continue_execution,
+    should_rephrase_query,
+    route_to_agent,
 )
 from src.workflows.state import ADTState, BaseState
+
 
 logger = custom_logger("Main Workflow Graph")
 
@@ -30,6 +33,7 @@ workflow = StateGraph(ADTState, input=BaseState)
 # Define the graph nodes
 logger.info("Defining graph nodes")
 workflow.add_node("planner", plan_steps)
+workflow.add_node("rephrase_query", rephrase_query)
 workflow.add_node("show_plan", show_plan_to_user)
 workflow.add_node("handle_plan_response", handle_plan_response)
 workflow.add_node("execute_step", execute_step)
@@ -45,12 +49,13 @@ logger.info("Defining graph edges")
 workflow.add_edge(START, "planner")
 workflow.add_conditional_edges(
     "planner",
-    check_irrelevant_query,
+    should_rephrase_query,
     {
+        "rephrase_query": "rephrase_query",
         "show_plan": "show_plan",
-        END: END,
     },
 )
+workflow.add_edge("rephrase_query", "planner")
 workflow.add_edge("show_plan", "handle_plan_response")
 workflow.add_conditional_edges(
     "handle_plan_response",
@@ -69,7 +74,7 @@ workflow.add_conditional_edges(
         "layout_mirror_agent": "layout_mirror_agent",
         "web_merge_agent": "web_merge_agent",
         "web_split_agent": "web_split_agent",
-        END: END
+        END: END,
     },
 )
 workflow.add_conditional_edges(

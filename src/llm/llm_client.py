@@ -1,5 +1,8 @@
 from src.llm.llm_factory import LLMClientFactory
+from src.settings import custom_logger
 from src.structs.llm_clients import LLMClient
+
+logger = custom_logger("LLM Client")
 
 
 class LLMClientSingleton:
@@ -13,3 +16,5 @@ class LLMClientSingleton:
 
 
 llm_client = LLMClientSingleton.get_client()
+
+logger.info(f"LLM client initialized: {llm_client}")

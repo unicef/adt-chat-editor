@@ -7,8 +7,8 @@ from src.structs.step import BaseStep
 
 class PlanningStep(BaseStep):
     agent: str
-    html_files: List
-    layout_template_files: List
+    html_files: List[str]
+    layout_template_files: List[str]
 
 
 class OrchestratorPlanningOutput(BaseModel):

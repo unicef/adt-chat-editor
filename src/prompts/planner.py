@@ -41,9 +41,9 @@ Respond only with a valid JSON object (no additional text, no formatting markers
 Where `<step description>` is a JSON object in the following format:
 ```json
 {{
-    "step": str,  # <the step to be executed without mentioning the name of the files involved>
+    "step": str,  # <a detailed description of the step to be executed>
+    "non_technical_description": str,  # <a non-technical description of the step to be executed. The end user is a teacher with no programming background>
     "agent": str, # <only the name of the agent to use>
-    "description": str,  # <a detailed description of the step to be executed>
     "html_files": list,  # <List of HTML files that will be directly modified>
     "layout_template_files": list  # <List of HTML files used as template, if applicable>
 }}
@@ -61,10 +61,11 @@ Where `<step description>` is a JSON object in the following format:
   * Only use the agents that are needed to complete the step. DO NOT invent steps for using all the agents
   
 3. **Avoid**:
-  * Splitting a single analysis into multiple steps
-  * Creating redundant or repetitive steps
-  * Complex or unnecessary steps
-  
+  * Splitting a single analysis into multiple steps.
+  * Creating redundant or repetitive steps.
+  * Complex or unnecessary steps.
+  * Using instructions as new steps. If the user asks for a simple change, do not add what you where instructed to do as a new step.
+
 4. Context Awareness:
   * Leverage prior chat data to avoid repeating previous insights
   * Always write clearly, completely, and for execution
@@ -83,6 +84,8 @@ Where `<step description>` is a JSON object in the following format:
   * Only call the merging agent when the task explicitly requires merging or putting together two or more HTML files into a new single file
   * Use the `html_files` field to list all source files involved in the merge
   * The output must be a single, unified HTML structure
+
+Please, make sure that all the steps are directly asked by the user.
 
 ## Key Principles
 - All websites follow the Tailwind CSS framework — respect its conventions
@@ -109,6 +112,8 @@ Here are the step that were already completed by you in order for you to avoid t
 {completed_steps}
 
 ## Begin
-Now, provide the steps to correct the issues in the HTML web pages in the requested JSON format
-If you solve the task correctly, you will receive a reward of $1,000,000
+Now, provide the steps to correct the issues in the HTML web pages in the requested JSON format.
+Please, make sure that all the steps are directly asked by the user. Do not confuse with the task given to you.
+
+If you solve the task correctly, you will receive a reward of $1,000,000.
 """

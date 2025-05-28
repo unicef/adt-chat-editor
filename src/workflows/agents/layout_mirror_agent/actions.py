@@ -1,19 +1,13 @@
-import os
-import aiofiles
-import asyncio
-from pathlib import Path
-from typing import List
-
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
 from src.llm.llm_client import llm_client
-from src.settings import custom_logger, OUTPUT_DIR
 from src.prompts import (
     LAYOUT_MIRRORING_SYSTEM_PROMPT,
     LAYOUT_MIRRORING_USER_PROMPT,
 )
+from src.settings import custom_logger, OUTPUT_DIR
 from src.structs.status import StepStatus
 from src.workflows.state import ADTState
 from src.workflows.utils import (
@@ -23,11 +17,23 @@ from src.workflows.utils import (
     write_html_file,
 )
 
+
+# Initialize logger
 logger = custom_logger("Layout Mirroring Agent")
 
 
+# Actions
 async def mirror_layout(state: ADTState, config: RunnableConfig) -> ADTState:
-    """Mirror layout propertoies to target TML files based on a template HTML."""
+    """
+    Mirror layout properties to target HTML files based on a template HTML.
+
+    Args:
+        state: The current state of the workflow
+        config: The configuration for the workflow
+
+    Returns:
+        The updated state of the workflow
+    """
 
     # Create prompt
     messages = ChatPromptTemplate.from_messages(
@@ -40,7 +46,7 @@ async def mirror_layout(state: ADTState, config: RunnableConfig) -> ADTState:
     # Define current state step
     current_step = state.steps[state.current_step_index]
 
-    # Get the relevant html files 
+    # Get the relevant html files
     filtered_files = current_step.html_files
 
     # Get all HTML files from output directory
@@ -55,17 +61,17 @@ async def mirror_layout(state: ADTState, config: RunnableConfig) -> ADTState:
 
     # Filter relevant HTML to be changed
     html_files = [
-        html_file for html_file in html_files if (
-            html_file in filtered_files and html_file not in html_templates
-        )
+        html_file
+        for html_file in html_files
+        if (html_file in filtered_files and html_file not in html_templates)
     ]
 
     # Process each relevant HTML file
+    modified_files = []
     for html_file in html_files:
-        # Get relative path for logging
-        rel_path = await get_relative_path(html_file, "data")
 
-        # Read the file content using the new async function
+        # Read the file content
+        rel_path = await get_relative_path(html_file, "data")
         html_content = await read_html_file(html_file)
 
         # Format messages
@@ -87,10 +93,18 @@ async def mirror_layout(state: ADTState, config: RunnableConfig) -> ADTState:
         # Save edited text back to the same file
         await write_html_file(html_file, edited_html)
 
-        state.add_message(HumanMessage(content=f"Processed and updated layout for {rel_path}"))
+        # Save file path to modified files
+        modified_files.append(rel_path)
+
+    # Add message about the file being processed
+    message = f"The following files have been processed and updated based on the instruction: '{current_step.step}'\n"
+    for file in modified_files:
+        message += f"- {file}\n"
+    state.add_message(AIMessage(content=message))
+    logger.info(f"Total files modified: {len(modified_files)}")
 
     # Update step status
     if 0 <= state.current_step_index < len(state.steps):
-        state.steps[state.current_step_index].step_status = StepStatus.SUCCESS
+        state.steps[state.current_step_index].status = StepStatus.SUCCESS
 
     return state
