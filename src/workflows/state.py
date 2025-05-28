@@ -4,8 +4,9 @@ from typing import Annotated, Optional, Sequence
 from langchain_core.messages import AnyMessage
 from langgraph.graph import add_messages
 
-from src.structs import WorkflowStatus
+from src.structs import Language, WorkflowStatus
 from src.structs.planning import PlanningStep
+from src.utils.file_utils import get_language_from_translation_files
 
 
 @dataclass
@@ -40,9 +41,19 @@ class ADTState(BaseState):
     completed_steps: list[PlanningStep] = field(default_factory=list)
     plan_accepted: bool = field(default=False)
     plan_display: str = field(default="")
+
     # Flags
     is_irrelevant_query: bool = field(default=False)
     is_forbidden_query: bool = field(default=False)
 
+    # Information
+    available_languages: list[str] = field(default_factory=list)
+
     # Configs
     language: Optional[str] = None
+
+    async def initialize_languages(self) -> None:
+        """Initialize the available languages asynchronously."""
+        from src.utils.file_utils import get_language_from_translation_files
+
+        self.available_languages = await get_language_from_translation_files()
