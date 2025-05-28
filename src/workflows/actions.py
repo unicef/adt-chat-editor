@@ -59,6 +59,30 @@ available_agents = [
         """,
         "graph": None,
     },
+    {
+        "name": "Web Merge Agent",
+        "description": """
+            **Web Merging** involves combining multiple HTML files into a single coherent page. This includes:
+              - Integrating sections from all files into a unified structure while avoiding duplication
+              - Preserving original layout logic and styling where possible
+              - Wrapping and organizing merged content using Tailwind CSS classes and semantic HTML containers
+              - Ensuring that the merged result remains accessible and visually consistent
+              - No changes should be made beyond what is necessary to merge the files or what is explicitly requested
+        """,
+        "graph": None,
+    },
+    {
+        "name": "Web Split Agent",
+        "description": """
+            **Web Splitting** involves dividing a single HTML file into multiple standalone HTML files based on user-defined criteria. This includes:
+              - Segmenting the original content into logically distinct parts (e.g., sections, chapters, topics)
+              - Ensuring each resulting file is self-contained and structurally complete with necessary HTML boilerplate
+              - Preserving semantic HTML and accessibility standards throughout the split
+              - Applying Tailwind CSS utility classes consistently if layout adjustments are needed
+              - No changes should be made beyond what is necessary to split the file or what is explicitly requested
+        """,
+        "graph": None,
+    }
 ]
 
 

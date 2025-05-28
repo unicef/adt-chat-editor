@@ -28,5 +28,5 @@ def custom_logger(logger_name: str) -> Logger:
         )
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
-    logger.propagate = False
+    logger.propagate = True
     return logger
