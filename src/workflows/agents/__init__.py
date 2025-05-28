@@ -39,6 +39,17 @@ AVAILABLE_AGENTS = [
         """,
     },
     {
+        "name": "Web Split Agent",
+        "description": """
+            **Web Splitting** involves dividing a single HTML file into multiple standalone HTML files based on user-defined criteria. This includes:
+              - Segmenting the original content into logically distinct parts (e.g., sections, chapters, topics)
+              - Ensuring each resulting file is self-contained and structurally complete with necessary HTML boilerplate
+              - Preserving semantic HTML and accessibility standards throughout the split
+              - Applying Tailwind CSS utility classes consistently if layout adjustments are needed
+              - No changes should be made beyond what is necessary to split the file or what is explicitly requested
+        """,
+    },
+    {
         "name": "Web Delete Agent",
         "description": """
             **Web Deletion** involves removing entire HTML files based on user instructions. This includes:
