@@ -1,3 +1,11 @@
-from src.utils.file_utils import copy_input_to_output
+from src.utils.file_utils import (
+    read_html_file,
+    prepare_html_context,
+    extract_text_from_html,
+)
 
-__all__ = ["copy_input_to_output"]
+__all__ = [
+    "read_html_file",
+    "prepare_html_context",
+    "extract_text_from_html",
+]

@@ -1,4 +1,6 @@
-from langchain_core.messages import HumanMessage
+import textwrap
+
+from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
@@ -12,56 +14,25 @@ from src.prompts import (
 )
 from src.settings import custom_logger, OUTPUT_DIR
 from src.structs import OrchestratorPlanningOutput, PlanningStep, StepStatus
+from src.workflows.agents import AVAILABLE_AGENTS
 from src.workflows.state import ADTState
-from src.workflows.utils import get_html_files, extract_html_content_async
+from src.workflows.utils import (
+    get_html_files,
+    extract_html_content_async,
+)
 
+
+# Initialize logger
 logger = custom_logger("Main Workflow Actions")
 
 
-# Initialize LLM client
-logger.info(f"LLM client initialized: {llm_client}")
-
-# Response parser
+# Response parsers
 orchestrator_planning_parser = PydanticOutputParser(
     pydantic_object=OrchestratorPlanningOutput
 )
 
-# Define available agents
-available_agents = [
-    {
-        "name": "Text Edit Agent",
-        "description": """
-            Text Editing** involves **only modifying plain textual content** such as:
-              - Grammar, spelling, clarity, tone, or phrasing
-              - Improving the educational or instructional quality of the text
-              - Ensuring the text remains aligned with HTML structure without modifying \
-              any tags, attributes, or layout elements
-        """,
-        "graph": None,
-    },
-    {
-        "name": "Layout Edit Agent",
-        "description": """
-            **Layout Editing** involves **only changing HTML and CSS structure** related to presentation, such as:
-              - Font size, font color, margins, padding, alignment, or display mode
-              - Adjusting structure for better visual hierarchy or responsiveness
-              - Ensuring layout changes preserve accessibility and do not alter the actual text or image content
-        """,
-        "graph": None,
-    },
-    {
-        "name": "Layout Mirror Agent",
-        "description": """
-            **Layout Mirroring** involves **copying the layout structure and visual styling** from one or more base (template) HTML files and applying them to other target HTML files. This includes:
-              - Replicating class names, spacing, alignment, and structural elements
-              - The base template files must remain unchanged and are used strictly as references
-              - No textual content should be modified during this process
-        """,
-        "graph": None,
-    },
-]
 
-
+# Actions
 async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
     """Plan the steps for the report.
 
@@ -73,7 +44,6 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
         The state of the agent.
     """
     logger.info("Planning steps")
-    logger.info(f"Initial state: {state}")
 
     # Initialize the flags
     state.is_irrelevant_query = False
@@ -87,24 +57,25 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
         f"- {message.type}: {message.content}" for message in state.messages
     )
 
-    # manage completed steps on previoy iteration
-    state.completed_steps.extend(
-       state.steps
-    )
-    
+    # Manage completed steps on previous iteration
+    state.completed_steps.extend(state.steps)
     state.steps = []
-    
+    state.current_step_index = -1
+
     completed_steps = "\n".join(
-        f"- {step.step}" for step in state.completed_steps if step.step_status == StepStatus.SUCCESS
+        f"- {step.step}"
+        for step in state.completed_steps
+        if step.status == StepStatus.SUCCESS
     )
 
-    # Define available html files
+    # Define available HTML files
     html_files = await get_html_files(OUTPUT_DIR)
     available_html_files = [
         {
-            "html_name": html_file, 
-            "html_content": await extract_html_content_async(html_file)
-        } for html_file in html_files
+            "html_name": html_file,
+            "html_content": await extract_html_content_async(html_file),
+        }
+        for html_file in html_files
     ]
 
     # Format messages
@@ -115,13 +86,11 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
         ]
     )
 
-    # Format messages
     formatted_messages = await messages.ainvoke(
         {
             "user_query": state.user_query,
             "available_agents": [
-                f"{agent['name']}: {agent['description']}"
-                for agent in available_agents
+                f"{agent['name']}: {agent['description']}" for agent in AVAILABLE_AGENTS
             ],
             "available_html_files": available_html_files,
             "previous_conversation": previous_conversation,
@@ -132,19 +101,34 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
     )
 
     # Model call
-    response = await async_model_call(
-        llm_client=llm_client,
-        state=state,
-        config=config,
-        formatted_prompt=formatted_messages,
-    )
+    retries = 0
+    while retries < 3:
+        response = await async_model_call(
+            llm_client=llm_client,
+            config=config,
+            formatted_prompt=formatted_messages,
+        )
+        retries += 1
 
-    # Parse the response
-    last_message = list(response.messages)[-1]
-    parsed_response = orchestrator_planning_parser.parse(str(last_message.content))
+        # Parse the response
+        content = (
+            response.content
+            if isinstance(response.content, str)
+            else str(response.content)
+        )
+        parsed_response = orchestrator_planning_parser.parse(content)
+        if parsed_response.steps:
+            break
+
+        logger.info(f"No steps found in the response. Retrying... ({retries}/3)")
+
+    if not parsed_response.steps:
+        logger.info("No steps found in the response. Ending workflow.")
+        return state
 
     logger.info(f"Orchestrator planning output: {parsed_response}")
 
+    # Check for invalid queries
     if parsed_response.is_irrelevant:
         state.is_irrelevant_query = True
         logger.info("Query marked as irrelevant")
@@ -158,24 +142,70 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
         state.steps.append(
             PlanningStep(
                 step=step.step,
+                non_technical_description=step.non_technical_description,
                 agent=step.agent,
                 html_files=step.html_files,
                 layout_template_files=step.layout_template_files,
             )
         )
 
-    # Update the state
-    state.is_irrelevant_query = parsed_response.is_irrelevant
-    state.is_forbidden_query = parsed_response.is_forbidden
+    # Add the plan display to the messages
+    state.add_message(AIMessage(content=create_plan_display(state)))
 
-    # The index increments +1 at the first step (planning insights)
-    state.current_step_index = -1
-
-    logger.info(f"Final state after planning: {state}")
-    logger.info(f"Steps created: {state.steps}")
-    logger.info(f"Is irrelevant: {state.is_irrelevant_query}")
+    # Add the rephrase query message if no steps were found
+    if not state.steps:
+        rephrase_query_display = textwrap.dedent(
+            """
+            The system did not detect any actionable steps to solve the task.
+            Please, rephrase the query to make it more specific and clear.
+            """
+        )
+        state.add_message(AIMessage(content=rephrase_query_display))
 
     return state
+
+
+async def rephrase_query(state: ADTState, config: RunnableConfig) -> ADTState:
+    """
+    Ask the user to rephrase the query to make it more specific and clear.
+
+    Args:
+        state: The state of the agent.
+        config: The configuration of the agent.
+    """
+    logger.info("Asking the user to rephrase the query")
+
+    # Format the plan for display
+    rephrase_query_display = textwrap.dedent(
+        """
+        The system did not detect any actionable steps to solve the task.
+        Please, rephrase the query to make it more specific and clear.
+        """
+    )
+
+    # Use interrupt to get user input
+    user_response = interrupt(
+        {
+            "type": "rephrase_query",
+            "content": rephrase_query_display,
+        }
+    )
+
+    return state
+
+
+def create_plan_display(state: ADTState) -> str:
+    """Create the plan display.
+
+    Args:
+        state: The state of the agent.
+    """
+    plan_display = "Here are the planned steps:\n\n"
+    for i, step in enumerate(state.steps, 1):
+        plan_display += f"{i}. {step.non_technical_description}\n"
+
+    plan_display += "\nWould you like to proceed with this plan?"
+    return plan_display
 
 
 async def show_plan_to_user(state: ADTState, config: RunnableConfig) -> ADTState:
@@ -191,21 +221,16 @@ async def show_plan_to_user(state: ADTState, config: RunnableConfig) -> ADTState
     logger.info("Showing plan to user")
 
     # Format the plan for display
-    plan_display = "Here's the planned steps:\n\n"
-    
-    for i, step in enumerate(state.steps, 1):
-        plan_display += f"{i}. {step.step}\n"
+    plan_display = create_plan_display(state)
+    logger.info(f"Plan display: {plan_display}")
 
     # Use interrupt to get user input
     user_response = interrupt(
         {
             "type": "plan_review",
-            "content": f"{plan_display}\nIs there anything you would like to change about this plan?",
+            "content": plan_display,
         }
     )
-
-    # Add the response to the messages
-    state.add_message(HumanMessage(content=user_response["content"]))
 
     return state
 
@@ -229,18 +254,21 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
     previous_conversation = "\n".join(
         f"- {message.type}: {message.content}" for message in state.messages
     )
-    
+
     completed_steps = "\n".join(
-        f"- {step.step}" for step in state.completed_steps if step.step_status == StepStatus.SUCCESS
+        f"- {step.step}"
+        for step in state.completed_steps
+        if step.status == StepStatus.SUCCESS
     )
 
-    # Define available html files
+    # Define available HTML files
     html_files = await get_html_files(OUTPUT_DIR)
     available_html_files = [
         {
-            "html_name": html_file, 
-            "html_content": await extract_html_content_async(html_file)
-        } for html_file in html_files
+            "html_name": html_file,
+            "html_content": await extract_html_content_async(html_file),
+        }
+        for html_file in html_files
     ]
 
     # Format messages
@@ -251,18 +279,16 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
         ]
     )
 
-    # Format messages
     formatted_messages = await messages.ainvoke(
         {
             "user_query": last_message,
             "available_agents": [
-                f"{agent['name']}: {agent['description']}"
-                for agent in available_agents
+                f"{agent['name']}: {agent['description']}" for agent in AVAILABLE_AGENTS
             ],
             "available_html_files": available_html_files,
             "previous_conversation": previous_conversation,
             "user_feedback": last_message,
-            "completed_steps": completed_steps
+            "completed_steps": completed_steps,
         },
         config,
     )
@@ -270,15 +296,16 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
     # Model call
     response = await async_model_call(
         llm_client=llm_client,
-        state=state,
         config=config,
         formatted_prompt=formatted_messages,
     )
 
     # Parse the response
-    last_message = list(response.messages)[-1]
-    parsed_response = orchestrator_planning_parser.parse(str(last_message.content))
-    logger.info(f"Planning response: {parsed_response}")
+    content = (
+        response.content if isinstance(response.content, str) else str(response.content)
+    )
+    parsed_response = orchestrator_planning_parser.parse(content)
+    logger.info(f"Re-planning response: {parsed_response}")
 
     # Check if the plan was accepted
     state.plan_accepted = not parsed_response.modified
@@ -286,6 +313,7 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
     # Change the new steps if needed
     if parsed_response.modified:
         state.steps = parsed_response.steps
+        state.add_message(AIMessage(content=create_plan_display(state)))
 
     return state
 
@@ -312,6 +340,8 @@ async def execute_step(state: ADTState, config: RunnableConfig) -> ADTState:
 
     # Get the current step
     current_step = state.steps[state.current_step_index]
-    logger.info(f"Processing step {state.current_step_index + 1}: {current_step.step}")
+    logger.info(
+        f"Processing step {state.current_step_index}: The '{current_step.agent}' will '{current_step.step}'"
+    )
 
     return state

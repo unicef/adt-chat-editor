@@ -9,6 +9,7 @@ Your task is to edit the text based on the user's instruction, but you must:
 3. Only edit the actual text content between HTML tags
 4. Preserve all formatting and structure
 5. Keep all web-specific elements intact (links, buttons, forms, etc.)
+6. Do not change answers in the activities unless the user explicitly asks for it.
 
 ## Output Format
 Always return the raw, modified HTML code. Do not include any commentary or markdown formatting.

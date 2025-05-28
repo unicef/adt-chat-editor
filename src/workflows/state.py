@@ -39,7 +39,7 @@ class ADTState(BaseState):
     current_step_index: int = field(default=-1)
     completed_steps: list[PlanningStep] = field(default_factory=list)
     plan_accepted: bool = field(default=False)
-
+    plan_display: str = field(default="")
     # Flags
     is_irrelevant_query: bool = field(default=False)
     is_forbidden_query: bool = field(default=False)

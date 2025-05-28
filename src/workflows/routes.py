@@ -7,17 +7,30 @@ from src.settings import custom_logger
 logger = custom_logger("Main Workflow Routes")
 
 
-def check_irrelevant_query(state: ADTState) -> Literal["show_plan", "__end__"]:
+def check_valid_query(state: ADTState) -> Literal["show_plan", "__end__"]:
     """
-    Check if the query is irrelevant and end the workflow if it is.
+    Check if the query is valid and end the workflow if it is not.
     """
 
     if state.is_irrelevant_query:
         logger.info("Query is irrelevant, ending workflow")
         return "__end__"
+    elif state.is_forbidden_query:
+        logger.info("Query is forbidden, ending workflow")
+        return "__end__"
 
     logger.info("Query is relevant, proceeding to show plan")
     return "show_plan"
+
+
+def should_rephrase_query(state: ADTState) -> Literal["rephrase_query", "show_plan"]:
+    """
+    Determine if the user should rephrase the query or the system should show the plan.
+    """
+    if state.steps:
+        return "show_plan"
+    else:
+        return "rephrase_query"
 
 
 def should_adjust_plan(
@@ -33,7 +46,9 @@ def should_adjust_plan(
         return "show_plan"
 
 
-def route_to_agent(state: ADTState) -> Literal["text_edit_agent", "__end__"]:
+def route_to_agent(
+    state: ADTState,
+) -> Literal["text_edit_agent", "layout_edit_agent", "layout_mirror_agent", "__end__"]:
     """
     Route to the appropriate agent based on the current step.
     """

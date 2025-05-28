@@ -8,7 +8,7 @@ def custom_logger(logger_name: str) -> Logger:
     This function initializes a logger with the given name, sets its logging level
     to DEBUG, and configures a StreamHandler with a specific format for log messages.
     If the logger does not already have handlers, a new StreamHandler is added.
-    The logger's propagation is disabled to prevent logs from being passed to ancestor loggers.
+    The logger's propagation is enabled to allow logs to be passed to parent loggers (like LangGraph's).
 
     Args:
         logger_name (str): The name to assign to the logger.
@@ -28,5 +28,5 @@ def custom_logger(logger_name: str) -> Logger:
         )
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
-    logger.propagate = False
+    logger.propagate = True  # Enable propagation to parent loggers
     return logger

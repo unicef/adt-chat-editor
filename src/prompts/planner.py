@@ -41,8 +41,8 @@ Where `<step description>` is a JSON object in the following format:
 ```json
 {{
     "step": str,  # <the step to be executed>
+    "non_technical_description": str,  # <a non-technical description of the step to be executed. The end user is a teacher with no programming background>
     "agent": str, # <only the name of the agent to use>
-    "description": str,  # <description of the step to be executed>
     "html_files": list,  # <List of HTML files that will be directly modified>
     "layout_template_files": list  # <List of HTML files used as template, if applicable>
 }}
@@ -63,6 +63,7 @@ Where `<step description>` is a JSON object in the following format:
   * Splitting a single analysis into multiple steps.
   * Creating redundant or repetitive steps.
   * Complex or unnecessary steps.
+  * Using instructions as new steps. If the user asks for a simple change, do not what you where instructed to do as a new step.
 
 4. Context Awareness:
   * Leverage prior chat data to avoid repeating previous insights.
@@ -77,6 +78,8 @@ Where `<step description>` is a JSON object in the following format:
   * Only populate the layout_template_files field when the task explicitly requires using the layout structure of one or more files to guide changes in other files
   * Never include layout_template_files for tasks that do not require direct layout reference or alignment between files
   * When layout mirroring is required, ensure that the target files are included in the html_files list
+
+Please, make sure that all the steps are directly asked by the user.
 
 ## Context Awareness
 Your client is an educational institution. Their goal is to improve the clarity and quality of digital textbooks and learning materials.
@@ -107,5 +110,7 @@ Here are the step that were already completed by you in order for you to avoid t
 
 ## Begin
 Now, provide the steps to correct the issues in the HTML web pages in the requested JSON format.
+Please, make sure that all the steps are directly asked by the user. Do not confuse with the task given to you.
+
 If you solve the task correctly, you will receive a reward of $1,000,000.
 """
