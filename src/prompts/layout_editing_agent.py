@@ -16,7 +16,6 @@ DO NOT:
 - Add explanations or comments
 - Wrap the HTML output in markdown backticks or code blocks
 - Make any modifications beyond what is specifically required in the user instructions.
-- Do not change answers in the activities unless the user explicitly asks for it.
 
 ## Output Format
 Always return the raw, modified HTML code. Do not include commentary or any additional formatting.
