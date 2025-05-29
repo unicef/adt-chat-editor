@@ -16,7 +16,7 @@ from src.settings import custom_logger, OUTPUT_DIR
 from src.structs import OrchestratorPlanningOutput, PlanningStep, StepStatus
 from src.workflows.agents import AVAILABLE_AGENTS
 from src.workflows.state import ADTState
-from src.workflows.utils import (
+from src.utils import (
     get_html_files,
     extract_html_content_async,
 )

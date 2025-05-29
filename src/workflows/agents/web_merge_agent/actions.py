@@ -1,22 +1,16 @@
-import os
-import aiofiles
-import asyncio
-from pathlib import Path
-from typing import List
-
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
 from src.llm.llm_client import llm_client
-from src.settings import custom_logger, OUTPUT_DIR
 from src.prompts import (
     WEB_MERGE_SYSTEM_PROMPT,
     WEB_MERGE_USER_PROMPT,
 )
+from src.settings import custom_logger, OUTPUT_DIR
 from src.structs.status import StepStatus
 from src.workflows.state import ADTState
-from src.workflows.utils import (
+from src.utils import (
     get_relative_path,
     get_html_files,
     read_html_file,
@@ -43,13 +37,9 @@ async def web_merge(state: ADTState, config: RunnableConfig) -> ADTState:
     # Get the relevant and layout-base-template html files 
     filtered_files = current_step.html_files
 
-    # Get all HTML files from output directory
+    # Get all relevant HTML files from output directory
     html_files = await get_html_files(OUTPUT_DIR)
-
-    # Filter relevant HTML to be changed
-    html_files = [
-        html_file for html_file in html_files if html_file in filtered_files
-    ]
+    html_files = [html_file for html_file in html_files if html_file in filtered_files]
 
     # Process each relevant HTML file to get its content
     html_contents = []
@@ -81,14 +71,20 @@ async def web_merge(state: ADTState, config: RunnableConfig) -> ADTState:
     file_names = [f.split("/")[-1].replace(".html", "") for f in html_files]
     joined_name = "_".join(file_names)
     merged_file_name = OUTPUT_DIR + "/" + joined_name + ".html"
+    modified_files = [merged_file_name]
     
     # Save edited text back to the same file
     await write_html_file(merged_file_name, edited_html)
 
-    state.add_message(HumanMessage(content=f"Processed and updated layout for {rel_path}"))
+    # Add message about the file being processed
+    message = f"The following files have been processed and updated based on the instruction: '{current_step.step}'\n"
+    for file in modified_files:
+        message += f"- {file}\n"
+    state.add_message(AIMessage(content=message))
+    logger.info(f"Total files modified: {len(modified_files)}")
 
     # Update step status
     if 0 <= state.current_step_index < len(state.steps):
-        state.steps[state.current_step_index].step_status = StepStatus.SUCCESS
+        state.steps[state.current_step_index].status = StepStatus.SUCCESS
 
     return state

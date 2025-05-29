@@ -68,6 +68,8 @@ def route_to_agent(
         return "web_merge_agent"
     elif "Web Split Agent" in agent_name:
         return "web_split_agent"
+    elif "Web Delete Agent" in agent_name:
+        return "web_delete_agent"
 
     return "__end__"
 

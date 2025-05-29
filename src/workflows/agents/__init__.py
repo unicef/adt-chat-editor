@@ -49,4 +49,14 @@ AVAILABLE_AGENTS = [
               - No changes should be made beyond what is necessary to split the file or what is explicitly requested
         """,
     },
+    {
+        "name": "Web Delete Agent",
+        "description": """
+            **Web Deletion** involves removing entire HTML files based on user instructions. This includes:
+              - Identifying which files are explicitly marked for deletion
+              - Ensuring no unintended files are affected
+              - Performing deletions safely without modifying the content of remaining files
+              - Deletions should be strictly limited to what is clearly specified by the user
+        """,
+    },
 ]
