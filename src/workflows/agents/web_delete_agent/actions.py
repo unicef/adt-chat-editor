@@ -20,23 +20,18 @@ async def web_delete(state: ADTState, config: RunnableConfig) -> ADTState:
     # Define current state step
     current_step = state.steps[state.current_step_index]
 
-    # Get the relevant and layout-base-template html files 
-    filtered_files = current_step.html_files
-
-    # Get all relevant HTML files from output directory
-    html_files = await get_html_files(OUTPUT_DIR)
-    html_files = [html_file for html_file in html_files if html_file in filtered_files]
+    # Get the relevant html files 
+    deleted_files = current_step.html_files
     
     # Delete files
-    deleted_files = html_files
     await delete_html_files_async(deleted_files)
     
     # Add message about the file being processed
-    message = f"The following files have been processed and updated based on the instruction: '{current_step.step}'\n"
+    message = f"The following files have been deleted based on based on the instruction: '{current_step.step}'\n"
     for file in deleted_files:
         message += f"- {file}\n"
     state.add_message(AIMessage(content=message))
-    logger.info(f"Total files modified: {len(deleted_files)}")
+    logger.info(f"Total files deleted: {len(deleted_files)}")
 
     # Update step status
     if 0 <= state.current_step_index < len(state.steps):
