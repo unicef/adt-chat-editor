@@ -64,7 +64,7 @@ async def edit_layout(state: ADTState, config: RunnableConfig) -> ADTState:
         # Format messages
         formatted_messages = await messages.ainvoke(
             {
-                "text": html_content,
+                "target_html_file": html_content,
                 "instruction": state.messages[-1].content,
             },
             config,
