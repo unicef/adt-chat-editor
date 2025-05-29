@@ -5,7 +5,6 @@ from src.settings import custom_logger, OUTPUT_DIR
 from src.structs.status import StepStatus
 from src.workflows.state import ADTState
 from src.utils import (
-    get_relative_path,
     get_html_files,
     read_html_file,
     write_html_file,
