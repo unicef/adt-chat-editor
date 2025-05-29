@@ -1,11 +1,9 @@
 from src.utils.file_utils import (
+    get_language_from_translation_files,
     read_html_file,
-    prepare_html_context,
-    extract_text_from_html,
 )
 
 __all__ = [
     "read_html_file",
-    "prepare_html_context",
-    "extract_text_from_html",
+    "get_language_from_translation_files",
 ]

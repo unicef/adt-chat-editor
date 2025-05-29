@@ -7,7 +7,9 @@ from bs4 import BeautifulSoup, Tag
 from pathlib import Path
 from typing import Dict, List, Union, Optional
 
-from src.settings import custom_logger
+from src.settings import custom_logger, OUTPUT_DIR
+from src.structs import Language
+
 
 logger = custom_logger("Sub-agents Workflow Routes")
 
@@ -205,3 +207,25 @@ async def extract_layout_properties_async(
         return elements
 
     return await asyncio.to_thread(sync_extract, html)
+
+
+async def get_language_from_translation_files() -> List[str]:
+    """
+    Get language from translation files.
+
+    Returns:
+        List[Language | str]: List of languages
+    """
+    files_in_output_dir = await asyncio.to_thread(os.listdir, OUTPUT_DIR)
+    translation_files = [
+        file
+        for file in files_in_output_dir
+        if (file.startswith("translation_") and file.endswith(".json"))
+    ]
+    languages = [
+        file.split(".")[0].split("_")[1]
+        for file in translation_files
+        if len(file.split(".")[0].split("_")) <= 2
+    ]
+
+    return languages

@@ -49,6 +49,9 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
     state.is_irrelevant_query = False
     state.is_forbidden_query = False
 
+    # Initialize languages
+    await state.initialize_languages()
+
     # Set user query
     state.user_query = str(state.messages[-1].content)
 
