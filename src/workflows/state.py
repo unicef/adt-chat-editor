@@ -6,7 +6,7 @@ from langgraph.graph import add_messages
 
 from src.structs import Language, WorkflowStatus
 from src.structs.planning import PlanningStep
-from src.utils.file_utils import get_language_from_translation_files
+from src.utils import get_language_from_translation_files
 
 
 @dataclass
@@ -54,6 +54,4 @@ class ADTState(BaseState):
 
     async def initialize_languages(self) -> None:
         """Initialize the available languages asynchronously."""
-        from src.utils.file_utils import get_language_from_translation_files
-
         self.available_languages = await get_language_from_translation_files()

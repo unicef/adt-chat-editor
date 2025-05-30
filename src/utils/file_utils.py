@@ -220,7 +220,7 @@ async def get_language_from_translation_files() -> List[str]:
     translation_files = [
         file
         for file in files_in_output_dir
-        if (file.startswith("translation_") and file.endswith(".json"))
+        if (file.startswith("translations_") and file.endswith(".json"))
     ]
     languages = [
         file.split(".")[0].split("_")[1]
