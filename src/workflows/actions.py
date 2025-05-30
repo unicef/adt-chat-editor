@@ -18,6 +18,7 @@ from src.workflows.agents import AVAILABLE_AGENTS
 from src.workflows.state import ADTState
 from src.utils import (
     get_html_files,
+    read_html_file,
     extract_html_content_async,
 )
 
@@ -76,7 +77,9 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
     available_html_files = [
         {
             "html_name": html_file,
-            "html_content": await extract_html_content_async(html_file),
+            "html_content": await extract_html_content_async(
+                await read_html_file(html_file) 
+            ),
         }
         for html_file in html_files
     ]

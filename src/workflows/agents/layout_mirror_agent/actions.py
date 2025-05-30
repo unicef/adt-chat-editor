@@ -78,7 +78,7 @@ async def mirror_layout(state: ADTState, config: RunnableConfig) -> ADTState:
         formatted_messages = await messages.ainvoke(
             {
                 "layout_template": html_templates,
-                "text": html_content,
+                "target_html_file": html_content,
                 "instruction": state.messages[-1].content,
             },
             config,
