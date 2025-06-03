@@ -7,32 +7,30 @@ from langchain_core.runnables import RunnableConfig
 
 from src.llm.llm_client import llm_client
 from src.prompts import (
-    WEB_SPLIT_SYSTEM_PROMPT,
-    WEB_SPLIT_USER_PROMPT,
     NAV_UPDATE_SYSTEM_PROMPT,
     NAV_UPDATE_USER_PROMPT,
+    WEB_SPLIT_SYSTEM_PROMPT,
+    WEB_SPLIT_USER_PROMPT,
 )
 from src.settings import (
-    custom_logger,
-    OUTPUT_DIR,
-    NAV_HTML_DIR,
     INTERFACE_HTML_DIR,
+    NAV_HTML_DIR,
+    OUTPUT_DIR,
+    custom_logger,
 )
 from src.structs.status import StepStatus
-from src.workflows.state import ADTState
 from src.utils import (
-    get_relative_path,
     get_html_files,
     read_html_file,
     write_html_file,
 )
+from src.workflows.state import ADTState
 
 logger = custom_logger("Web Split Agent")
 
 
 async def web_split(state: ADTState, config: RunnableConfig) -> ADTState:
     """Split one HTML file into several and update nav/interface accordingly."""
-
     current_step = state.steps[state.current_step_index]
     html_files = await get_html_files(OUTPUT_DIR)
     html_files = [f for f in html_files if f in current_step.html_files]
