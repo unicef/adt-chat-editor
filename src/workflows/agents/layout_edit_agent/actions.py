@@ -8,19 +8,18 @@ from src.prompts import (
     LAYOUT_EDIT_USER_PROMPT,
 )
 from src.settings import (
-    custom_logger, 
-    OUTPUT_DIR, 
+    OUTPUT_DIR,
     TAILWIND_CSS_DIR,
+    custom_logger,
 )
 from src.structs.status import StepStatus
-from src.workflows.state import ADTState
 from src.utils import (
-    get_relative_path,
     get_html_files,
+    get_relative_path,
     read_html_file,
     write_html_file,
 )
-
+from src.workflows.state import ADTState
 
 # Initialize logger
 logger = custom_logger("Layout Edit Agent")
@@ -28,8 +27,7 @@ logger = custom_logger("Layout Edit Agent")
 
 # Actions
 async def edit_layout(state: ADTState, config: RunnableConfig) -> ADTState:
-    """
-    Edit layout based on the instruction while preserving HTML semantics and structure.
+    """Edit layout based on the instruction while preserving HTML semantics and structure.
 
     Args:
         state: The current state of the workflow
@@ -38,7 +36,6 @@ async def edit_layout(state: ADTState, config: RunnableConfig) -> ADTState:
     Returns:
         The updated state of the workflow
     """
-
     # Create prompt
     messages = ChatPromptTemplate.from_messages(
         [
