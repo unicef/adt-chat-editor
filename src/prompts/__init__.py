@@ -21,6 +21,8 @@ from src.prompts.web_merging_agent import (
 from src.prompts.web_splitting_agent import (
     WEB_SPLIT_SYSTEM_PROMPT,
     WEB_SPLIT_USER_PROMPT,
+    NAV_UPDATE_SYSTEM_PROMPT,
+    NAV_UPDATE_USER_PROMPT,
 )
 
 __all__ = [
@@ -36,4 +38,6 @@ __all__ = [
     "WEB_MERGE_USER_PROMPT",
     "WEB_SPLIT_SYSTEM_PROMPT",
     "WEB_SPLIT_USER_PROMPT",
+    "NAV_UPDATE_SYSTEM_PROMPT",
+    "NAV_UPDATE_USER_PROMPT",
 ]
