@@ -7,7 +7,11 @@ from src.prompts import (
     LAYOUT_EDIT_SYSTEM_PROMPT,
     LAYOUT_EDIT_USER_PROMPT,
 )
-from src.settings import custom_logger, OUTPUT_DIR
+from src.settings import (
+    custom_logger, 
+    OUTPUT_DIR, 
+    TAILWIND_CSS_DIR,
+)
 from src.structs.status import StepStatus
 from src.workflows.state import ADTState
 from src.utils import (
@@ -53,6 +57,9 @@ async def edit_layout(state: ADTState, config: RunnableConfig) -> ADTState:
     html_files = await get_html_files(OUTPUT_DIR)
     html_files = [html_file for html_file in html_files if html_file in filtered_files]
 
+    # get tailwind css file with component and restrictions
+    tailwind_css_file = await read_html_file(OUTPUT_DIR + TAILWIND_CSS_DIR)
+    
     # Process each relevant HTML file
     modified_files = []
     for html_file in html_files:
@@ -64,8 +71,9 @@ async def edit_layout(state: ADTState, config: RunnableConfig) -> ADTState:
         # Format messages
         formatted_messages = await messages.ainvoke(
             {
+                "context_restrictions": tailwind_css_file,
                 "target_html_file": html_content,
-                "instruction": state.messages[-1].content,
+                "instruction": current_step.step,
             },
             config,
         )
