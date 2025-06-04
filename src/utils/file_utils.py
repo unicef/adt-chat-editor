@@ -266,3 +266,88 @@ async def delete_html_files_async(file_paths: List[str]) -> Dict[str, List[str]]
         return {"deleted": deleted, "failed": failed}
 
     return await asyncio.to_thread(sync_delete, file_paths)
+
+
+async def find_and_duplicate_nav_line(nav_content: str, original_href: str, new_href: str) -> str:
+    """
+    Finds the nav line with the original href and creates a duplicate with the new href.
+    
+    Args:
+        nav_content: The full nav HTML content as string
+        original_href: The href to search for (e.g. "los_biomas.html")
+        new_href: The new href to replace with (e.g. "new_file.html")
+        
+    Returns:
+        The new nav line with updated href
+    """
+    # Find the line containing the original href
+    lines = nav_content.split('\n')
+    for line in lines:
+        if f'href="{original_href}"' in line:
+            # Create new line by replacing the href
+            new_line = line.replace(f'href="{original_href}"', f'href="{new_href}"')
+            return new_line
+    
+    raise ValueError(f"Could not find nav item with href='{original_href}'")
+
+
+async def write_nav_line(nav_content: str, nav_line: str) -> str:
+    """
+    Inserts a new navigation line just before the closing </nav> tag.
+    
+    Args:
+        nav_content: The full content of the nav HTML as a string
+        nav_line: The new <li> line to insert
+        
+    Returns:
+        The updated nav content with the new line inserted
+    """
+    # Find the last closing nav tag position
+    closing_nav_pos = nav_content.rfind('</nav>')
+    
+    if closing_nav_pos == -1:
+        raise ValueError("Could not find closing </nav> tag in nav content")
+    
+    # Insert the new line before the closing tag with proper indentation
+    updated_content = (
+        nav_content[:closing_nav_pos].rstrip() + 
+        '\n' + 
+        nav_line.strip() + 
+        '\n' * 2 +
+        nav_content[closing_nav_pos:]
+    )
+    
+    return updated_content
+
+
+async def remove_nav_line_by_href(nav_content: str, href_to_remove: str) -> str:
+    """
+    Removes a navigation line that contains the specified href value.
+    
+    Args:
+        nav_content: The full nav HTML content as string
+        href_to_remove: The href value to search for and remove (e.g. "los_biomas.html")
+        
+    Returns:
+        The updated nav content with the line removed
+    """
+    # Split the content into lines
+    lines = nav_content.split('\n')
+    
+    # Find and remove the line containing the href
+    updated_lines = []
+    href_pattern = f'href="{href_to_remove}"'
+    
+    for line in lines:
+        if href_pattern in line:
+            continue  # Skip this line
+        updated_lines.append(line)
+    
+    # If no line was removed, raise an error
+    if len(lines) == len(updated_lines):
+        raise ValueError(f"No nav line found with href='{href_to_remove}'")
+    
+    # Join the lines back together
+    updated_nav = '\n'.join(updated_lines)
+    
+    return updated_nav

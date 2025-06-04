@@ -27,6 +27,7 @@ from src.structs.publish import (
     PublishRequest,
     PublishResponse,
 )
+from src.structs.split_editing import SplitEditResponse
 
 
 __all__ = [
@@ -53,4 +54,5 @@ __all__ = [
     "PublishMetadata",
     "PublishRequest",
     "PublishResponse",
+    "SplitEditResponse",
 ]

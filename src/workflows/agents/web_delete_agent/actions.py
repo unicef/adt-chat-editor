@@ -1,14 +1,18 @@
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig
 
-from src.settings import custom_logger, OUTPUT_DIR
+from src.settings import (
+    NAV_HTML_DIR,
+    OUTPUT_DIR,
+    custom_logger,
+)
 from src.structs.status import StepStatus
 from src.workflows.state import ADTState
 from src.utils import (
-    get_html_files,
     read_html_file,
     write_html_file,
     delete_html_files_async,
+    remove_nav_line_by_href,
 )
 
 logger = custom_logger("Web Delete Agent")
@@ -25,7 +29,14 @@ async def web_delete(state: ADTState, config: RunnableConfig) -> ADTState:
     
     # Delete files
     await delete_html_files_async(deleted_files)
-    
+
+    # Update nav
+    nav_html = await read_html_file(OUTPUT_DIR + NAV_HTML_DIR)
+    for file_name in deleted_files:
+        file_name = file_name.split("/")[-1]
+        nav_html = await remove_nav_line_by_href(nav_html, file_name)
+    await write_html_file(OUTPUT_DIR + NAV_HTML_DIR, nav_html)
+
     # Add message about the file being processed
     message = f"The following files have been deleted based on based on the instruction: '{current_step.step}'\n"
     for file in deleted_files:

@@ -2,35 +2,38 @@ import ast
 import json
 
 from langchain_core.messages import AIMessage
+from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
 from src.llm.llm_client import llm_client
 from src.prompts import (
-    NAV_UPDATE_SYSTEM_PROMPT,
-    NAV_UPDATE_USER_PROMPT,
     WEB_SPLIT_SYSTEM_PROMPT,
     WEB_SPLIT_USER_PROMPT,
 )
 from src.settings import (
-    INTERFACE_HTML_DIR,
     NAV_HTML_DIR,
     OUTPUT_DIR,
     custom_logger,
 )
-from src.structs.status import StepStatus
+from src.structs import StepStatus, SplitEditResponse
 from src.utils import (
     get_html_files,
     read_html_file,
     write_html_file,
+    find_and_duplicate_nav_line,
+    write_nav_line,
 )
 from src.workflows.state import ADTState
 
 logger = custom_logger("Web Split Agent")
 
+# Output parser
+split_edits_parser = PydanticOutputParser(pydantic_object=SplitEditResponse)
+
 
 async def web_split(state: ADTState, config: RunnableConfig) -> ADTState:
-    """Split one HTML file into several and update nav/interface accordingly."""
+    """Split one HTML file into several and update nav accordingly."""
     current_step = state.steps[state.current_step_index]
     html_files = await get_html_files(OUTPUT_DIR)
     html_files = [f for f in html_files if f in current_step.html_files]
@@ -51,51 +54,33 @@ async def web_split(state: ADTState, config: RunnableConfig) -> ADTState:
     formatted_split_prompt = await split_prompt.ainvoke(split_input, config)
     split_response = await llm_client.ainvoke(formatted_split_prompt, config)
 
-    split_htmls = ast.literal_eval(split_response.content) 
-    splitted_file_paths = []
+    # Parse the response
+    split_response = split_edits_parser.parse(str(split_response.content))
+    split_response = split_response.split_edits
 
-    # Step 2: Initialize nav/interface
+    # Step 2: Initialize nav
     nav_html = await read_html_file(OUTPUT_DIR + NAV_HTML_DIR)
-    interface_html = await read_html_file(OUTPUT_DIR + INTERFACE_HTML_DIR)
 
-    # Step 3: Write each split file and update nav/interface
-    for idx, html in enumerate(split_htmls):
+    # Step 3: Write each split file and update nav
+    splitted_file_paths = []
+    for idx, response in enumerate(split_response):
+        html = response.split_html_file
         file_name = f"{file_base}_split_{idx + 1}.html"
+        splitted_file_paths.append(file_name)
         full_path = f"{OUTPUT_DIR}/{file_name}"
         await write_html_file(full_path, html)
-        splitted_file_paths.append(file_name)
 
-        # Call nav/interface update for this file
-        nav_prompt = ChatPromptTemplate.from_messages([
-            ("system", NAV_UPDATE_SYSTEM_PROMPT),
-            ("user", NAV_UPDATE_USER_PROMPT),
-        ])
-        nav_input = {
-            "split_html_name": file_name,
-            "split_html_content": html,
-            "nav_html": nav_html,
-            "interface_html": interface_html,
-        }
-        formatted_nav_prompt = await nav_prompt.ainvoke(nav_input, config)
-        nav_response = await llm_client.ainvoke(formatted_nav_prompt, config)
-
-        try:
-            nav_update = json.loads(nav_response.content)
-            nav_html = nav_update["updated_nav"]
-            interface_html = nav_update["updated_interface"]
-        except json.JSONDecodeError as e:
-            print("⚠️ JSON decode error:", e)
-            print("Response was:", nav_response)
-
-    # Step 4: Save final nav/interface versions
+        # Update nav
+        nav_line = await find_and_duplicate_nav_line(nav_html, f"{file_base}.html", file_name)
+        nav_html = await write_nav_line(nav_html, nav_line)
+            
     await write_html_file(OUTPUT_DIR + NAV_HTML_DIR, nav_html)
-    await write_html_file(OUTPUT_DIR + INTERFACE_HTML_DIR, interface_html)
 
     # Log and state update
     summary_message = (
-        f"Split '{html_file}' into {len(split_htmls)} files:\n"
+        f"Split '{html_file}' into {len(split_response)} files:\n"
         + "\n".join(f"- {name}" for name in splitted_file_paths)
-        + "\nUpdated nav.html and interface.html for each new file."
+        + "\nUpdated nav.html for each new file."
     )
     state.add_message(AIMessage(content=summary_message))
     logger.info(summary_message)

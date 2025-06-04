@@ -7,6 +7,9 @@ from src.utils.file_utils import (
     extract_layout_properties_async,
     get_language_from_translation_files,
     delete_html_files_async,
+    find_and_duplicate_nav_line,
+    write_nav_line,
+    remove_nav_line_by_href,
 )
 
 __all__ = [
@@ -18,4 +21,7 @@ __all__ = [
     "extract_layout_properties_async",
     "get_language_from_translation_files",
     "delete_html_files_async",
+    "find_and_duplicate_nav_line",
+    "write_nav_line",
+    "remove_nav_line_by_href",
 ]
