@@ -1,23 +1,20 @@
+import asyncio
 import os
 import re
-import aiofiles
-import asyncio
 import shutil
-
-from bs4 import BeautifulSoup, Tag
 from pathlib import Path
-from typing import Dict, List, Union, Optional
+from typing import Dict, List, Optional, Union
 
-from src.settings import custom_logger, OUTPUT_DIR
-from src.structs import Language
+import aiofiles
+from bs4 import BeautifulSoup, Tag
 
+from src.settings import OUTPUT_DIR, custom_logger
 
 logger = custom_logger("Sub-agents Workflow Routes")
 
 
 async def get_relative_path(path: str, start: str) -> str:
-    """
-    Get relative path asynchronously.
+    """Get relative path asynchronously.
 
     Args:
         path (str): The path to get the relative path of
@@ -30,8 +27,7 @@ async def get_relative_path(path: str, start: str) -> str:
 
 
 async def get_html_files(output_dir: str) -> List[str]:
-    """
-    Get all HTML files from the output directory asynchronously.
+    """Get all HTML files from the output directory asynchronously.
 
     Args:
         output_dir (str): The output directory
@@ -46,8 +42,7 @@ async def get_html_files(output_dir: str) -> List[str]:
 
 
 async def read_html_file(file_path: str) -> str:
-    """
-    Read HTML file content asynchronously.
+    """Read HTML file content asynchronously.
 
     Args:
         file_path (str): The path to the HTML file
@@ -60,8 +55,7 @@ async def read_html_file(file_path: str) -> str:
 
 
 async def write_html_file(file_path: str, content: str) -> None:
-    """
-    Write content to HTML file asynchronously.
+    """Write content to HTML file asynchronously.
 
     Args:
         file_path (str): The path to the HTML file
@@ -77,8 +71,7 @@ async def extract_html_content_async(
     include_images: bool = False,
     clean_whitespace: bool = True,
 ) -> str:
-    """
-    Async version of HTML content extraction.
+    """Async version of HTML content extraction.
 
     Args:
         html (str): HTML string to parse
@@ -137,8 +130,7 @@ async def extract_layout_properties_async(
     include_position: bool = True,
     max_depth: Optional[int] = None,
 ) -> List[Dict[str, Union[str, Dict[str, str]]]]:
-    """
-    Async version of HTML layout properties extraction.
+    """Async version of HTML layout properties extraction.
 
     Args:
         html (str): HTML string to parse
@@ -211,8 +203,7 @@ async def extract_layout_properties_async(
 
 
 async def get_language_from_translation_files() -> List[str]:
-    """
-    Get language from translation files.
+    """Get language from translation files.
 
     Returns:
         List[Language | str]: List of languages
@@ -233,8 +224,7 @@ async def get_language_from_translation_files() -> List[str]:
 
 
 async def delete_html_files_async(file_paths: List[str], output_dir: str) -> Dict[str, List[str]]:
-    """
-    Async function to safely move HTML files to a 'deleted_html' directory.
+    """Async function to safely move HTML files to a 'deleted_html' directory.
     Creates the directory if it doesn't exist.
     
     Args:
@@ -295,8 +285,7 @@ async def delete_html_files_async(file_paths: List[str], output_dir: str) -> Dic
 
 
 async def find_and_duplicate_nav_line(nav_content: str, original_href: str, new_href: str) -> str:
-    """
-    Finds the nav line with the original href and creates a duplicate with the new href.
+    """Finds the nav line with the original href and creates a duplicate with the new href.
     
     Args:
         nav_content: The full nav HTML content as string
@@ -318,8 +307,7 @@ async def find_and_duplicate_nav_line(nav_content: str, original_href: str, new_
 
 
 async def write_nav_line(nav_content: str, nav_line: str) -> str:
-    """
-    Inserts a new navigation line just before the closing </nav> tag.
+    """Inserts a new navigation line just before the closing </nav> tag.
     
     Args:
         nav_content: The full content of the nav HTML as a string
@@ -347,8 +335,7 @@ async def write_nav_line(nav_content: str, nav_line: str) -> str:
 
 
 async def remove_nav_line_by_href(nav_content: str, href_to_remove: str) -> str:
-    """
-    Removes a navigation line that contains the specified href value.
+    """Removes a navigation line that contains the specified href value.
     
     Args:
         nav_content: The full nav HTML content as string

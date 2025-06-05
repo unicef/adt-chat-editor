@@ -7,20 +7,19 @@ from src.settings import (
     custom_logger,
 )
 from src.structs.status import StepStatus
-from src.workflows.state import ADTState
 from src.utils import (
-    read_html_file,
-    write_html_file,
     delete_html_files_async,
+    read_html_file,
     remove_nav_line_by_href,
+    write_html_file,
 )
+from src.workflows.state import ADTState
 
 logger = custom_logger("Web Delete Agent")
 
 
 async def web_delete(state: ADTState, config: RunnableConfig) -> ADTState:
     """Delete HTML files based on the instruction."""
-
     # Define current state step
     current_step = state.steps[state.current_step_index]
 
