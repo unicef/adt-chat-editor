@@ -28,7 +28,7 @@ async def web_delete(state: ADTState, config: RunnableConfig) -> ADTState:
     deleted_files = current_step.html_files
     
     # Delete files
-    await delete_html_files_async(deleted_files)
+    await delete_html_files_async(deleted_files, OUTPUT_DIR)
 
     # Update nav
     nav_html = await read_html_file(OUTPUT_DIR + NAV_HTML_DIR)

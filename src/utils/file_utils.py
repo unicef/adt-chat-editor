@@ -2,6 +2,7 @@ import os
 import re
 import aiofiles
 import asyncio
+import shutil
 
 from bs4 import BeautifulSoup, Tag
 from pathlib import Path
@@ -231,23 +232,37 @@ async def get_language_from_translation_files() -> List[str]:
     return languages
 
 
-async def delete_html_files_async(file_paths: List[str]) -> Dict[str, List[str]]:
+async def delete_html_files_async(file_paths: List[str], output_dir: str) -> Dict[str, List[str]]:
     """
-    Async function to delete HTML files from the file system.
-
+    Async function to safely move HTML files to a 'deleted_html' directory.
+    Creates the directory if it doesn't exist.
+    
     Args:
-        file_paths (List[str]): List of file paths to HTML files that should be deleted.
-
+        file_paths: List of file paths to HTML files that should be moved
+        output_dir: Base directory where 'deleted_html' folder will be created/maintained
+        
     Returns:
-        Dict[str, List[str]]: Dictionary summarizing successful deletions and failures.
-            {
-                "deleted": [...],
-                "failed": [...]
-            }
+        Dictionary with two lists:
+        {
+            "moved": List of successfully moved files (format "old_path → new_path"),
+            "failed": List of failed operations with error details
+        }
     """
-    def sync_delete(paths: List[str]) -> Dict[str, List[str]]:
-        deleted = []
+    def sync_move(paths: List[str], base_dir: str) -> Dict[str, List[str]]:
+        moved = []
         failed = []
+        
+        # Ensure deleted directory exists (creates if needed)
+        deleted_dir = os.path.join(base_dir, "deleted_html")
+        try:
+            os.makedirs(deleted_dir, exist_ok=True)  # Critical safety check
+        except OSError as e:
+            # If we can't even create the directory, fail all operations
+            return {
+                "moved": [],
+                "failed": [f"{path} (failed to create deletion directory: {str(e)})" 
+                          for path in paths]
+            }
 
         for path in paths:
             if not path.endswith(".html"):
@@ -256,16 +271,27 @@ async def delete_html_files_async(file_paths: List[str]) -> Dict[str, List[str]]
 
             try:
                 if os.path.exists(path):
-                    os.remove(path)
-                    deleted.append(path)
+                    filename = os.path.basename(path)
+                    new_path = os.path.join(deleted_dir, filename)
+                    
+                    # Handle filename conflicts
+                    counter = 1
+                    while os.path.exists(new_path):
+                        name, ext = os.path.splitext(filename)
+                        new_path = os.path.join(deleted_dir, f"{name}_{counter}{ext}")
+                        counter += 1
+                    
+                    # Perform the actual move
+                    shutil.move(path, new_path)
+                    moved.append(f"{path} → {new_path}")
                 else:
                     failed.append(f"{path} (file not found)")
             except Exception as e:
                 failed.append(f"{path} (error: {str(e)})")
 
-        return {"deleted": deleted, "failed": failed}
+        return {"moved": moved, "failed": failed}
 
-    return await asyncio.to_thread(sync_delete, file_paths)
+    return await asyncio.to_thread(sync_move, file_paths, output_dir)
 
 
 async def find_and_duplicate_nav_line(nav_content: str, original_href: str, new_href: str) -> str:
