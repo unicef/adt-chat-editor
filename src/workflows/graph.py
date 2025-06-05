@@ -2,6 +2,7 @@ from langgraph.graph import END, START, StateGraph
 
 from src.settings import custom_logger
 from src.workflows.actions import (
+    add_non_valid_message,
     execute_step,
     handle_plan_response,
     plan_steps,
@@ -19,7 +20,6 @@ from src.workflows.routes import (
     check_valid_query,
     should_adjust_plan,
     should_continue_execution,
-    should_rephrase_query,
     route_to_agent,
 )
 from src.workflows.state import ADTState, BaseState
@@ -34,7 +34,7 @@ workflow = StateGraph(ADTState, input=BaseState)
 # Define the graph nodes
 logger.info("Defining graph nodes")
 workflow.add_node("planner", plan_steps)
-workflow.add_node("check_valid_query", check_valid_query)
+workflow.add_node("non_valid_message", add_non_valid_message)
 workflow.add_node("rephrase_query", rephrase_query)
 workflow.add_node("show_plan", show_plan_to_user)
 workflow.add_node("handle_plan_response", handle_plan_response)
@@ -50,16 +50,23 @@ workflow.add_node("web_delete_agent", web_delete_workflow)
 # Define the graph edges
 logger.info("Defining graph edges")
 workflow.add_edge(START, "planner")
-workflow.add_edge("planner", "check_valid_query")
 workflow.add_conditional_edges(
-    "check_valid_query",
-    should_rephrase_query,
+    "planner",
+    check_valid_query,
     {
         "rephrase_query": "rephrase_query",
         "show_plan": "show_plan",
+        "non_valid_message": "non_valid_message",
     },
 )
-workflow.add_edge("rephrase_query", "planner")
+workflow.add_conditional_edges(
+    "rephrase_query",
+    rephrase_query,
+    {
+        "planner": "planner",
+        "__end__": END,
+    },
+)
 workflow.add_edge("show_plan", "handle_plan_response")
 workflow.add_conditional_edges(
     "handle_plan_response",
@@ -130,6 +137,7 @@ workflow.add_conditional_edges(
         END: END,
     },
 )
+workflow.add_edge("non_valid_message", END)
 
 # Compile the workflow into an executable graph
 graph = workflow.compile()

@@ -78,7 +78,7 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
         {
             "html_name": html_file,
             "html_content": await extract_html_content_async(
-                await read_html_file(html_file) 
+                await read_html_file(html_file)
             ),
         }
         for html_file in html_files
@@ -123,14 +123,15 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
             else str(response.content)
         )
         parsed_response = orchestrator_planning_parser.parse(content)
-        if parsed_response.steps:
+
+        if (
+            parsed_response.is_irrelevant
+            or parsed_response.is_forbidden
+            or parsed_response.steps
+        ):
             break
 
         logger.info(f"No steps found in the response. Retrying... ({retries}/3)")
-
-    if not parsed_response.steps:
-        logger.info("No steps found in the response. Ending workflow.")
-        return state
 
     logger.info(f"Orchestrator planning output: {parsed_response}")
 
@@ -351,3 +352,43 @@ async def execute_step(state: ADTState, config: RunnableConfig) -> ADTState:
     )
 
     return state
+
+
+async def add_non_valid_message(
+    state: ADTState, config: RunnableConfig
+) -> dict[str, list[AIMessage]]:
+    """
+    Add a non-valid message to the state.
+
+    Args:
+        state: The state of the agent.
+        config: The configuration of the agent.
+
+    Returns:
+        A dictionary with the key "messages" and the value being a list of AIMessage objects.
+    """
+
+    if state.is_forbidden_query:
+        non_valid_message = textwrap.dedent(
+            """
+            The message sent was found as not allowed to be processed.
+            Please, rephrase the query to make it more specific and clear and alligned with the user guidelines.
+            """
+        )
+    elif state.is_irrelevant_query:
+        non_valid_message = textwrap.dedent(
+            """
+            The message sent was not found relevant to the user guidelines.
+            This system is intended to be used to help the reviewers to modify Accessible Digital Textbooks.
+
+            Please, rephrase the query to make it more specific and clear and alligned with the user guidelines.
+            """
+        )
+    else:
+        raise ValueError(
+            f"The query was not found as forbidden or irrelevant. Query: {state.user_query}"
+        )
+
+    state.add_message(AIMessage(content=non_valid_message))
+
+    return {"messages": [AIMessage(content=non_valid_message)]}
