@@ -34,6 +34,7 @@ workflow = StateGraph(ADTState, input=BaseState)
 # Define the graph nodes
 logger.info("Defining graph nodes")
 workflow.add_node("planner", plan_steps)
+workflow.add_node("check_valid_query", check_valid_query)
 workflow.add_node("rephrase_query", rephrase_query)
 workflow.add_node("show_plan", show_plan_to_user)
 workflow.add_node("handle_plan_response", handle_plan_response)
@@ -49,8 +50,9 @@ workflow.add_node("web_delete_agent", web_delete_workflow)
 # Define the graph edges
 logger.info("Defining graph edges")
 workflow.add_edge(START, "planner")
+workflow.add_edge("planner", "check_valid_query")
 workflow.add_conditional_edges(
-    "planner",
+    "check_valid_query",
     should_rephrase_query,
     {
         "rephrase_query": "rephrase_query",

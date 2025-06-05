@@ -9,6 +9,24 @@ from src.structs.text_editing import (
     TextEditTranslation,
     TextEditResponse,
 )
+from src.structs.books import (
+    Book,
+    Chapter,
+    BookInfo,
+    PageContent,
+    BookContent,
+    BookInformation,
+)
+from src.structs.chat import (
+    ChatMessageResponse,
+    ChatEditRequest,
+    ChatEditResponse,
+)
+from src.structs.publish import (
+    PublishMetadata,
+    PublishRequest,
+    PublishResponse,
+)
 
 
 __all__ = [
@@ -23,4 +41,16 @@ __all__ = [
     "TextEditElement",
     "TextEditTranslation",
     "TextEditResponse",
+    "Book",
+    "Chapter",
+    "BookInfo",
+    "PageContent",
+    "BookContent",
+    "BookInformation",
+    "ChatMessageResponse",
+    "ChatEditRequest",
+    "ChatEditResponse",
+    "PublishMetadata",
+    "PublishRequest",
+    "PublishResponse",
 ]

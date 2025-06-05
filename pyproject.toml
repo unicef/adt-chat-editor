@@ -26,6 +26,9 @@ dependencies = [
     "cachetools (>=5.5.2,<6.0.0)",
     "beautifulsoup4 (>=4.13.4,<5.0.0)",
     "aiofiles (>=24.1.0,<25.0.0)",
+    "fastapi-pagination>=0.12.12",
+    "aiohttp>=3.9.0",
+    "Pillow>=10.0.0",
 ]
 
 
