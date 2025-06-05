@@ -109,7 +109,7 @@ def edit_texts(state: ADTState, config: RunnableConfig) -> ADTState:
     for text_edit in state.steps[state.current_step_index].text_edits:  # type: ignore
         for text_edit_translation in text_edit.translations:
             file_path = os.path.join(
-                OUTPUT_DIR, f"translations_{text_edit_translation.language}.json"
+                OUTPUT_DIR, "content", "i18n", text_edit_translation.language, "translations.json"
             )
 
             # Read and update the translation file
