@@ -8,7 +8,11 @@ from typing import Dict, List, Optional, Union
 import aiofiles
 from bs4 import BeautifulSoup, Tag
 
-from src.settings import OUTPUT_DIR, custom_logger
+from src.settings import (
+    OUTPUT_DIR, 
+    TRANSLATIONS_DIR,
+    custom_logger,
+)
 
 logger = custom_logger("Sub-agents Workflow Routes")
 
@@ -203,24 +207,32 @@ async def extract_layout_properties_async(
 
 
 async def get_language_from_translation_files() -> List[str]:
-    """Get language from translation files.
-
+    """Get language codes from translation folders.
+    
     Returns:
-        List[Language | str]: List of languages
+        List[str]: List of language codes (e.g., ['es', 'en', 'es_uy', ...])
     """
-    files_in_output_dir = await asyncio.to_thread(os.listdir, OUTPUT_DIR)
-    translation_files = [
-        file
-        for file in files_in_output_dir
-        if (file.startswith("translations_") and file.endswith(".json"))
-    ]
-    languages = [
-        file.split(".")[0].split("_")[1]
-        for file in translation_files
-        if len(file.split(".")[0].split("_")) <= 2
-    ]
-
-    return languages
+    translations_path = os.path.join(OUTPUT_DIR, TRANSLATIONS_DIR)
+    
+    try:
+        # List all directories in the translations folder
+        items = await asyncio.to_thread(os.listdir, translations_path)
+    except FileNotFoundError:
+        return []  # Directory doesn't exist → no languages
+    
+    # Filter only directories that contain 'translations.json'
+    valid_languages = []
+    for lang_dir in items:
+        lang_path = os.path.join(translations_path, lang_dir)
+        translations_file = os.path.join(lang_path, "translations.json")
+        
+        if (
+            await asyncio.to_thread(os.path.isdir, lang_path) and
+            await asyncio.to_thread(os.path.isfile, translations_file)
+        ):
+            valid_languages.append(lang_dir)
+    
+    return valid_languages
 
 
 async def delete_html_files_async(file_paths: List[str], output_dir: str) -> Dict[str, List[str]]:

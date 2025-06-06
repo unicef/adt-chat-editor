@@ -12,7 +12,11 @@ from src.prompts import (
     TEXT_EDIT_SYSTEM_PROMPT,
     TEXT_EDIT_USER_PROMPT,
 )
-from src.settings import custom_logger, OUTPUT_DIR
+from src.settings import (
+    custom_logger, 
+    OUTPUT_DIR, 
+    TRANSLATIONS_DIR,
+)
 from src.structs import StepStatus, TextEdit, TextEditResponse
 from src.workflows.state import ADTState
 from src.utils import (
@@ -109,7 +113,7 @@ def edit_texts(state: ADTState, config: RunnableConfig) -> ADTState:
     for text_edit in state.steps[state.current_step_index].text_edits:  # type: ignore
         for text_edit_translation in text_edit.translations:
             file_path = os.path.join(
-                OUTPUT_DIR, "content", "i18n", text_edit_translation.language, "translations.json"
+                OUTPUT_DIR, TRANSLATIONS_DIR, text_edit_translation.language, "translations.json"
             )
 
             # Read and update the translation file
