@@ -377,3 +377,24 @@ async def remove_nav_line_by_href(nav_content: str, href_to_remove: str) -> str:
     updated_nav = '\n'.join(updated_lines)
     
     return updated_nav
+
+
+async def update_tailwind(output_dir: str, input_css_path: str, output_css_path: str):
+
+    logger.info("Updating Tailwind css file")
+
+    # Prepare the command
+    cmd = f"npm install && npx tailwindcss -i {input_css_path} -o {output_css_path}"
+
+    # Run the command asynchronously
+    process = await asyncio.create_subprocess_shell(
+        cmd,
+        cwd=output_dir,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+
+    logger.info("Tailwind css updating done")
+    
+    # Return the process object so you can manage it later
+    return process

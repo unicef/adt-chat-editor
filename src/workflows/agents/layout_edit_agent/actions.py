@@ -9,7 +9,8 @@ from src.prompts import (
 )
 from src.settings import (
     OUTPUT_DIR,
-    TAILWIND_CSS_DIR,
+    TAILWIND_CSS_IN_DIR,
+    TAILWIND_CSS_OUT_DIR,
     custom_logger,
 )
 from src.structs.status import StepStatus
@@ -18,6 +19,7 @@ from src.utils import (
     get_relative_path,
     read_html_file,
     write_html_file,
+    update_tailwind,
 )
 from src.workflows.state import ADTState
 
@@ -53,9 +55,6 @@ async def edit_layout(state: ADTState, config: RunnableConfig) -> ADTState:
     # Get all relevant HTML files from output directory
     html_files = await get_html_files(OUTPUT_DIR)
     html_files = [html_file for html_file in html_files if html_file in filtered_files]
-
-    # get tailwind css file with component and restrictions
-    tailwind_css_file = await read_html_file(OUTPUT_DIR + TAILWIND_CSS_DIR)
     
     # Process each relevant HTML file
     modified_files = []
@@ -68,7 +67,6 @@ async def edit_layout(state: ADTState, config: RunnableConfig) -> ADTState:
         # Format messages
         formatted_messages = await messages.ainvoke(
             {
-                "context_restrictions": tailwind_css_file,
                 "target_html_file": html_content,
                 "instruction": current_step.step,
             },
@@ -87,6 +85,13 @@ async def edit_layout(state: ADTState, config: RunnableConfig) -> ADTState:
         # Save file path to modified files
         modified_files.append(rel_path)
 
+    # Command to update the tailwind.css
+    await update_tailwind(
+        OUTPUT_DIR, 
+        TAILWIND_CSS_IN_DIR, 
+        TAILWIND_CSS_OUT_DIR
+    )
+    
     # Add message about the file being processed
     message = f"The following files have been processed and updated based on the instruction: '{current_step.step}'\n"
     for file in modified_files:

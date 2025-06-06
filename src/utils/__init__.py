@@ -10,6 +10,7 @@ from src.utils.file_utils import (
     find_and_duplicate_nav_line,
     write_nav_line,
     remove_nav_line_by_href,
+    update_tailwind,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "find_and_duplicate_nav_line",
     "write_nav_line",
     "remove_nav_line_by_href",
+    "update_tailwind",
 ]
