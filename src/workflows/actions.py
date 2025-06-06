@@ -171,7 +171,8 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
             Please, rephrase the query to make it more specific and clear.
             """
         )
-        state.add_message(SystemMessage(content=rephrase_query_display))
+        if not parsed_response.is_irrelevant and not parsed_response.is_forbidden:
+            state.add_message(SystemMessage(content=rephrase_query_display))
 
     return state
 
