@@ -49,7 +49,16 @@ def should_adjust_plan(
 
 def route_to_agent(
     state: ADTState,
-) -> Literal["text_edit_agent", "layout_edit_agent", "layout_mirror_agent", "__end__"]:
+) -> Literal[
+    "text_edit_agent",
+    "layout_edit_agent",
+    "layout_mirror_agent",
+    "web_merge_agent",
+    "web_split_agent",
+    "web_delete_agent",
+    "finalize_task",
+    "__end__",
+]:
     """
     Route to the appropriate agent based on the current step.
     """
@@ -72,7 +81,7 @@ def route_to_agent(
     elif "Web Delete Agent" in agent_name:
         return "web_delete_agent"
 
-    return "__end__"
+    return "finalize_task"
 
 
 def should_continue_execution(state: ADTState) -> Literal["execute_step", "__end__"]:

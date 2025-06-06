@@ -34,6 +34,7 @@ class ADTState(BaseState):
     # Main task
     user_query: Annotated[str, add_messages] = field(default="")
     status: WorkflowStatus = field(default=WorkflowStatus.IN_PROGRESS)
+    session_id: str = field(default="")
 
     # Steps
     steps: list[PlanningStep] = field(default_factory=list)
