@@ -7,7 +7,7 @@ from src.prompts.layout_mirroring_agent import (
     LAYOUT_MIRRORING_USER_PROMPT,
 )
 from src.prompts.planner import (
-    ORCHESTRATOR_PLANNING_PROMPT, 
+    ORCHESTRATOR_PLANNING_PROMPT,
     ORCHESTRATOR_SYSTEM_PROMPT,
 )
 from src.prompts.text_editing_agent import (

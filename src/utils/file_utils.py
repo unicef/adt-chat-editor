@@ -1,22 +1,24 @@
+import asyncio
 import os
 import re
-import aiofiles
-import asyncio
-
-from bs4 import BeautifulSoup, Tag
+import shutil
 from pathlib import Path
-from typing import Dict, List, Union, Optional
+from typing import Dict, List, Optional, Union
 
-from src.settings import custom_logger, OUTPUT_DIR
-from src.structs import Language
+import aiofiles
+from bs4 import BeautifulSoup, Tag
 
+from src.settings import (
+    OUTPUT_DIR, 
+    TRANSLATIONS_DIR,
+    custom_logger,
+)
 
 logger = custom_logger("Sub-agents Workflow Routes")
 
 
 async def get_relative_path(path: str, start: str) -> str:
-    """
-    Get relative path asynchronously.
+    """Get relative path asynchronously.
 
     Args:
         path (str): The path to get the relative path of
@@ -29,8 +31,7 @@ async def get_relative_path(path: str, start: str) -> str:
 
 
 async def get_html_files(output_dir: str) -> List[str]:
-    """
-    Get all HTML files from the output directory asynchronously.
+    """Get all HTML files from the output directory asynchronously.
 
     Args:
         output_dir (str): The output directory
@@ -45,8 +46,7 @@ async def get_html_files(output_dir: str) -> List[str]:
 
 
 async def read_html_file(file_path: str) -> str:
-    """
-    Read HTML file content asynchronously.
+    """Read HTML file content asynchronously.
 
     Args:
         file_path (str): The path to the HTML file
@@ -59,8 +59,7 @@ async def read_html_file(file_path: str) -> str:
 
 
 async def write_html_file(file_path: str, content: str) -> None:
-    """
-    Write content to HTML file asynchronously.
+    """Write content to HTML file asynchronously.
 
     Args:
         file_path (str): The path to the HTML file
@@ -76,8 +75,7 @@ async def extract_html_content_async(
     include_images: bool = False,
     clean_whitespace: bool = True,
 ) -> str:
-    """
-    Async version of HTML content extraction.
+    """Async version of HTML content extraction.
 
     Args:
         html (str): HTML string to parse
@@ -136,8 +134,7 @@ async def extract_layout_properties_async(
     include_position: bool = True,
     max_depth: Optional[int] = None,
 ) -> List[Dict[str, Union[str, Dict[str, str]]]]:
-    """
-    Async version of HTML layout properties extraction.
+    """Async version of HTML layout properties extraction.
 
     Args:
         html (str): HTML string to parse
@@ -210,44 +207,65 @@ async def extract_layout_properties_async(
 
 
 async def get_language_from_translation_files() -> List[str]:
-    """
-    Get language from translation files.
-
+    """Get language codes from translation folders.
+    
     Returns:
-        List[Language | str]: List of languages
+        List[str]: List of language codes (e.g., ['es', 'en', 'es_uy', ...])
     """
-    files_in_output_dir = await asyncio.to_thread(os.listdir, OUTPUT_DIR)
-    translation_files = [
-        file
-        for file in files_in_output_dir
-        if (file.startswith("translations_") and file.endswith(".json"))
-    ]
-    languages = [
-        file.split(".")[0].split("_")[1]
-        for file in translation_files
-        if len(file.split(".")[0].split("_")) <= 2
-    ]
+    translations_path = os.path.join(OUTPUT_DIR, TRANSLATIONS_DIR)
+    
+    try:
+        # List all directories in the translations folder
+        items = await asyncio.to_thread(os.listdir, translations_path)
+    except FileNotFoundError:
+        logger.debug(f"Translation file not found: {translations_path}")
+        return []  # Directory doesn't exist → no languages
+    
+    # Filter only directories that contain 'translations.json'
+    valid_languages = []
+    for lang_dir in items:
+        lang_path = os.path.join(translations_path, lang_dir)
+        translations_file = os.path.join(lang_path, "translations.json")
+        
+        if (
+            await asyncio.to_thread(os.path.isdir, lang_path) and
+            await asyncio.to_thread(os.path.isfile, translations_file)
+        ):
+            valid_languages.append(lang_dir)
+    
+    return valid_languages
 
-    return languages
 
-
-async def delete_html_files_async(file_paths: List[str]) -> Dict[str, List[str]]:
-    """
-    Async function to delete HTML files from the file system.
-
+async def delete_html_files_async(file_paths: List[str], output_dir: str) -> Dict[str, List[str]]:
+    """Async function to safely move HTML files to a 'deleted_html' directory.
+    Creates the directory if it doesn't exist.
+    
     Args:
-        file_paths (List[str]): List of file paths to HTML files that should be deleted.
-
+        file_paths: List of file paths to HTML files that should be moved
+        output_dir: Base directory where 'deleted_html' folder will be created/maintained
+        
     Returns:
-        Dict[str, List[str]]: Dictionary summarizing successful deletions and failures.
-            {
-                "deleted": [...],
-                "failed": [...]
-            }
+        Dictionary with two lists:
+        {
+            "moved": List of successfully moved files (format "old_path → new_path"),
+            "failed": List of failed operations with error details
+        }
     """
-    def sync_delete(paths: List[str]) -> Dict[str, List[str]]:
-        deleted = []
+    def sync_move(paths: List[str], base_dir: str) -> Dict[str, List[str]]:
+        moved = []
         failed = []
+        
+        # Ensure deleted directory exists (creates if needed)
+        deleted_dir = os.path.join(base_dir, "deleted_html")
+        try:
+            os.makedirs(deleted_dir, exist_ok=True)  # Critical safety check
+        except OSError as e:
+            # If we can't even create the directory, fail all operations
+            return {
+                "moved": [],
+                "failed": [f"{path} (failed to create deletion directory: {str(e)})" 
+                          for path in paths]
+            }
 
         for path in paths:
             if not path.endswith(".html"):
@@ -256,13 +274,106 @@ async def delete_html_files_async(file_paths: List[str]) -> Dict[str, List[str]]
 
             try:
                 if os.path.exists(path):
-                    os.remove(path)
-                    deleted.append(path)
+                    filename = os.path.basename(path)
+                    new_path = os.path.join(deleted_dir, filename)
+                    
+                    # Handle filename conflicts
+                    counter = 1
+                    while os.path.exists(new_path):
+                        name, ext = os.path.splitext(filename)
+                        new_path = os.path.join(deleted_dir, f"{name}_{counter}{ext}")
+                        counter += 1
+                    
+                    # Perform the actual move
+                    shutil.move(path, new_path)
+                    moved.append(f"{path} → {new_path}")
                 else:
                     failed.append(f"{path} (file not found)")
             except Exception as e:
                 failed.append(f"{path} (error: {str(e)})")
 
-        return {"deleted": deleted, "failed": failed}
+        return {"moved": moved, "failed": failed}
 
-    return await asyncio.to_thread(sync_delete, file_paths)
+    return await asyncio.to_thread(sync_move, file_paths, output_dir)
+
+
+async def find_and_duplicate_nav_line(nav_content: str, original_href: str, new_href: str) -> str:
+    """Finds the nav line with the original href and creates a duplicate with the new href.
+    
+    Args:
+        nav_content: The full nav HTML content as string
+        original_href: The href to search for (e.g. "los_biomas.html")
+        new_href: The new href to replace with (e.g. "new_file.html")
+        
+    Returns:
+        The new nav line with updated href
+    """
+    # Find the line containing the original href
+    lines = nav_content.split('\n')
+    for line in lines:
+        if f'href="{original_href}"' in line:
+            # Create new line by replacing the href
+            new_line = line.replace(f'href="{original_href}"', f'href="{new_href}"')
+            return new_line
+    
+    raise ValueError(f"Could not find nav item with href='{original_href}'")
+
+
+async def write_nav_line(nav_content: str, nav_line: str) -> str:
+    """Inserts a new navigation line just before the closing </nav> tag.
+    
+    Args:
+        nav_content: The full content of the nav HTML as a string
+        nav_line: The new <li> line to insert
+        
+    Returns:
+        The updated nav content with the new line inserted
+    """
+    # Find the last closing nav tag position
+    closing_nav_pos = nav_content.rfind('</nav>')
+    
+    if closing_nav_pos == -1:
+        raise ValueError("Could not find closing </nav> tag in nav content")
+    
+    # Insert the new line before the closing tag with proper indentation
+    updated_content = (
+        nav_content[:closing_nav_pos].rstrip() + 
+        '\n' + 
+        nav_line.strip() + 
+        '\n' * 2 +
+        nav_content[closing_nav_pos:]
+    )
+    
+    return updated_content
+
+
+async def remove_nav_line_by_href(nav_content: str, href_to_remove: str) -> str:
+    """Removes a navigation line that contains the specified href value.
+    
+    Args:
+        nav_content: The full nav HTML content as string
+        href_to_remove: The href value to search for and remove (e.g. "los_biomas.html")
+        
+    Returns:
+        The updated nav content with the line removed
+    """
+    # Split the content into lines
+    lines = nav_content.split('\n')
+    
+    # Find and remove the line containing the href
+    updated_lines = []
+    href_pattern = f'href="{href_to_remove}"'
+    
+    for line in lines:
+        if href_pattern in line:
+            continue  # Skip this line
+        updated_lines.append(line)
+    
+    # If no line was removed, raise an error
+    if len(lines) == len(updated_lines):
+        raise ValueError(f"No nav line found with href='{href_to_remove}'")
+    
+    # Join the lines back together
+    updated_nav = '\n'.join(updated_lines)
+    
+    return updated_nav

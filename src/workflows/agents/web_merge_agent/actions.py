@@ -7,7 +7,11 @@ from src.prompts import (
     WEB_MERGE_SYSTEM_PROMPT,
     WEB_MERGE_USER_PROMPT,
 )
-from src.settings import custom_logger, OUTPUT_DIR
+from src.settings import (
+    NAV_HTML_DIR,
+    OUTPUT_DIR,
+    custom_logger,
+)
 from src.structs.status import StepStatus
 from src.workflows.state import ADTState
 from src.utils import (
@@ -15,6 +19,8 @@ from src.utils import (
     get_html_files,
     read_html_file,
     write_html_file,
+    find_and_duplicate_nav_line,
+    write_nav_line,
 )
 
 logger = custom_logger("Web Merge Agent")
@@ -75,6 +81,12 @@ async def web_merge(state: ADTState, config: RunnableConfig) -> ADTState:
     
     # Save edited text back to the same file
     await write_html_file(merged_file_name, edited_html)
+
+    # Update nav
+    nav_html = await read_html_file(OUTPUT_DIR + NAV_HTML_DIR)
+    nav_line = await find_and_duplicate_nav_line(nav_html, file_names[0] + ".html", joined_name + ".html")
+    nav_html = await write_nav_line(nav_html, nav_line)       
+    await write_html_file(OUTPUT_DIR + NAV_HTML_DIR, nav_html)
 
     # Add message about the file being processed
     message = f"The following files have been processed and updated based on the instruction: '{current_step.step}'\n"

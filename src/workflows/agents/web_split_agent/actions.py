@@ -1,6 +1,8 @@
 import ast
+import json
 
 from langchain_core.messages import AIMessage
+from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
@@ -9,83 +11,80 @@ from src.prompts import (
     WEB_SPLIT_SYSTEM_PROMPT,
     WEB_SPLIT_USER_PROMPT,
 )
-from src.settings import custom_logger, OUTPUT_DIR
-from src.structs.status import StepStatus
-from src.workflows.state import ADTState
+from src.settings import (
+    NAV_HTML_DIR,
+    OUTPUT_DIR,
+    custom_logger,
+)
+from src.structs import StepStatus, SplitEditResponse
 from src.utils import (
-    get_relative_path,
     get_html_files,
     read_html_file,
     write_html_file,
+    find_and_duplicate_nav_line,
+    write_nav_line,
 )
+from src.workflows.state import ADTState
 
 logger = custom_logger("Web Split Agent")
 
+# Output parser
+split_edits_parser = PydanticOutputParser(pydantic_object=SplitEditResponse)
+
 
 async def web_split(state: ADTState, config: RunnableConfig) -> ADTState:
-    """Split one web into several webs based on the instruction while preserving HTML semantics and structure."""
-
-    # Create prompt
-    messages = ChatPromptTemplate.from_messages(
-        [
-            ("system", WEB_SPLIT_SYSTEM_PROMPT),
-            ("user", WEB_SPLIT_USER_PROMPT),
-        ]
-    )
-
-    # Define current state step
+    """Split one HTML file into several and update nav accordingly."""
     current_step = state.steps[state.current_step_index]
-
-    # Get the relevant and layout-base-template html files 
-    filtered_files = current_step.html_files
-
-    # Get all relevant HTML files from output directory
     html_files = await get_html_files(OUTPUT_DIR)
-    html_files = [html_file for html_file in html_files if html_file in filtered_files]
-    
-    # Process the relevant HTML file to get its content
+    html_files = [f for f in html_files if f in current_step.html_files]
     html_file = html_files[-1]
-    rel_path = await get_relative_path(html_file, "data")
+
     html_content = await read_html_file(html_file)
+    file_base = html_file.split("/")[-1].replace(".html", "")
 
-    # Format messages
-    formatted_messages = await messages.ainvoke(
-        {
-            "html_input": html_content,
-            "instruction": state.messages[-1].content,
-        },
-        config,
+    # Step 1: Split HTML
+    split_prompt = ChatPromptTemplate.from_messages([
+        ("system", WEB_SPLIT_SYSTEM_PROMPT),
+        ("user", WEB_SPLIT_USER_PROMPT),
+    ])
+    split_input = {
+        "html_input": html_content,
+        "instruction": state.messages[-1].content,
+    }
+    formatted_split_prompt = await split_prompt.ainvoke(split_input, config)
+    split_response = await llm_client.ainvoke(formatted_split_prompt, config)
+
+    # Parse the response
+    split_response = split_edits_parser.parse(str(split_response.content))
+    split_response = split_response.split_edits
+
+    # Step 2: Initialize nav
+    nav_html = await read_html_file(OUTPUT_DIR + NAV_HTML_DIR)
+
+    # Step 3: Write each split file and update nav
+    splitted_file_paths = []
+    for idx, response in enumerate(split_response):
+        html = response.split_html_file
+        file_name = f"{file_base}_split_{idx + 1}.html"
+        splitted_file_paths.append(file_name)
+        full_path = f"{OUTPUT_DIR}/{file_name}"
+        await write_html_file(full_path, html)
+
+        # Update nav
+        nav_line = await find_and_duplicate_nav_line(nav_html, f"{file_base}.html", file_name)
+        nav_html = await write_nav_line(nav_html, nav_line)
+            
+    await write_html_file(OUTPUT_DIR + NAV_HTML_DIR, nav_html)
+
+    # Log and state update
+    summary_message = (
+        f"Split '{html_file}' into {len(split_response)} files:\n"
+        + "\n".join(f"- {name}" for name in splitted_file_paths)
+        + "\nUpdated nav.html for each new file."
     )
+    state.add_message(AIMessage(content=summary_message))
+    logger.info(summary_message)
 
-    # Call model
-    response = await llm_client.ainvoke(formatted_messages, config)
-
-    # Get edited layout from response
-    splitted_htmls = ast.literal_eval(response.content) 
-
-    # Extract file name & splitted HTML contents from list
-    splitted_files = []
-    for index, splitted_html in enumerate(splitted_htmls):
-        
-        # Define the file name and path
-        file_name = html_file.split("/")[-1].replace(".html", "")
-        joined_name = file_name + f"_split_{index + 1}"
-        splitted_file_name = OUTPUT_DIR + "/" + joined_name + ".html"
-
-        # Save edited text back to the same file
-        await write_html_file(splitted_file_name, splitted_html)
-
-        # Save file path to modified files
-        splitted_files.append(splitted_file_name)
-    
-    # Add message about the file being processed
-    message = f"The following files have been processed and updated based on the instruction: '{current_step.step}'\n"
-    for file in splitted_files:
-        message += f"- {file}\n"
-    state.add_message(AIMessage(content=message))
-    logger.info(f"Total files modified: {len(splitted_files)}")
-
-    # Update step status
     if 0 <= state.current_step_index < len(state.steps):
         state.steps[state.current_step_index].status = StepStatus.SUCCESS
 
