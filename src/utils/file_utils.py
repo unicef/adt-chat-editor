@@ -9,7 +9,7 @@ import aiofiles
 from bs4 import BeautifulSoup, Tag
 
 from src.settings import (
-    OUTPUT_DIR, 
+    OUTPUT_DIR,
     TRANSLATIONS_DIR,
     custom_logger,
 )

@@ -1,16 +1,16 @@
 from src.utils.file_utils import (
-    get_relative_path,
-    get_html_files,
-    read_html_file,
-    write_html_file,
+    delete_html_files_async,
     extract_html_content_async,
     extract_layout_properties_async,
-    get_language_from_translation_files,
-    delete_html_files_async,
     find_and_duplicate_nav_line,
-    write_nav_line,
+    get_html_files,
+    get_language_from_translation_files,
+    get_relative_path,
+    read_html_file,
     remove_nav_line_by_href,
     update_tailwind,
+    write_html_file,
+    write_nav_line,
 )
 
 __all__ = [
