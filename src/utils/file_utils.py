@@ -218,6 +218,7 @@ async def get_language_from_translation_files() -> List[str]:
         # List all directories in the translations folder
         items = await asyncio.to_thread(os.listdir, translations_path)
     except FileNotFoundError:
+        logger.debug(f"Translation file not found: {translations_path}")
         return []  # Directory doesn't exist → no languages
     
     # Filter only directories that contain 'translations.json'
