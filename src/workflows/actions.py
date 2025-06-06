@@ -3,7 +3,7 @@ import os
 import textwrap
 from dataclasses import asdict
 
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
@@ -160,7 +160,8 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
         )
 
     # Add the plan display to the messages
-    state.add_message(AIMessage(content=create_plan_display(state)))
+    if (not parsed_response.is_irrelevant) and (not parsed_response.is_forbidden):
+        state.add_message(AIMessage(content=create_plan_display(state)))
 
     # Add the rephrase query message if no steps were found
     if not state.steps:
@@ -170,7 +171,7 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
             Please, rephrase the query to make it more specific and clear.
             """
         )
-        state.add_message(AIMessage(content=rephrase_query_display))
+        state.add_message(SystemMessage(content=rephrase_query_display))
 
     return state
 
