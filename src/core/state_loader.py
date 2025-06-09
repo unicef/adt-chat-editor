@@ -25,7 +25,9 @@ class StateCheckpointManager:
         # Ensure state checkpoints directory exists
         os.makedirs(STATE_CHECKPOINTS_DIR, exist_ok=True)
 
-    def create_new_state_checkpoint(self, request: ChatEditRequest) -> ADTState:
+    def create_new_state_checkpoint(
+        self, request: ChatEditRequest, path: str
+    ) -> ADTState:
         """
         Function to create a new state checkpoint for a given session ID.
 
@@ -35,6 +37,9 @@ class StateCheckpointManager:
         Returns:
             The new state checkpoint.
         """
+        # Create directory if it doesn't exist
+        os.makedirs(path, exist_ok=True)
+
         # Create new state checkpoint
         state_checkpoint = ADTState(
             messages=[HumanMessage(content=request.user_message)],
@@ -114,7 +119,8 @@ class StateCheckpointManager:
         checkpoint_path = os.path.join(
             os.getcwd(),
             STATE_CHECKPOINTS_DIR,
-            f"checkpoint-{request.session_id}.json",
+            request.session_id,
+            f"checkpoint.json",
         )
         self.logger.debug(f"Saving checkpoint to: {checkpoint_path}")
         try:

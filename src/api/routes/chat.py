@@ -35,18 +35,18 @@ async def chat_edit(request: ChatEditRequest) -> ChatEditResponse:
     logger.debug(f"Listdir: {os.listdir(STATE_CHECKPOINTS_DIR)}")
 
     # Get project root directory (2 levels up from current directory)
-    checkpoint_path = os.path.join(
-        STATE_CHECKPOINTS_DIR, f"checkpoint-{request.session_id}.json"
-    )
+    checkpoint_path = os.path.join(STATE_CHECKPOINTS_DIR, request.session_id)
     logger.debug(f"Checkpoint path: {checkpoint_path}")
 
     if os.path.exists(checkpoint_path):
         state_checkpoint = state_checkpoint_manager.load_state_checkpoint(
-            request, path=checkpoint_path
+            request, path=os.path.join(checkpoint_path, "checkpoint.json")
         )
         logger.debug(f"Loaded state checkpoint: {state_checkpoint}")
     else:
-        state_checkpoint = state_checkpoint_manager.create_new_state_checkpoint(request)
+        state_checkpoint = state_checkpoint_manager.create_new_state_checkpoint(
+            request, path=checkpoint_path
+        )
         logger.debug(f"Created new state checkpoint: {state_checkpoint}")
 
     output = await graph.ainvoke(state_checkpoint)
