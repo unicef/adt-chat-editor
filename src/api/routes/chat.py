@@ -1,50 +1,28 @@
-import os
 import json
-from dataclasses import asdict
+import os
+import sys
+
+sys.path.append(os.getcwd())
+
 
 from fastapi import APIRouter
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from langgraph.pregel.io import AddableValuesDict
+from langchain_core.messages import HumanMessage
 
+from src.core.state_loader import StateCheckpointManager
 from src.structs import ChatEditRequest, ChatEditResponse, ChatMessageResponse
-from src.settings import custom_logger
+from src.settings import custom_logger, STATE_CHECKPOINTS_DIR
 from src.utils.messages import message_is_agent, message_is_human
 from src.workflows.graph import graph
-from src.settings import STATE_CHECKPOINTS_DIR
 from src.workflows.state import ADTState
 
 
-# Create logger
+# Create logger and state loader
 logger = custom_logger("Chat API Router")
+state_checkpoint_manager = StateCheckpointManager()
 
 
 # Create router
 router = APIRouter(prefix="/chat", tags=["Chat"])
-
-
-def serialize_messages(messages):
-    """Convert LangChain messages to a simple JSON format."""
-    return [
-        {
-            "type": (
-                "human"
-                if isinstance(msg, HumanMessage)
-                else "ai" if isinstance(msg, AIMessage) else "system"
-            ),
-            "content": msg.content,
-        }
-        for msg in messages
-    ]
-
-
-def deserialize_messages(messages_data):
-    """Convert JSON format back to LangChain messages."""
-    message_types = {
-        "human": HumanMessage,
-        "ai": AIMessage,
-        "system": SystemMessage,
-    }
-    return [message_types[msg["type"]](content=msg["content"]) for msg in messages_data]
 
 
 # Define the endpoints
@@ -54,41 +32,26 @@ async def chat_edit(request: ChatEditRequest) -> ChatEditResponse:
     logger.debug(
         f"Chat edit request: session_id={request.session_id}, language={request.language}"
     )
+    logger.debug(f"Listdir: {os.listdir(STATE_CHECKPOINTS_DIR)}")
 
-    # Load state checkpoint
-    if os.path.exists(
-        os.path.join(STATE_CHECKPOINTS_DIR, f"checkpoint-{request.session_id}.json")
-    ):
-        with open(
-            os.path.join(
-                STATE_CHECKPOINTS_DIR, f"checkpoint-{request.session_id}.json"
-            ),
-            "r",
-        ) as f:
-            state_data = json.load(f)
-            state_checkpoint = ADTState(
-                messages=deserialize_messages(state_data["messages"])
-                + [HumanMessage(content=request.user_message)],
-                user_query=request.user_message,
-                session_id=request.session_id,
-            )
-            if "language" in state_data:
-                state_checkpoint.language = state_data["language"]
-    else:
-        state_checkpoint = ADTState(
-            messages=[HumanMessage(content=request.user_message)],
-            user_query=request.user_message,
-            session_id=request.session_id,
+    # Get project root directory (2 levels up from current directory)
+    checkpoint_path = os.path.join(
+        STATE_CHECKPOINTS_DIR, f"checkpoint-{request.session_id}.json"
+    )
+    logger.debug(f"Checkpoint path: {checkpoint_path}")
+
+    if os.path.exists(checkpoint_path):
+        state_checkpoint = state_checkpoint_manager.load_state_checkpoint(
+            request, path=checkpoint_path
         )
-        if request.language:
-            state_checkpoint.language = request.language
+        logger.debug(f"Loaded state checkpoint: {state_checkpoint}")
+    else:
+        state_checkpoint = state_checkpoint_manager.create_new_state_checkpoint(request)
+        logger.debug(f"Created new state checkpoint: {state_checkpoint}")
 
     output = await graph.ainvoke(state_checkpoint)
 
     # Format messages
-    for message in output["messages"]:
-        print(f"Message: {message.content} -> Type: {type(message)}")
-
     messages = [
         ChatMessageResponse(
             message_number=k,
@@ -107,18 +70,6 @@ async def chat_edit(request: ChatEditRequest) -> ChatEditResponse:
     )
 
     # Save state checkpoint
-    serialized_output = {
-        **dict(output),
-    }
-    serialized_output["messages"] = serialize_messages(output["messages"])
-    serialized_output["user_query"] = ""
-    serialized_output["status"] = serialized_output["status"].value
-
-    logger.info(f"Serialized output: {serialized_output}")
-    with open(
-        os.path.join(STATE_CHECKPOINTS_DIR, f"checkpoint-{request.session_id}.json"),
-        "w",
-    ) as f:
-        json.dump(serialized_output, f)
+    state_checkpoint_manager.save_state_checkpoint(request, output)
 
     return response
