@@ -1,4 +1,3 @@
-import json
 import os
 import sys
 
@@ -6,14 +5,12 @@ sys.path.append(os.getcwd())
 
 
 from fastapi import APIRouter
-from langchain_core.messages import HumanMessage
 
 from src.core.state_loader import StateCheckpointManager
 from src.structs import ChatEditRequest, ChatEditResponse, ChatMessageResponse
 from src.settings import custom_logger, STATE_CHECKPOINTS_DIR
 from src.utils.messages import message_is_agent, message_is_human
 from src.workflows.graph import graph
-from src.workflows.state import ADTState
 
 
 # Create logger and state loader
@@ -34,7 +31,7 @@ async def chat_edit(request: ChatEditRequest) -> ChatEditResponse:
     )
     logger.debug(f"Listdir: {os.listdir(STATE_CHECKPOINTS_DIR)}")
 
-    # Get project root directory (2 levels up from current directory)
+    # Get project root directory
     checkpoint_path = os.path.join(STATE_CHECKPOINTS_DIR, request.session_id)
     logger.debug(f"Checkpoint path: {checkpoint_path}")
 

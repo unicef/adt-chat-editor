@@ -11,7 +11,7 @@ from langchain_core.messages import (
 )
 
 from src.settings import custom_logger, STATE_CHECKPOINTS_DIR
-from src.structs import ChatEditRequest, PlanningStep
+from src.structs import ChatEditRequest
 from src.workflows.state import ADTState
 
 
