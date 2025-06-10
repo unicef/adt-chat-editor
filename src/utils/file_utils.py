@@ -379,22 +379,59 @@ async def remove_nav_line_by_href(nav_content: str, href_to_remove: str) -> str:
     return updated_nav
 
 
-async def update_tailwind(output_dir: str, input_css_path: str, output_css_path: str):
+async def install_tailwind():
+    logger.info("Installing Tailwind resources")
+    
+    cmd = "rm -rf node_modules package-lock.json && npm install"
+    
+    try:
+        process = await asyncio.create_subprocess_shell(
+            cmd,
+            cwd=OUTPUT_DIR,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        # Properly await the communicate() coroutine
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode == 0:
+            logger.info("Tailwind resources installed successfully")
+            return True
+        else:
+            logger.error(f"Tailwind installation failed: {stderr.decode()}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error installing Tailwind: {str(e)}")
+        return False
 
+
+async def update_tailwind(output_dir: str, input_css_path: str, output_css_path: str):
     logger.info("Updating Tailwind css file")
 
     # Prepare the command
-    cmd = f"npm install && npx tailwindcss -i {input_css_path} -o {output_css_path}"
+    cmd = f"npx tailwindcss -i {input_css_path} -o {output_css_path}"
 
-    # Run the command asynchronously
-    process = await asyncio.create_subprocess_shell(
-        cmd,
-        cwd=output_dir,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE
-    )
+    try:
+        # Run the command asynchronously
+        process = await asyncio.create_subprocess_shell(
+            cmd,
+            cwd=output_dir,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
 
-    logger.info("Tailwind css updating done")
-    
-    # Return the process object so you can manage it later
-    return process
+        # Wait for the process to complete (note the await)
+        stdout, stderr = await process.communicate()
+
+        if process.returncode == 0:
+            logger.info("Tailwind css updated successfully")
+            return True
+        else:
+            logger.error(f"Tailwind update failed: {stderr.decode()}")
+            return False
+
+    except Exception as e:
+        logger.error(f"Error updating Tailwind: {str(e)}")
+        return False
