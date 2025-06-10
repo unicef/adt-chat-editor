@@ -1,6 +1,9 @@
+import json
+import os
 import textwrap
+from dataclasses import asdict
 
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
@@ -12,20 +15,22 @@ from src.prompts import (
     ORCHESTRATOR_PLANNING_PROMPT,
     ORCHESTRATOR_SYSTEM_PROMPT,
 )
-from src.settings import OUTPUT_DIR, custom_logger
+from src.settings import custom_logger, STATE_CHECKPOINTS_DIR, OUTPUT_DIR
 from src.structs import (
     OrchestratorPlanningOutput,
     PlanningStep,
     StepStatus,
     TailwindStatus,
 )
+from src.workflows.agents import AVAILABLE_AGENTS
+from src.workflows.state import ADTState
 from src.utils import (
     extract_html_content_async,
     get_html_files,
     read_html_file,
 )
 from src.workflows.agents import AVAILABLE_AGENTS
-from src.workflows.state import ADTState
+
 
 # Initialize logger
 logger = custom_logger("Main Workflow Actions")
@@ -56,7 +61,7 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
 
     # Initialize languages
     await state.initialize_languages()
-    
+
     # Initialize languages
     if state.tailwind_status != TailwindStatus.INSTALLED:
         await state.initialize_tailwind()
@@ -165,7 +170,8 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
         )
 
     # Add the plan display to the messages
-    state.add_message(AIMessage(content=create_plan_display(state)))
+    if (not parsed_response.is_irrelevant) and (not parsed_response.is_forbidden):
+        state.add_message(AIMessage(content=create_plan_display(state)))
 
     # Add the rephrase query message if no steps were found
     if not state.steps:
@@ -175,7 +181,8 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
             Please, rephrase the query to make it more specific and clear.
             """
         )
-        state.add_message(AIMessage(content=rephrase_query_display))
+        if not parsed_response.is_irrelevant and not parsed_response.is_forbidden:
+            state.add_message(SystemMessage(content=rephrase_query_display))
 
     return state
 
@@ -397,3 +404,22 @@ async def add_non_valid_message(
     state.add_message(AIMessage(content=non_valid_message))
 
     return {"messages": [AIMessage(content=non_valid_message)]}
+
+
+async def finalize_task_execution(state: ADTState, config: RunnableConfig) -> ADTState:
+    """Finalize the task execution.
+
+    Args:
+        state: The state of the agent.
+        config: The configuration of the agent.
+    """
+    logger.info("Finalizing task execution")
+
+    state_checkpoint = json.dumps(asdict(state))
+    state_checkpoint_path = os.path.join(
+        STATE_CHECKPOINTS_DIR, f"checkpoint-{state.session_id}.json"
+    )
+    with open(state_checkpoint_path, "w") as f:
+        f.write(state_checkpoint)
+
+    return state

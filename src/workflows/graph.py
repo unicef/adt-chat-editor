@@ -5,6 +5,7 @@ from src.workflows.actions import (
     add_non_valid_message,
     execute_step,
     handle_plan_response,
+    finalize_task_execution,
     plan_steps,
     rephrase_query,
     show_plan_to_user,
@@ -34,6 +35,7 @@ workflow = StateGraph(ADTState, input=BaseState)
 # Define the graph nodes
 logger.info("Defining graph nodes")
 workflow.add_node("planner", plan_steps)
+workflow.add_node("finalize_task", finalize_task_execution)
 workflow.add_node("non_valid_message", add_non_valid_message)
 workflow.add_node("rephrase_query", rephrase_query)
 workflow.add_node("show_plan", show_plan_to_user)
@@ -86,6 +88,7 @@ workflow.add_conditional_edges(
         "web_merge_agent": "web_merge_agent",
         "web_split_agent": "web_split_agent",
         "web_delete_agent": "web_delete_agent",
+        "finalize_task": "finalize_task",
         END: END,
     },
 )
@@ -138,6 +141,7 @@ workflow.add_conditional_edges(
     },
 )
 workflow.add_edge("non_valid_message", END)
+workflow.add_edge("finalize_task", END)
 
 # Compile the workflow into an executable graph
 graph = workflow.compile()
