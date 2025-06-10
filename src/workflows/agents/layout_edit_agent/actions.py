@@ -86,11 +86,13 @@ async def edit_layout(state: ADTState, config: RunnableConfig) -> ADTState:
         modified_files.append(rel_path)
 
     # Command to update the tailwind.css
-    await update_tailwind(
+    updated_tailwind = await update_tailwind(
         OUTPUT_DIR, 
         TAILWIND_CSS_IN_DIR, 
         TAILWIND_CSS_OUT_DIR
     )
+
+    logger.info(f"Updated_tailwind: {updated_tailwind}")
     
     # Add message about the file being processed
     message = f"The following files have been processed and updated based on the instruction: '{current_step.step}'\n"
