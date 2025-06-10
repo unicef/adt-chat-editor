@@ -46,6 +46,7 @@ async def chat_edit(request: ChatEditRequest) -> ChatEditResponse:
         )
         logger.debug(f"Created new state checkpoint: {state_checkpoint}")
 
+    logger.debug(f"Invoking graph with state: {state_checkpoint}")
     output = await graph.ainvoke(state_checkpoint)
 
     # Format messages

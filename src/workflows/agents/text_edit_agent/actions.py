@@ -2,7 +2,7 @@ import os
 import json
 from typing import List
 
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
@@ -13,8 +13,8 @@ from src.prompts import (
     TEXT_EDIT_USER_PROMPT,
 )
 from src.settings import (
-    custom_logger, 
-    OUTPUT_DIR, 
+    custom_logger,
+    OUTPUT_DIR,
     TRANSLATIONS_DIR,
 )
 from src.structs import StepStatus, TextEdit, TextEditResponse
@@ -113,7 +113,10 @@ def edit_texts(state: ADTState, config: RunnableConfig) -> ADTState:
     for text_edit in state.steps[state.current_step_index].text_edits:  # type: ignore
         for text_edit_translation in text_edit.translations:
             file_path = os.path.join(
-                OUTPUT_DIR, TRANSLATIONS_DIR, text_edit_translation.language, "translations.json"
+                OUTPUT_DIR,
+                TRANSLATIONS_DIR,
+                text_edit_translation.language,
+                "translations.json",
             )
 
             # Read and update the translation file
@@ -131,7 +134,12 @@ def edit_texts(state: ADTState, config: RunnableConfig) -> ADTState:
     message = f"The following files have been processed and updated based on the instruction: '{state.steps[state.current_step_index].step}' for the languages: '{', '.join(state.available_languages)}'\n"
     for file in state.steps[state.current_step_index].html_files:  # type: ignore
         message += f"\n- {file}"
-    state.add_message(AIMessage(content=message))
+    state.add_message(SystemMessage(content=message))
+    state.add_message(
+        AIMessage(
+            content="The files had been edited and updated based on your request. Please check the files and make sure they are correct."
+        )
+    )
 
     logger.info(
         f"Total files modified: {len(state.steps[state.current_step_index].html_files)}"

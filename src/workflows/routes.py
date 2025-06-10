@@ -7,6 +7,27 @@ from src.settings import custom_logger
 logger = custom_logger("Main Workflow Routes")
 
 
+def route_user_message(
+    state: ADTState,
+) -> Literal["planner", "handle_plan_response"]:
+    """
+    Route the user message to the appropriate node.
+    If the plan has not been shown to the user, route to the planner.
+    If the plan has been shown to the user, route to the handle_plan_response.
+
+    Args:
+        state: The state of the agent.
+
+    Returns:
+        The name of the node to route to.
+    """
+    logger.info(f"Showing plan to user -> state: {state}")
+    if state.plan_shown_to_user:
+        return "handle_plan_response"
+    else:
+        return "planner"
+
+
 def check_valid_query(
     state: ADTState,
 ) -> Literal["rephrase_query", "show_plan", "non_valid_message"]:

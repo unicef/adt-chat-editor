@@ -1,4 +1,4 @@
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
@@ -100,7 +100,12 @@ async def mirror_layout(state: ADTState, config: RunnableConfig) -> ADTState:
     message = f"The following files have been processed and updated based on the instruction: '{current_step.step}'\n"
     for file in modified_files:
         message += f"- {file}\n"
-    state.add_message(AIMessage(content=message))
+    state.add_message(SystemMessage(content=message))
+    state.add_message(
+        AIMessage(
+            content="The files had been mirrored and updated based on your request. Please check the files and make sure they are correct."
+        )
+    )
     logger.info(f"Total files modified: {len(modified_files)}")
 
     # Update step status
