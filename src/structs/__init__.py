@@ -1,4 +1,5 @@
 from src.structs.language import Language
+from src.structs.node_resources import TailwindStatus
 from src.structs.llm_clients import LLMClient
 from src.structs.planning import PlanningStep, OrchestratorPlanningOutput
 from src.structs.status import StepStatus, WorkflowStatus
@@ -55,4 +56,5 @@ __all__ = [
     "PublishRequest",
     "PublishResponse",
     "SplitEditResponse",
+    "TailwindStatus",
 ]

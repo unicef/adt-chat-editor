@@ -13,7 +13,12 @@ from src.prompts import (
     ORCHESTRATOR_SYSTEM_PROMPT,
 )
 from src.settings import custom_logger, OUTPUT_DIR
-from src.structs import OrchestratorPlanningOutput, PlanningStep, StepStatus
+from src.structs import (
+    OrchestratorPlanningOutput, 
+    PlanningStep, 
+    StepStatus, 
+    TailwindStatus,
+)
 from src.workflows.agents import AVAILABLE_AGENTS
 from src.workflows.state import ADTState
 from src.utils import (
@@ -52,6 +57,10 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
 
     # Initialize languages
     await state.initialize_languages()
+    
+    # Initialize languages
+    if state.tailwind_status != TailwindStatus.INSTALLED:
+        await state.initialize_tailwind()
 
     # Set user query
     state.user_query = str(state.messages[-1].content)

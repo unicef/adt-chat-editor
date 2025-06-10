@@ -9,6 +9,7 @@ from src.utils.file_utils import (
     read_html_file,
     remove_nav_line_by_href,
     update_tailwind,
+    install_tailwind,
     write_html_file,
     write_nav_line,
 )
@@ -26,4 +27,5 @@ __all__ = [
     "write_nav_line",
     "remove_nav_line_by_href",
     "update_tailwind",
+    "install_tailwind",
 ]
