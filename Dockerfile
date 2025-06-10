@@ -1,6 +1,12 @@
 # Use FastAPI base image
 FROM tiangolo/uvicorn-gunicorn-fastapi:python3.10
 
+# Install Node.js and npm
+RUN apt-get update && \
+    apt-get install -y nodejs npm && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 # Set working directory
 WORKDIR /app
 
