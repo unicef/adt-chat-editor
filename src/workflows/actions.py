@@ -17,14 +17,20 @@ from src.prompts import (
     ORCHESTRATOR_SYSTEM_PROMPT,
 )
 from src.settings import custom_logger, STATE_CHECKPOINTS_DIR, OUTPUT_DIR
-from src.structs import OrchestratorPlanningOutput, PlanningStep, StepStatus
+from src.structs import (
+    OrchestratorPlanningOutput,
+    PlanningStep,
+    StepStatus,
+    TailwindStatus,
+)
 from src.workflows.agents import AVAILABLE_AGENTS
 from src.workflows.state import ADTState
 from src.utils import (
+    extract_html_content_async,
     get_html_files,
     read_html_file,
-    extract_html_content_async,
 )
+from src.workflows.agents import AVAILABLE_AGENTS
 
 
 # Initialize logger
@@ -56,6 +62,10 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
 
     # Initialize languages
     await state.initialize_languages()
+
+    # Initialize languages
+    if state.tailwind_status != TailwindStatus.INSTALLED:
+        await state.initialize_tailwind()
 
     # Set user query
     state.user_query = str(state.messages[-1].content)
@@ -355,8 +365,7 @@ async def execute_next_step(state: ADTState, config: RunnableConfig) -> ADTState
 async def add_non_valid_message(
     state: ADTState, config: RunnableConfig
 ) -> dict[str, list[AIMessage]]:
-    """
-    Add a non-valid message to the state.
+    """Add a non-valid message to the state.
 
     Args:
         state: The state of the agent.
@@ -365,7 +374,6 @@ async def add_non_valid_message(
     Returns:
         A dictionary with the key "messages" and the value being a list of AIMessage objects.
     """
-
     if state.is_forbidden_query:
         non_valid_message = textwrap.dedent(
             """
