@@ -3,8 +3,10 @@
     "."
   ],
   "graphs": {
-    "agentic_graph": "./src/workflows/graph.py:graph",
-    "text_edit_graph": "./src/workflows/agents/text_edit_agent/graph.py:text_edit_workflow"
+    "adt_fixer": "./src/workflows/graph.py:graph",
+    "text_edit": "./src/workflows/agents/text_edit_agent/graph.py:text_edit_workflow",
+    "layout_edit": "./src/workflows/agents/layout_edit_agent/graph.py:layout_edit_workflow",
+    "layout_mirror": "./src/workflows/agents/layout_mirror_agent/graph.py:layout_mirror_workflow"
   },
   "env": ".env"
 }

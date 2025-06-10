@@ -1,3 +1,31 @@
-from src.utils.file_utils import copy_input_to_output
+from src.utils.file_utils import (
+    delete_html_files_async,
+    extract_html_content_async,
+    extract_layout_properties_async,
+    find_and_duplicate_nav_line,
+    get_html_files,
+    get_language_from_translation_files,
+    get_relative_path,
+    install_tailwind,
+    read_html_file,
+    remove_nav_line_by_href,
+    update_tailwind,
+    write_html_file,
+    write_nav_line,
+)
 
-__all__ = ["copy_input_to_output"]
+__all__ = [
+    "get_relative_path",
+    "get_html_files",
+    "read_html_file",
+    "write_html_file",    
+    "extract_html_content_async",
+    "extract_layout_properties_async",
+    "get_language_from_translation_files",
+    "delete_html_files_async",
+    "find_and_duplicate_nav_line",
+    "write_nav_line",
+    "remove_nav_line_by_href",
+    "update_tailwind",
+    "install_tailwind",
+]

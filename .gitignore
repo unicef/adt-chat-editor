@@ -12,6 +12,7 @@ build/
 develop-eggs/
 dist/
 downloads/
+data/
 eggs/
 .eggs/
 lib/
@@ -177,5 +178,7 @@ cython_debug/
 .langgraph_api/
 
 # Data
-data/input/*
-data/output/*
+/data/*
+!data/
+!data/samples/
+!data/samples/**

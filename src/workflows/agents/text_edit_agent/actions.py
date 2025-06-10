@@ -1,41 +1,50 @@
 import os
-import aiofiles
-import asyncio
-from pathlib import Path
+import json
 from typing import List
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage
+from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
 from src.llm.llm_client import llm_client
-from src.settings import custom_logger
 from src.prompts import (
     TEXT_EDIT_SYSTEM_PROMPT,
     TEXT_EDIT_USER_PROMPT,
 )
-from src.structs.status import StepStatus
+from src.settings import (
+    custom_logger, 
+    OUTPUT_DIR, 
+    TRANSLATIONS_DIR,
+)
+from src.structs import StepStatus, TextEdit, TextEditResponse
 from src.workflows.state import ADTState
+from src.utils import (
+    get_html_files,
+    read_html_file,
+    write_html_file,
+)
 
 
+# Initialize logger
 logger = custom_logger("Text Edit Agent")
 
-
-async def get_html_files(output_dir: str) -> List[str]:
-    """Get all HTML files from the output directory asynchronously."""
-    output_path = Path(output_dir)
-    # Use asyncio.to_thread to run the blocking glob operation in a thread pool
-    files = await asyncio.to_thread(lambda: list(output_path.glob("*.html")))
-    return [str(f) for f in files]
+# Output parser
+text_edits_parser = PydanticOutputParser(pydantic_object=TextEditResponse)
 
 
-async def get_relative_path(path: str, start: str) -> str:
-    """Get relative path asynchronously."""
-    return await asyncio.to_thread(os.path.relpath, path, start)
+# Actions
+async def detect_text_edits(state: ADTState, config: RunnableConfig) -> ADTState:
+    """
+    Detect text edits based on the instruction while preserving HTML structure.
 
+    Args:
+        state: The current state of the workflow
+        config: The configuration for the workflow
 
-async def edit_text(state: ADTState, config: RunnableConfig) -> ADTState:
-    """Edit text based on the instruction while preserving HTML structure."""
+    Returns:
+        The updated state of the workflow
+    """
 
     # Create prompt
     messages = ChatPromptTemplate.from_messages(
@@ -45,24 +54,29 @@ async def edit_text(state: ADTState, config: RunnableConfig) -> ADTState:
         ]
     )
 
-    # Get all HTML files from output directory
-    output_dir = "data/output"
-    html_files = await get_html_files(output_dir)
+    # Define current state step
+    current_step = state.steps[state.current_step_index]
+
+    # Get the relevant and layout-base-template html files
+    filtered_files = current_step.html_files
+
+    # Get all relevant HTML files from output directory
+    html_files = await get_html_files(OUTPUT_DIR)
+    html_files = [html_file for html_file in html_files if html_file in filtered_files]
 
     # Process each file
+    text_edits: List[TextEdit] = []
     for html_file in html_files:
-        # Get relative path for logging
-        rel_path = await get_relative_path(html_file, "data")
 
         # Read the file content
-        async with aiofiles.open(html_file, "r", encoding="utf-8") as f:
-            html_content = await f.read()
+        html_content = await read_html_file(html_file)
 
         # Format messages
         formatted_messages = await messages.ainvoke(
             {
                 "text": html_content,
-                "instruction": state.messages[-1].content,
+                "instruction": current_step.step,
+                "languages": state.available_languages,
             },
             config,
         )
@@ -70,18 +84,61 @@ async def edit_text(state: ADTState, config: RunnableConfig) -> ADTState:
         # Call model
         response = await llm_client.ainvoke(formatted_messages, config)
 
-        # Get edited text from response
-        edited_text = str(response.content)
+        # Parse the response
+        new_text_edits = text_edits_parser.parse(str(response.content))
+        text_edits.extend(new_text_edits.text_edits)
 
-        # Save edited text back to the same file
-        async with aiofiles.open(html_file, "w", encoding="utf-8") as f:
-            await f.write(edited_text)
+    # Add the text edits to the state
+    # TODO: Reorder edits by file (language)
+    state.steps[state.current_step_index].text_edits = text_edits
+    return state
 
-        # Add message about the file being processed
-        state.add_message(HumanMessage(content=f"Processed and updated {rel_path}"))
+
+def edit_texts(state: ADTState, config: RunnableConfig) -> ADTState:
+    """
+    Edit text in files based on the instruction while preserving HTML structure.
+
+    Args:
+        state: The current state of the workflow
+        config: The configuration for the workflow
+
+    Returns:
+        The updated state of the workflow
+    """
+    if not state.steps[state.current_step_index].text_edits:
+        logger.warning("No text edits to process")
+        return state
+
+    # Process each text edit
+    for text_edit in state.steps[state.current_step_index].text_edits:  # type: ignore
+        for text_edit_translation in text_edit.translations:
+            file_path = os.path.join(
+                OUTPUT_DIR, TRANSLATIONS_DIR, text_edit_translation.language, "translations.json"
+            )
+
+            # Read and update the translation file
+            with open(file_path, "r") as file:
+                data = json.load(file)
+
+            # Update the text
+            data["texts"][text_edit.element_id] = text_edit_translation.text
+
+            # Write the updated data back to file
+            with open(file_path, "w") as file:
+                json.dump(data, file, indent=2)
+
+    # Add message about the file being processed
+    message = f"The following files have been processed and updated based on the instruction: '{state.steps[state.current_step_index].step}' for the languages: '{', '.join(state.available_languages)}'\n"
+    for file in state.steps[state.current_step_index].html_files:  # type: ignore
+        message += f"\n- {file}"
+    state.add_message(AIMessage(content=message))
+
+    logger.info(
+        f"Total files modified: {len(state.steps[state.current_step_index].html_files)}"
+    )
 
     # Update step status
     if state.current_step_index >= 0 and state.current_step_index < len(state.steps):
-        state.steps[state.current_step_index].step_status = StepStatus.SUCCESS
+        state.steps[state.current_step_index].status = StepStatus.SUCCESS
 
     return state
