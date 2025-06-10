@@ -73,14 +73,14 @@ class StateCheckpointManager:
                     state_dict = literal_eval(state_dict)
                     self.logger.debug(f"Loaded state dict: {state_dict}")
 
-                    state_checkpoint = ADTState(
-                        messages=self._deserialize_messages(state_dict["messages"])
-                        + [HumanMessage(content=request.user_message)],
-                        user_query=request.user_message,
-                        session_id=request.session_id,
-                    )
-                    if "language" in state_dict:
-                        state_checkpoint.language = state_dict["language"]
+                    # Update messages and required fields
+                    state_dict["messages"] = self._deserialize_messages(
+                        state_dict["messages"]
+                    ) + [HumanMessage(content=request.user_message)]
+                    state_dict["user_query"] = request.user_message
+                    state_dict["session_id"] = request.session_id
+
+                    state_checkpoint = ADTState(**state_dict)
                     self.logger.debug(f"Loading state checkpoint: {state_checkpoint}")
                     return state_checkpoint
                 except json.JSONDecodeError as e:

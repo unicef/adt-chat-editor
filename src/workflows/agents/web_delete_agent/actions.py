@@ -1,4 +1,4 @@
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 
 from src.settings import (
@@ -23,9 +23,9 @@ async def web_delete(state: ADTState, config: RunnableConfig) -> ADTState:
     # Define current state step
     current_step = state.steps[state.current_step_index]
 
-    # Get the relevant html files 
+    # Get the relevant html files
     deleted_files = current_step.html_files
-    
+
     # Delete files
     await delete_html_files_async(deleted_files, OUTPUT_DIR)
 
@@ -40,7 +40,12 @@ async def web_delete(state: ADTState, config: RunnableConfig) -> ADTState:
     message = f"The following files have been deleted based on based on the instruction: '{current_step.step}'\n"
     for file in deleted_files:
         message += f"- {file}\n"
-    state.add_message(AIMessage(content=message))
+    state.add_message(SystemMessage(content=message))
+    state.add_message(
+        AIMessage(
+            content="The files had been deleted based on your request. Please check the files and make sure they are correct."
+        )
+    )
     logger.info(f"Total files deleted: {len(deleted_files)}")
 
     # Update step status

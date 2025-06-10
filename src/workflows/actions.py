@@ -1,7 +1,8 @@
+from dataclasses import asdict
 import json
 import os
 import textwrap
-from dataclasses import asdict
+from typing import Any
 
 from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.output_parsers import PydanticOutputParser
@@ -159,10 +160,6 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
             )
         )
 
-    # Add the plan display to the messages
-    if (not parsed_response.is_irrelevant) and (not parsed_response.is_forbidden):
-        state.add_message(AIMessage(content=create_plan_display(state)))
-
     # Add the rephrase query message if no steps were found
     if not state.steps:
         rephrase_query_display = textwrap.dedent(
@@ -177,7 +174,7 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
     return state
 
 
-async def rephrase_query(state: ADTState, config: RunnableConfig) -> ADTState:
+async def rephrase_query(state: ADTState, config: RunnableConfig) -> dict[str, Any]:
     """
     Ask the user to rephrase the query to make it more specific and clear.
 
@@ -195,15 +192,10 @@ async def rephrase_query(state: ADTState, config: RunnableConfig) -> ADTState:
         """
     )
 
-    # Use interrupt to get user input
-    user_response = interrupt(
-        {
-            "type": "rephrase_query",
-            "content": rephrase_query_display,
-        }
-    )
+    # Update the state
+    state.add_message(AIMessage(content=rephrase_query_display))
 
-    return state
+    return {"messages": [AIMessage(content=rephrase_query_display)]}
 
 
 def create_plan_display(state: ADTState) -> str:
@@ -236,15 +228,13 @@ async def show_plan_to_user(state: ADTState, config: RunnableConfig) -> ADTState
     plan_display = create_plan_display(state)
     logger.info(f"Plan display: {plan_display}")
 
-    # Use interrupt to get user input
-    user_response = interrupt(
-        {
-            "type": "plan_review",
-            "content": plan_display,
-        }
-    )
+    # Update the state
+    state.add_message(AIMessage(content=plan_display))
+    state.plan_shown_to_user = True
 
     return state
+
+    # return {"messages": [AIMessage(content=plan_display)], "plan_shown_to_user": True}
 
 
 async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTState:
@@ -278,7 +268,9 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
     available_html_files = [
         {
             "html_name": html_file,
-            "html_content": await extract_html_content_async(html_file),
+            "html_content": await extract_html_content_async(
+                await read_html_file(html_file)
+            ),
         }
         for html_file in html_files
     ]
@@ -330,8 +322,8 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
     return state
 
 
-async def execute_step(state: ADTState, config: RunnableConfig) -> ADTState:
-    """Execute the current step in the plan.
+async def execute_next_step(state: ADTState, config: RunnableConfig) -> ADTState:
+    """Execute the next step in the plan.
 
     Args:
         state: The state of the agent.
@@ -341,6 +333,7 @@ async def execute_step(state: ADTState, config: RunnableConfig) -> ADTState:
         The state of the agent.
     """
     logger.info("Executing current step")
+    logger.debug(f"State at execute_next_step: {state}")
 
     # Increment the step index
     state.current_step_index += 1
@@ -408,6 +401,7 @@ async def finalize_task_execution(state: ADTState, config: RunnableConfig) -> AD
     """
     logger.info("Finalizing task execution")
 
+    state.plan_shown_to_user = False
     state_checkpoint = json.dumps(asdict(state))
     state_checkpoint_path = os.path.join(
         STATE_CHECKPOINTS_DIR, f"checkpoint-{state.session_id}.json"

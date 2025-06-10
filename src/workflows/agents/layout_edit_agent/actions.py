@@ -1,4 +1,4 @@
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
@@ -55,7 +55,7 @@ async def edit_layout(state: ADTState, config: RunnableConfig) -> ADTState:
     # Get all relevant HTML files from output directory
     html_files = await get_html_files(OUTPUT_DIR)
     html_files = [html_file for html_file in html_files if html_file in filtered_files]
-    
+
     # Process each relevant HTML file
     modified_files = []
     for html_file in html_files:
@@ -86,17 +86,18 @@ async def edit_layout(state: ADTState, config: RunnableConfig) -> ADTState:
         modified_files.append(rel_path)
 
     # Command to update the tailwind.css
-    await update_tailwind(
-        OUTPUT_DIR, 
-        TAILWIND_CSS_IN_DIR, 
-        TAILWIND_CSS_OUT_DIR
-    )
-    
+    await update_tailwind(OUTPUT_DIR, TAILWIND_CSS_IN_DIR, TAILWIND_CSS_OUT_DIR)
+
     # Add message about the file being processed
     message = f"The following files have been processed and updated based on the instruction: '{current_step.step}'\n"
     for file in modified_files:
         message += f"- {file}\n"
-    state.add_message(AIMessage(content=message))
+    state.add_message(SystemMessage(content=message))
+    state.add_message(
+        AIMessage(
+            content="The files had been edited and updated based on your request. Please check the files and make sure they are correct."
+        )
+    )
     logger.info(f"Total files modified: {len(modified_files)}")
 
     # Update step status

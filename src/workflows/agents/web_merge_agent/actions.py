@@ -1,4 +1,4 @@
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
@@ -40,7 +40,7 @@ async def web_merge(state: ADTState, config: RunnableConfig) -> ADTState:
     # Define current state step
     current_step = state.steps[state.current_step_index]
 
-    # Get the relevant and layout-base-template html files 
+    # Get the relevant and layout-base-template html files
     filtered_files = current_step.html_files
 
     # Get all relevant HTML files from output directory
@@ -78,21 +78,28 @@ async def web_merge(state: ADTState, config: RunnableConfig) -> ADTState:
     joined_name = "_".join(file_names)
     merged_file_name = OUTPUT_DIR + "/" + joined_name + ".html"
     modified_files = [merged_file_name]
-    
+
     # Save edited text back to the same file
     await write_html_file(merged_file_name, edited_html)
 
     # Update nav
     nav_html = await read_html_file(OUTPUT_DIR + NAV_HTML_DIR)
-    nav_line = await find_and_duplicate_nav_line(nav_html, file_names[0] + ".html", joined_name + ".html")
-    nav_html = await write_nav_line(nav_html, nav_line)       
+    nav_line = await find_and_duplicate_nav_line(
+        nav_html, file_names[0] + ".html", joined_name + ".html"
+    )
+    nav_html = await write_nav_line(nav_html, nav_line)
     await write_html_file(OUTPUT_DIR + NAV_HTML_DIR, nav_html)
 
     # Add message about the file being processed
     message = f"The following files have been processed and updated based on the instruction: '{current_step.step}'\n"
     for file in modified_files:
         message += f"- {file}\n"
-    state.add_message(AIMessage(content=message))
+    state.add_message(SystemMessage(content=message))
+    state.add_message(
+        AIMessage(
+            content="The files had been merged and updated based on your request. Please check the files and make sure they are correct."
+        )
+    )
     logger.info(f"Total files modified: {len(modified_files)}")
 
     # Update step status
