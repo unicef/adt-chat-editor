@@ -1,34 +1,34 @@
-from src.structs.language import Language
-from src.structs.llm_clients import LLMClient
-from src.structs.planning import PlanningStep, OrchestratorPlanningOutput
-from src.structs.status import StepStatus, WorkflowStatus
-from src.structs.step import BaseStep
-from src.structs.text_editing import (
-    TextEdit,
-    TextEditElement,
-    TextEditTranslation,
-    TextEditResponse,
-)
 from src.structs.books import (
     Book,
-    Chapter,
-    BookInfo,
-    PageContent,
     BookContent,
+    BookInfo,
     BookInformation,
+    Chapter,
+    PageContent,
 )
 from src.structs.chat import (
-    ChatMessageResponse,
     ChatEditRequest,
     ChatEditResponse,
+    ChatMessageResponse,
 )
+from src.structs.language import Language
+from src.structs.llm_clients import LLMClient
+from src.structs.node_resources import TailwindStatus
+from src.structs.planning import OrchestratorPlanningOutput, PlanningStep
 from src.structs.publish import (
     PublishMetadata,
     PublishRequest,
     PublishResponse,
 )
 from src.structs.split_editing import SplitEditResponse
-
+from src.structs.status import StepStatus, WorkflowStatus
+from src.structs.step import BaseStep
+from src.structs.text_editing import (
+    TextEdit,
+    TextEditElement,
+    TextEditResponse,
+    TextEditTranslation,
+)
 
 __all__ = [
     "BaseStep",
@@ -55,4 +55,5 @@ __all__ = [
     "PublishRequest",
     "PublishResponse",
     "SplitEditResponse",
+    "TailwindStatus",
 ]
