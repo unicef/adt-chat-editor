@@ -1,7 +1,6 @@
 import asyncio
 import json
 import os
-import re
 import shutil
 from pathlib import Path
 from typing import Dict, List, Optional, Union
@@ -491,7 +490,7 @@ async def load_translated_html_contents(language: str):
     path = f"tmp/html_contents/translation_{language}.json"
 
     def load_json():
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             return json.load(f)
 
     data = await asyncio.to_thread(load_json)

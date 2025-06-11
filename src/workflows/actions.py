@@ -1,14 +1,13 @@
-from dataclasses import asdict
 import json
 import os
 import textwrap
+from dataclasses import asdict
 from typing import Any
 
 from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
-from langgraph.types import interrupt
 
 from src.llm.llm_call import async_model_call
 from src.llm.llm_client import llm_client
@@ -17,8 +16,8 @@ from src.prompts import (
     ORCHESTRATOR_SYSTEM_PROMPT,
 )
 from src.settings import (
-    custom_logger, 
-    STATE_CHECKPOINTS_DIR, 
+    STATE_CHECKPOINTS_DIR,
+    custom_logger,
 )
 from src.structs import (
     OrchestratorPlanningOutput,
@@ -27,18 +26,11 @@ from src.structs import (
     TailwindStatus,
     TranslatedHTMLStatus,
 )
-from src.workflows.agents import AVAILABLE_AGENTS
-from src.workflows.state import ADTState
 from src.utils import (
-    extract_html_content_async,
-    get_html_files,
-    read_html_file,
-    read_translation_file,
-    extract_and_save_html_contents,
     load_translated_html_contents,
 )
 from src.workflows.agents import AVAILABLE_AGENTS
-
+from src.workflows.state import ADTState
 
 # Initialize logger
 logger = custom_logger("Main Workflow Actions")
@@ -190,8 +182,7 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
 
 
 async def rephrase_query(state: ADTState, config: RunnableConfig) -> dict[str, Any]:
-    """
-    Ask the user to rephrase the query to make it more specific and clear.
+    """Ask the user to rephrase the query to make it more specific and clear.
 
     Args:
         state: The state of the agent.
