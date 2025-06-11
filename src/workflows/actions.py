@@ -16,12 +16,16 @@ from src.prompts import (
     ORCHESTRATOR_PLANNING_PROMPT,
     ORCHESTRATOR_SYSTEM_PROMPT,
 )
-from src.settings import custom_logger, STATE_CHECKPOINTS_DIR, OUTPUT_DIR
+from src.settings import (
+    custom_logger, 
+    STATE_CHECKPOINTS_DIR, 
+)
 from src.structs import (
     OrchestratorPlanningOutput,
     PlanningStep,
     StepStatus,
     TailwindStatus,
+    TranslatedHTMLStatus,
 )
 from src.workflows.agents import AVAILABLE_AGENTS
 from src.workflows.state import ADTState
@@ -29,6 +33,9 @@ from src.utils import (
     extract_html_content_async,
     get_html_files,
     read_html_file,
+    read_translation_file,
+    extract_and_save_html_contents,
+    load_translated_html_contents,
 )
 from src.workflows.agents import AVAILABLE_AGENTS
 
@@ -63,9 +70,14 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
     # Initialize languages
     await state.initialize_languages()
 
-    # Initialize languages
+    # Initialize tailwind
     if state.tailwind_status != TailwindStatus.INSTALLED:
         await state.initialize_tailwind()
+
+    # Initialize translated HTML contents
+    state.language = 'en'
+    if state.translated_html_status != TranslatedHTMLStatus.INSTALLED:
+        await state.initialize_translated_html_content(state.language)
 
     # Set user query
     state.user_query = str(state.messages[-1].content)
@@ -86,17 +98,10 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
         if step.status == StepStatus.SUCCESS
     )
 
-    # Define available HTML files
-    html_files = await get_html_files(OUTPUT_DIR)
-    available_html_files = [
-        {
-            "html_name": html_file,
-            "html_content": await extract_html_content_async(
-                await read_html_file(html_file)
-            ),
-        }
-        for html_file in html_files
-    ]
+    # Load translated HTML contents
+    available_html_files = await load_translated_html_contents(
+        language=state.language
+    )
 
     # Format messages
     messages = ChatPromptTemplate(
@@ -273,17 +278,10 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
         if step.status == StepStatus.SUCCESS
     )
 
-    # Define available HTML files
-    html_files = await get_html_files(OUTPUT_DIR)
-    available_html_files = [
-        {
-            "html_name": html_file,
-            "html_content": await extract_html_content_async(
-                await read_html_file(html_file)
-            ),
-        }
-        for html_file in html_files
-    ]
+    # Load translated HTML contents
+    available_html_files = await load_translated_html_contents(
+        language=state.language
+    )
 
     # Format messages
     messages = ChatPromptTemplate(

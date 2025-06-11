@@ -11,7 +11,7 @@ from src.structs.chat import (
     ChatEditResponse,
     ChatMessageResponse,
 )
-from src.structs.language import Language
+from src.structs.language import Language, TranslatedHTMLStatus
 from src.structs.llm_clients import LLMClient
 from src.structs.node_resources import TailwindStatus
 from src.structs.planning import OrchestratorPlanningOutput, PlanningStep
@@ -56,4 +56,5 @@ __all__ = [
     "PublishResponse",
     "SplitEditResponse",
     "TailwindStatus",
+    "TranslatedHTMLStatus",
 ]

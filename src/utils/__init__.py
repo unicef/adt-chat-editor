@@ -12,6 +12,9 @@ from src.utils.file_utils import (
     update_tailwind,
     write_html_file,
     write_nav_line,
+    read_translation_file,
+    extract_and_save_html_contents, 
+    load_translated_html_contents,
 )
 
 __all__ = [
@@ -28,4 +31,7 @@ __all__ = [
     "remove_nav_line_by_href",
     "update_tailwind",
     "install_tailwind",
+    "read_translation_file",
+    "extract_and_save_html_contents",
+    "load_translated_html_contents",
 ]
