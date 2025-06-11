@@ -21,7 +21,6 @@ def route_user_message(
     Returns:
         The name of the node to route to.
     """
-    logger.info(f"Showing plan to user -> state: {state}")
     if state.plan_shown_to_user:
         return "handle_plan_response"
     else:
