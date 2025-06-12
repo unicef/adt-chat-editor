@@ -308,7 +308,6 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
     # Change the new steps if needed
     if parsed_response.modified:
         state.steps = parsed_response.steps
-        state.add_message(AIMessage(content=create_plan_display(state)))
 
     return state
 

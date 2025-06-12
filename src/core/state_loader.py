@@ -80,6 +80,7 @@ class StateCheckpointManager:
                     state_dict["user_query"] = request.user_message
                     state_dict["session_id"] = request.session_id
                     state_dict["current_step_index"] = -1
+                    state_dict["plan_accepted"] = False
 
                     state_checkpoint = ADTState(**state_dict)
                     self.logger.debug(f"Loading state checkpoint: {state_checkpoint}")
