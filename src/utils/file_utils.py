@@ -206,42 +206,43 @@ async def extract_layout_properties_async(
 
 async def get_language_from_translation_files() -> List[str]:
     """Get language codes from translation folders.
-    
+
     Returns:
         List[str]: List of language codes (e.g., ['es', 'en', 'es_uy', ...])
     """
     translations_path = os.path.join(OUTPUT_DIR, TRANSLATIONS_DIR)
-    
+
     try:
         # List all directories in the translations folder
         items = await asyncio.to_thread(os.listdir, translations_path)
     except FileNotFoundError:
         logger.debug(f"Translation file not found: {translations_path}")
         return []  # Directory doesn't exist → no languages
-    
+
     # Filter only directories that contain 'translations.json'
     valid_languages = []
     for lang_dir in items:
         lang_path = os.path.join(translations_path, lang_dir)
         translations_file = os.path.join(lang_path, "translations.json")
-        
-        if (
-            await asyncio.to_thread(os.path.isdir, lang_path) and
-            await asyncio.to_thread(os.path.isfile, translations_file)
-        ):
+
+        if await asyncio.to_thread(
+            os.path.isdir, lang_path
+        ) and await asyncio.to_thread(os.path.isfile, translations_file):
             valid_languages.append(lang_dir)
-    
+
     return valid_languages
 
 
-async def delete_html_files_async(file_paths: List[str], output_dir: str) -> Dict[str, List[str]]:
+async def delete_html_files_async(
+    file_paths: List[str], output_dir: str
+) -> Dict[str, List[str]]:
     """Async function to safely move HTML files to a 'deleted_html' directory.
     Creates the directory if it doesn't exist.
-    
+
     Args:
         file_paths: List of file paths to HTML files that should be moved
         output_dir: Base directory where 'deleted_html' folder will be created/maintained
-        
+
     Returns:
         Dictionary with two lists:
         {
@@ -249,10 +250,11 @@ async def delete_html_files_async(file_paths: List[str], output_dir: str) -> Dic
             "failed": List of failed operations with error details
         }
     """
+
     def sync_move(paths: List[str], base_dir: str) -> Dict[str, List[str]]:
         moved = []
         failed = []
-        
+
         # Ensure deleted directory exists (creates if needed)
         deleted_dir = os.path.join(base_dir, "deleted_html")
         try:
@@ -261,8 +263,10 @@ async def delete_html_files_async(file_paths: List[str], output_dir: str) -> Dic
             # If we can't even create the directory, fail all operations
             return {
                 "moved": [],
-                "failed": [f"{path} (failed to create deletion directory: {str(e)})" 
-                          for path in paths]
+                "failed": [
+                    f"{path} (failed to create deletion directory: {str(e)})"
+                    for path in paths
+                ],
             }
 
         for path in paths:
@@ -274,14 +278,14 @@ async def delete_html_files_async(file_paths: List[str], output_dir: str) -> Dic
                 if os.path.exists(path):
                     filename = os.path.basename(path)
                     new_path = os.path.join(deleted_dir, filename)
-                    
+
                     # Handle filename conflicts
                     counter = 1
                     while os.path.exists(new_path):
                         name, ext = os.path.splitext(filename)
                         new_path = os.path.join(deleted_dir, f"{name}_{counter}{ext}")
                         counter += 1
-                    
+
                     # Perform the actual move
                     shutil.move(path, new_path)
                     moved.append(f"{path} → {new_path}")
@@ -295,111 +299,113 @@ async def delete_html_files_async(file_paths: List[str], output_dir: str) -> Dic
     return await asyncio.to_thread(sync_move, file_paths, output_dir)
 
 
-async def find_and_duplicate_nav_line(nav_content: str, original_href: str, new_href: str) -> str:
+async def find_and_duplicate_nav_line(
+    nav_content: str, original_href: str, new_href: str
+) -> str:
     """Finds the nav line with the original href and creates a duplicate with the new href.
-    
+
     Args:
         nav_content: The full nav HTML content as string
         original_href: The href to search for (e.g. "los_biomas.html")
         new_href: The new href to replace with (e.g. "new_file.html")
-        
+
     Returns:
         The new nav line with updated href
     """
     # Find the line containing the original href
-    lines = nav_content.split('\n')
+    lines = nav_content.split("\n")
     for line in lines:
         if f'href="{original_href}"' in line:
             # Create new line by replacing the href
             new_line = line.replace(f'href="{original_href}"', f'href="{new_href}"')
             return new_line
-    
+
     raise ValueError(f"Could not find nav item with href='{original_href}'")
 
 
 async def write_nav_line(nav_content: str, nav_line: str) -> str:
     """Inserts a new navigation line just before the closing </nav> tag.
-    
+
     Args:
         nav_content: The full content of the nav HTML as a string
         nav_line: The new <li> line to insert
-        
+
     Returns:
         The updated nav content with the new line inserted
     """
     # Find the last closing nav tag position
-    closing_nav_pos = nav_content.rfind('</nav>')
-    
+    closing_nav_pos = nav_content.rfind("</nav>")
+
     if closing_nav_pos == -1:
         raise ValueError("Could not find closing </nav> tag in nav content")
-    
+
     # Insert the new line before the closing tag with proper indentation
     updated_content = (
-        nav_content[:closing_nav_pos].rstrip() + 
-        '\n' + 
-        nav_line.strip() + 
-        '\n' * 2 +
-        nav_content[closing_nav_pos:]
+        nav_content[:closing_nav_pos].rstrip()
+        + "\n"
+        + nav_line.strip()
+        + "\n" * 2
+        + nav_content[closing_nav_pos:]
     )
-    
+
     return updated_content
 
 
 async def remove_nav_line_by_href(nav_content: str, href_to_remove: str) -> str:
     """Removes a navigation line that contains the specified href value.
-    
+
     Args:
         nav_content: The full nav HTML content as string
         href_to_remove: The href value to search for and remove (e.g. "los_biomas.html")
-        
+
     Returns:
         The updated nav content with the line removed
     """
     # Split the content into lines
-    lines = nav_content.split('\n')
-    
+    lines = nav_content.split("\n")
+
     # Find and remove the line containing the href
     updated_lines = []
     href_pattern = f'href="{href_to_remove}"'
-    
+
     for line in lines:
         if href_pattern in line:
             continue  # Skip this line
         updated_lines.append(line)
-    
+
     # If no line was removed, raise an error
     if len(lines) == len(updated_lines):
         raise ValueError(f"No nav line found with href='{href_to_remove}'")
-    
+
     # Join the lines back together
-    updated_nav = '\n'.join(updated_lines)
-    
+    updated_nav = "\n".join(updated_lines)
+
     return updated_nav
 
 
 async def install_tailwind():
     logger.info("Installing Tailwind resources")
-    
+
     cmd = "rm -rf node_modules package-lock.json && npm install"
-    
+
     try:
         process = await asyncio.create_subprocess_shell(
             cmd,
             cwd=OUTPUT_DIR,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            stderr=asyncio.subprocess.PIPE,
         )
-        
+
         # Properly await the communicate() coroutine
         stdout, stderr = await process.communicate()
-        
+
         if process.returncode == 0:
             logger.info("Tailwind resources installed successfully")
             return True
         else:
             logger.error(f"Tailwind installation failed: {stderr.decode()}")
             return False
-            
+
     except Exception as e:
         logger.error(f"Error installing Tailwind: {str(e)}")
         return False
@@ -417,7 +423,7 @@ async def update_tailwind(output_dir: str, input_css_path: str, output_css_path:
             cmd,
             cwd=output_dir,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            stderr=asyncio.subprocess.PIPE,
         )
 
         # Wait for the process to complete (note the await)

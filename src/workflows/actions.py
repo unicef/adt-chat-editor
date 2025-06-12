@@ -216,7 +216,7 @@ def create_plan_display(state: ADTState) -> str:
     return plan_display
 
 
-async def show_plan_to_user(state: ADTState, config: RunnableConfig) -> ADTState:
+async def show_plan_to_user(state: ADTState, config: RunnableConfig) -> dict[str, Any]:
     """Show the planned steps to the user and allow for adjustments.
 
     Args:
@@ -232,11 +232,7 @@ async def show_plan_to_user(state: ADTState, config: RunnableConfig) -> ADTState
     plan_display = create_plan_display(state)
     logger.info(f"Plan display: {plan_display}")
 
-    # Update the state
-    state.add_message(AIMessage(content=plan_display))
-    state.plan_shown_to_user = True
-
-    return state
+    return {"messages": [AIMessage(content=plan_display)], "plan_shown_to_user": True}
 
     # return {"messages": [AIMessage(content=plan_display)], "plan_shown_to_user": True}
 
@@ -369,7 +365,7 @@ async def add_non_valid_message(
     elif state.is_irrelevant_query:
         non_valid_message = textwrap.dedent(
             """
-            The message sent was not found relevant to the user guidelines.
+            The message sent was found either not specific enough or not relevant to the user guidelines.
             This system is intended to be used to help the reviewers to modify Accessible Digital Textbooks.
 
             Please, rephrase the query to make it more specific and clear and alligned with the user guidelines.
