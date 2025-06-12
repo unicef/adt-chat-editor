@@ -63,6 +63,7 @@ async def chat_edit(request: ChatEditRequest) -> ChatEditResponse:
     # Create response
     response = ChatEditResponse(
         session_id=request.session_id,
+        status=output["status"],
         messages=messages,
         book_information=request.book_information,
     )

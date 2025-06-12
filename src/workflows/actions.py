@@ -1,7 +1,6 @@
 import json
 import os
 import textwrap
-from dataclasses import asdict
 from typing import Any
 
 from langchain_core.messages import AIMessage, SystemMessage
@@ -25,6 +24,7 @@ from src.structs import (
     StepStatus,
     TailwindStatus,
     TranslatedHTMLStatus,
+    WorkflowStatus,
 )
 from src.utils import (
     load_translated_html_contents,
@@ -67,7 +67,7 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
         await state.initialize_tailwind()
 
     # Initialize translated HTML contents
-    state.language = 'en'
+    state.language = "en"
     if state.translated_html_status != TranslatedHTMLStatus.INSTALLED:
         await state.initialize_translated_html_content(state.language)
 
@@ -91,9 +91,7 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
     )
 
     # Load translated HTML contents
-    available_html_files = await load_translated_html_contents(
-        language=state.language
-    )
+    available_html_files = await load_translated_html_contents(language=state.language)
 
     # Format messages
     messages = ChatPromptTemplate(
@@ -270,9 +268,7 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
     )
 
     # Load translated HTML contents
-    available_html_files = await load_translated_html_contents(
-        language=state.language
-    )
+    available_html_files = await load_translated_html_contents(language=state.language)
 
     # Format messages
     messages = ChatPromptTemplate(
@@ -398,8 +394,10 @@ async def finalize_task_execution(state: ADTState, config: RunnableConfig) -> AD
     """
     logger.info("Finalizing task execution")
 
+    # Save the state
     state.plan_shown_to_user = False
-    state_checkpoint = json.dumps(asdict(state))
+    state.status = WorkflowStatus.SUCCESS
+    state_checkpoint = json.dumps(state.model_dump_json())
     state_checkpoint_path = os.path.join(
         STATE_CHECKPOINTS_DIR, f"checkpoint-{state.session_id}.json"
     )

@@ -185,3 +185,6 @@ cython_debug/
 
 # State checkpoints
 tmp/
+
+# DS Store
+.DS_Store
