@@ -8,7 +8,12 @@ from typing import Dict, List, Optional, Union
 import aiofiles
 from bs4 import BeautifulSoup, Tag
 
-from src.settings import OUTPUT_DIR, TRANSLATIONS_DIR, HTML_CONTENTS_DIR, custom_logger
+from src.settings import (
+    OUTPUT_DIR,
+    TRANSLATIONS_DIR,
+    HTML_CONTENTS_DIR,
+    custom_logger,
+)
 
 logger = custom_logger("Sub-agents Workflow Routes")
 
@@ -99,18 +104,21 @@ async def extract_html_content_async(
         for tag in soup.find_all(attrs={"data-id": True}):
             key = tag["data-id"]
             if key in translations:
-                full_content.append(translations[key])
+                content = {key: translations[key]}
+                full_content.append(content)
 
         for tag in soup.find_all(attrs={"data-aria-id": True}):
             key = tag["data-aria-id"]
             if key in translations:
-                full_content.append(translations[key])
+                content = {key: translations[key]}
+                full_content.append(content)
 
         # Replace placeholder attributes
-        for tag in soup.find_all(attrs={"placeholder": True}):
-            key = tag["placeholder"]
+        for tag in soup.find_all(attrs={"data-placeholder-id": True}):
+            key = tag["data-placeholder-id"]
             if key in translations:
-                full_content.append(translations[key])
+                content = {key: translations[key]}
+                full_content.append(content)
 
         return full_content
 
@@ -448,12 +456,10 @@ async def update_tailwind(output_dir: str, input_css_path: str, output_css_path:
         return False
 
 
-async def extract_and_save_html_contents(
-    language: str, output_dir: str, translations_dir: str
-) -> str:
+async def extract_and_save_html_contents(language: str) -> str:
     translation_file_path = os.path.join(
-        output_dir,
-        translations_dir,
+        OUTPUT_DIR,
+        TRANSLATIONS_DIR,
         language,
         "translations.json",
     )
@@ -463,7 +469,7 @@ async def extract_and_save_html_contents(
         translation_file = await read_translation_file(translation_file_path)
 
         # Get and process all HTML files
-        html_files = await get_html_files(output_dir)
+        html_files = await get_html_files(OUTPUT_DIR)
         available_html_files: List[Dict[str, str]] = []
 
         for html_file in html_files:
@@ -473,13 +479,16 @@ async def extract_and_save_html_contents(
                 translation_file["texts"],
             )
             html_dict = {
-                "html_name": html_file,
-                "html_content": extracted_content,
+                html_file: extracted_content,
             }
             available_html_files.append(html_dict)
 
         # Save the result as a JSON file
-        save_path = f"{HTML_CONTENTS_DIR}/translation_{language}.json"
+        save_path = os.path.join(
+            OUTPUT_DIR,
+            HTML_CONTENTS_DIR,
+            f"translation_{language}.json"
+        )
 
         # Ensure the directory exists
         await asyncio.to_thread(os.makedirs, os.path.dirname(save_path), exist_ok=True)
@@ -502,10 +511,14 @@ async def extract_and_save_html_contents(
 
 
 async def load_translated_html_contents(language: str):
-    path = f"{HTML_CONTENTS_DIR}/translation_{language}.json"
+    load_path = os.path.join(
+        OUTPUT_DIR,
+        HTML_CONTENTS_DIR,
+        f"translation_{language}.json",
+    )
 
     def load_json():
-        with open(path, encoding="utf-8") as f:
+        with open(load_path, encoding="utf-8") as f:
             return json.load(f)
 
     data = await asyncio.to_thread(load_json)

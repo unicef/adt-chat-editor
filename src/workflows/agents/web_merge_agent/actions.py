@@ -21,6 +21,7 @@ from src.utils import (
     write_html_file,
     find_and_duplicate_nav_line,
     write_nav_line,
+    load_translated_html_contents,
 )
 
 logger = custom_logger("Web Merge Agent")
@@ -58,10 +59,27 @@ async def web_merge(state: ADTState, config: RunnableConfig) -> ADTState:
 
         html_contents.append(html_content)
 
+    # Load translated HTML contents
+    translated_html_contents = await load_translated_html_contents(
+        language=state.language
+    )
+
+    translated_contents = [
+        next(
+                (
+                    item[html_file] for item in translated_html_contents 
+                    if item.get(html_file)
+                ),
+                None
+            )
+        for html_file in html_files
+    ]
+
     # Format messages
     formatted_messages = await messages.ainvoke(
         {
             "html_inputs": html_contents,
+            "translated_texts": translated_contents,
             "instruction": state.messages[-1].content,
         },
         config,

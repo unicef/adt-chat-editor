@@ -5,7 +5,6 @@ from langchain_core.messages import AnyMessage
 from langgraph.graph import add_messages
 from pydantic import BaseModel, Field
 
-from src.settings import OUTPUT_DIR, TRANSLATIONS_DIR
 from src.structs import (
     TailwindStatus,
     TranslatedHTMLStatus,
@@ -62,4 +61,37 @@ class ADTState(BaseState):
     )
 
     # Configs
-    language: Optional[str] = None
+    language: Optional[str] = "en"
+
+    async def initialize_languages(self) -> None:
+        """Initialize the available languages asynchronously."""
+        self.available_languages = await get_language_from_translation_files()
+
+    async def initialize_tailwind(self) -> None:
+        """Initialize Tailwind resources asynchronously."""
+        self.tailwind_status = TailwindStatus.INSTALLING
+        try:
+            success = await install_tailwind()
+            if success:
+                self.tailwind_status = TailwindStatus.INSTALLED
+            else:
+                self.tailwind_status = TailwindStatus.FAILED
+        except Exception:
+            self.tailwind_status = TailwindStatus.FAILED
+
+    async def initialize_translated_html_content(self, available_languages: list[str]) -> None:
+        """Initialize translated HTML contents asynchronously."""
+        self.translated_html_status = TranslatedHTMLStatus.INSTALLING
+        try:
+            success = []
+            for language in available_languages:
+                success.append(
+                    await extract_and_save_html_contents(language)
+                )
+            success = all(success)
+            if success:
+                self.translated_html_status = TranslatedHTMLStatus.INSTALLED
+            else:
+                self.translated_html_status = TranslatedHTMLStatus.FAILED
+        except Exception:
+            self.translated_html_status = TranslatedHTMLStatus.FAILED

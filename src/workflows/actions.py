@@ -51,6 +51,17 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
     """
     logger.info("Planning steps")
 
+    # Initialize languages
+    await state.initialize_languages()
+
+    # Initialize tailwind
+    if state.tailwind_status != TailwindStatus.INSTALLED:
+        await state.initialize_tailwind()
+
+    # Initialize translated HTML contents
+    if state.translated_html_status != TranslatedHTMLStatus.INSTALLED:
+        await state.initialize_translated_html_content(state.available_languages)
+
     # Initialize the flags
     state.is_irrelevant_query = False
     state.is_forbidden_query = False

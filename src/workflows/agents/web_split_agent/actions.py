@@ -23,6 +23,7 @@ from src.utils import (
     write_html_file,
     find_and_duplicate_nav_line,
     write_nav_line,
+    load_translated_html_contents,
 )
 from src.workflows.state import ADTState
 
@@ -42,6 +43,19 @@ async def web_split(state: ADTState, config: RunnableConfig) -> ADTState:
     html_content = await read_html_file(html_file)
     file_base = html_file.split("/")[-1].replace(".html", "")
 
+    # Load translated HTML contents
+    translated_html_contents = await load_translated_html_contents(
+        language=state.language
+    )
+
+    translated_contents = next(
+        (
+            item[html_file] for item in translated_html_contents 
+            if item.get(html_file)
+        ),
+        None
+    )
+
     # Step 1: Split HTML
     split_prompt = ChatPromptTemplate.from_messages(
         [
@@ -51,6 +65,7 @@ async def web_split(state: ADTState, config: RunnableConfig) -> ADTState:
     )
     split_input = {
         "html_input": html_content,
+        "translated_texts": translated_contents,
         "instruction": state.messages[-1].content,
     }
     formatted_split_prompt = await split_prompt.ainvoke(split_input, config)

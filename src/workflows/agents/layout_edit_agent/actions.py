@@ -20,6 +20,7 @@ from src.utils import (
     read_html_file,
     update_tailwind,
     write_html_file,
+    load_translated_html_contents,
 )
 from src.workflows.state import ADTState
 
@@ -56,6 +57,11 @@ async def edit_layout(state: ADTState, config: RunnableConfig) -> ADTState:
     html_files = await get_html_files(OUTPUT_DIR)
     html_files = [html_file for html_file in html_files if html_file in filtered_files]
 
+    # Load translated HTML contents
+    translated_html_contents = await load_translated_html_contents(
+        language=state.language
+    )
+
     # Process each relevant HTML file
     modified_files = []
     for html_file in html_files:
@@ -64,10 +70,19 @@ async def edit_layout(state: ADTState, config: RunnableConfig) -> ADTState:
         rel_path = await get_relative_path(html_file, "data")
         html_content = await read_html_file(html_file)
 
+        translated_contents = next(
+            (
+                item[html_file] for item in translated_html_contents 
+                if item.get(html_file)
+            ),
+            None
+        )
+
         # Format messages
         formatted_messages = await messages.ainvoke(
             {
                 "target_html_file": html_content,
+                "translated_texts": translated_contents,
                 "instruction": current_step.step,
             },
             config,
