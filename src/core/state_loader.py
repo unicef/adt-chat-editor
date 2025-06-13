@@ -11,7 +11,7 @@ from langchain_core.messages import (
 )
 
 from src.settings import custom_logger, STATE_CHECKPOINTS_DIR
-from src.structs import ChatEditRequest
+from src.structs import ChatEditRequest, TranslatedHTMLStatus, TailwindStatus
 from src.workflows.state import ADTState
 
 
@@ -45,6 +45,9 @@ class StateCheckpointManager:
             messages=[HumanMessage(content=request.user_message)],
             user_query=request.user_message,
             session_id=request.session_id,
+            language="en",
+            tailwind_status=TailwindStatus.INSTALLED,
+            translated_html_status=TranslatedHTMLStatus.INSTALLED,
         )
         if request.language:
             state_checkpoint.language = request.language

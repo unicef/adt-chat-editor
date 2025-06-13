@@ -57,39 +57,9 @@ class ADTState(BaseState):
     # Information
     available_languages: list[str] = field(default_factory=list)
     tailwind_status: TailwindStatus = field(default=TailwindStatus.NOT_INSTALLED)
-    translated_html_status: TranslatedHTMLStatus = field(default=TranslatedHTMLStatus.NOT_INSTALLED)
+    translated_html_status: TranslatedHTMLStatus = field(
+        default=TranslatedHTMLStatus.NOT_INSTALLED
+    )
 
     # Configs
     language: Optional[str] = None
-
-    async def initialize_languages(self) -> None:
-        """Initialize the available languages asynchronously."""
-        self.available_languages = await get_language_from_translation_files()
-
-    async def initialize_tailwind(self) -> None:
-        """Initialize Tailwind resources asynchronously."""
-        self.tailwind_status = TailwindStatus.INSTALLING
-        try:
-            success = await install_tailwind()
-            if success:
-                self.tailwind_status = TailwindStatus.INSTALLED
-            else:
-                self.tailwind_status = TailwindStatus.FAILED
-        except Exception:
-            self.tailwind_status = TailwindStatus.FAILED
-
-    async def initialize_translated_html_content(self, language: str) -> None:
-        """Initialize translated HTML contents asynchronously."""
-        self.translated_html_status = TranslatedHTMLStatus.INSTALLING
-        try:
-            success = await extract_and_save_html_contents(
-                language=language,
-                output_dir=OUTPUT_DIR,
-                translations_dir=TRANSLATIONS_DIR
-            )
-            if success:
-                self.translated_html_status = TranslatedHTMLStatus.INSTALLED
-            else:
-                self.translated_html_status = TranslatedHTMLStatus.FAILED
-        except Exception:
-            self.translated_html_status = TranslatedHTMLStatus.FAILED

@@ -22,13 +22,9 @@ from src.structs import (
     OrchestratorPlanningOutput,
     PlanningStep,
     StepStatus,
-    TailwindStatus,
-    TranslatedHTMLStatus,
     WorkflowStatus,
 )
-from src.utils import (
-    load_translated_html_contents,
-)
+from src.utils import load_translated_html_contents
 from src.workflows.agents import AVAILABLE_AGENTS
 from src.workflows.state import ADTState
 
@@ -58,18 +54,6 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
     # Initialize the flags
     state.is_irrelevant_query = False
     state.is_forbidden_query = False
-
-    # Initialize languages
-    await state.initialize_languages()
-
-    # Initialize tailwind
-    if state.tailwind_status != TailwindStatus.INSTALLED:
-        await state.initialize_tailwind()
-
-    # Initialize translated HTML contents
-    state.language = "en"
-    if state.translated_html_status != TranslatedHTMLStatus.INSTALLED:
-        await state.initialize_translated_html_content(state.language)
 
     # Set user query
     state.user_query = str(state.messages[-1].content)
@@ -392,11 +376,5 @@ async def finalize_task_execution(state: ADTState, config: RunnableConfig) -> AD
     # Save the state
     state.plan_shown_to_user = False
     state.status = WorkflowStatus.SUCCESS
-    state_checkpoint = json.dumps(state.model_dump_json())
-    state_checkpoint_path = os.path.join(
-        STATE_CHECKPOINTS_DIR, f"checkpoint-{state.session_id}.json"
-    )
-    with open(state_checkpoint_path, "w") as f:
-        f.write(state_checkpoint)
 
     return state

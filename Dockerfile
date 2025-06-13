@@ -1,7 +1,7 @@
-# Use FastAPI base image
-FROM tiangolo/uvicorn-gunicorn-fastapi:python3.10
+# Base image
+FROM python:3.10-slim
 
-# Install Node.js and npm more efficiently
+# Install Node.js and npm
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     curl \
@@ -11,22 +11,21 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Set working directory
+# Working directory
 WORKDIR /app
 
-# Copy poetry files and README first
+# Copy Python files
 COPY pyproject.toml poetry.lock README.md ./
 
-# Install dependencies without installing the project
+# Install Python dependencies
 RUN pip install poetry && \
     poetry config virtualenvs.create false && \
     poetry install --no-interaction --no-ansi --no-root
 
-# Copy project files
+# Copy files
 COPY src/ src/
+COPY frontend/ frontend/
 
-# Expose port
+# Expose port and run FastAPI
 EXPOSE 8000
-
-# Run the application
 CMD ["uvicorn", "src.api.main:create_app", "--host", "0.0.0.0", "--port", "8000"]

@@ -2,8 +2,10 @@ import os
 import shutil
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
 from fastapi_pagination import add_pagination
 
 from src.api.routes import router
@@ -40,6 +42,21 @@ def create_app() -> FastAPI:
     # Include the routers
     logger.info("Including routers")
     app.include_router(router)
+
+    # Mount static files for frontend
+    logger.info("Mounting frontend static files")
+    app.mount(
+        "/assets", StaticFiles(directory="frontend/assets", html=True), name="assets"
+    )
+
+    # Mount input and output folders
+    logger.info("Mounting input and output folders with directory")
+    app.mount("/output", StaticFiles(directory="data/output", html=True), name="output")
+
+    # Add a custom 404 handler
+    @app.exception_handler(404)
+    async def not_found(request: Request, exc: HTTPException):
+        return HTMLResponse(content="Page not found", status_code=404)
 
     # Remove state checkpoints
     logger.info("Removing state checkpoints")

@@ -1,6 +1,7 @@
 from src.settings.config import (
     INPUT_DIR,
     NAV_HTML_DIR,
+    HTML_CONTENTS_DIR,
     OUTPUT_DIR,
     STATE_CHECKPOINTS_DIR,
     TAILWIND_CSS_IN_DIR,
@@ -15,6 +16,7 @@ __all__ = [
     "OUTPUT_DIR",
     "NAV_HTML_DIR",
     "STATE_CHECKPOINTS_DIR",
+    "HTML_CONTENTS_DIR",
     "TRANSLATIONS_DIR",
     "TAILWIND_CSS_IN_DIR",
     "TAILWIND_CSS_OUT_DIR",
