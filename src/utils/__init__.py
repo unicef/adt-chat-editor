@@ -1,5 +1,6 @@
 from src.utils.file_utils import (
     delete_html_files_async,
+    extract_and_save_html_contents,
     extract_html_content_async,
     extract_layout_properties_async,
     find_and_duplicate_nav_line,
@@ -7,7 +8,9 @@ from src.utils.file_utils import (
     get_language_from_translation_files,
     get_relative_path,
     install_tailwind,
+    load_translated_html_contents,
     read_html_file,
+    read_translation_file,
     remove_nav_line_by_href,
     update_tailwind,
     write_html_file,
@@ -28,4 +31,7 @@ __all__ = [
     "remove_nav_line_by_href",
     "update_tailwind",
     "install_tailwind",
+    "read_translation_file",
+    "extract_and_save_html_contents",
+    "load_translated_html_contents",
 ]

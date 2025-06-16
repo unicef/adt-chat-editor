@@ -1,6 +1,6 @@
 import asyncio
+import json
 import os
-import re
 import shutil
 from pathlib import Path
 from typing import Dict, List, Optional, Union
@@ -8,11 +8,7 @@ from typing import Dict, List, Optional, Union
 import aiofiles
 from bs4 import BeautifulSoup, Tag
 
-from src.settings import (
-    OUTPUT_DIR,
-    TRANSLATIONS_DIR,
-    custom_logger,
-)
+from src.settings import OUTPUT_DIR, TRANSLATIONS_DIR, HTML_CONTENTS_DIR, custom_logger
 
 logger = custom_logger("Sub-agents Workflow Routes")
 
@@ -69,60 +65,56 @@ async def write_html_file(file_path: str, content: str) -> None:
         await f.write(content)
 
 
+async def read_translation_file(translation_file_path: str) -> dict:
+    async with aiofiles.open(translation_file_path, "r", encoding="utf-8") as file:
+        contents = await file.read()
+        translation_data = json.loads(contents)
+    return translation_data
+
+
 async def extract_html_content_async(
-    html: str,
-    include_links: bool = False,
-    include_images: bool = False,
-    clean_whitespace: bool = True,
+    html: str, translations_dict: Dict[str, str], clean_whitespace: bool = True
 ) -> str:
-    """Async version of HTML content extraction.
+    """Extract translated textual content from HTML using data-id, data-aria-id, and placeholder attributes.
 
     Args:
-        html (str): HTML string to parse
-        include_links (bool): Whether to include link text and URLs
-        include_images (bool): Whether to include image alt text
-        clean_whitespace (bool): Whether to clean excess whitespace
+        html (str): HTML string to parse.
+        translations_dict (Dict[str, str]): Dictionary of translations (keys are attribute values).
+        clean_whitespace (bool): Whether to clean excess whitespace.
 
     Returns:
-        str: Extracted text content
+        str: Translated text content.
     """
 
-    def sync_extract(html_content):
+    def sync_extract(html_content: str, translations: Dict[str, str]) -> str:
+        full_content = []
+
         soup = BeautifulSoup(html_content, "html.parser")
 
         # Remove unwanted elements
         for element in soup(["script", "style", "noscript", "iframe"]):
             element.decompose()
 
-        # Handle links
-        if include_links:
-            for a in soup.find_all("a"):
-                href = a.get("href", "")  # type: ignore
-                if href:
-                    a.append(f" [{href}]")  # type: ignore
-        else:
-            for a in soup.find_all("a"):
-                a.unwrap()  # type: ignore
+        # Replace text for tags with data-id or data-aria-id
+        for tag in soup.find_all(attrs={"data-id": True}):
+            key = tag["data-id"]
+            if key in translations:
+                full_content.append(translations[key])
 
-        # Handle images
-        if include_images:
-            for img in soup.find_all("img"):
-                alt = img["alt"] if img.has_attr("alt") else ""  # type: ignore
-                src = img["src"] if img.has_attr("src") else ""  # type: ignore
-                if alt or src:
-                    new_text = soup.new_string(
-                        f"[Image: {alt or 'no alt text'} {src or 'no source'}]"
-                    )
-                    img.replace_with(new_text)  # type: ignore
+        for tag in soup.find_all(attrs={"data-aria-id": True}):
+            key = tag["data-aria-id"]
+            if key in translations:
+                full_content.append(translations[key])
 
-        text = soup.get_text(separator=" ", strip=False)
+        # Replace placeholder attributes
+        for tag in soup.find_all(attrs={"placeholder": True}):
+            key = tag["placeholder"]
+            if key in translations:
+                full_content.append(translations[key])
 
-        if clean_whitespace:
-            text = re.sub(r"\s+", " ", text).strip()
+        return full_content
 
-        return text
-
-    return await asyncio.to_thread(sync_extract, html)
+    return await asyncio.to_thread(sync_extract, html, translations_dict)
 
 
 async def extract_layout_properties_async(
@@ -388,24 +380,37 @@ async def remove_nav_line_by_href(nav_content: str, href_to_remove: str) -> str:
 async def install_tailwind():
     logger.info("Installing Tailwind resources")
 
-    cmd = "rm -rf node_modules package-lock.json && npm install"
+    cleanup_cmd = "rm -rf node_modules package-lock.json && npm set registry https://registry.npmmirror.com"
+    install_cmd = "npm install"
 
     try:
-        process = await asyncio.create_subprocess_shell(
-            cmd,
+        # Step 1: Cleanup and set registry
+        logger.info("Cleaning up and setting registry")
+        cleanup_process = await asyncio.create_subprocess_shell(
+            cleanup_cmd,
             cwd=OUTPUT_DIR,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
+        cleanup_stdout, cleanup_stderr = await cleanup_process.communicate()
+        if cleanup_process.returncode != 0:
+            logger.error(f"Cleanup/registry command failed: {cleanup_stderr.decode()}")
+            return False
 
-        # Properly await the communicate() coroutine
-        stdout, stderr = await process.communicate()
-
-        if process.returncode == 0:
+        # Step 2: Run npm install
+        logger.info("Running npm install")
+        install_process = await asyncio.create_subprocess_shell(
+            install_cmd,
+            cwd=OUTPUT_DIR,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        install_stdout, install_stderr = await install_process.communicate()
+        if install_process.returncode == 0:
             logger.info("Tailwind resources installed successfully")
             return True
         else:
-            logger.error(f"Tailwind installation failed: {stderr.decode()}")
+            logger.error(f"Tailwind installation failed: {install_stderr.decode()}")
             return False
 
     except Exception as e:
@@ -441,3 +446,68 @@ async def update_tailwind(output_dir: str, input_css_path: str, output_css_path:
     except Exception as e:
         logger.error(f"Error updating Tailwind: {str(e)}")
         return False
+
+
+async def extract_and_save_html_contents(
+    language: str, output_dir: str, translations_dir: str
+) -> str:
+    translation_file_path = os.path.join(
+        output_dir,
+        translations_dir,
+        language,
+        "translations.json",
+    )
+
+    try:
+        # Read the translation file
+        translation_file = await read_translation_file(translation_file_path)
+
+        # Get and process all HTML files
+        html_files = await get_html_files(output_dir)
+        available_html_files: List[Dict[str, str]] = []
+
+        for html_file in html_files:
+            html_content = await read_html_file(html_file)
+            extracted_content = await extract_html_content_async(
+                html_content,
+                translation_file["texts"],
+            )
+            html_dict = {
+                "html_name": html_file,
+                "html_content": extracted_content,
+            }
+            available_html_files.append(html_dict)
+
+        # Save the result as a JSON file
+        save_path = f"{HTML_CONTENTS_DIR}/translation_{language}.json"
+
+        # Ensure the directory exists
+        await asyncio.to_thread(os.makedirs, os.path.dirname(save_path), exist_ok=True)
+
+        # Write JSON asynchronously
+        await asyncio.to_thread(
+            lambda: json.dump(
+                available_html_files,
+                open(save_path, "w", encoding="utf-8"),
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+
+        logger.info(f"Saved translated HTML content to: {save_path}")
+        return True
+    except Exception as e:
+        logger.error(f"Error saving translated HTML contents: {str(e)}")
+        return False
+
+
+async def load_translated_html_contents(language: str):
+    path = f"{HTML_CONTENTS_DIR}/translation_{language}.json"
+
+    def load_json():
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+
+    data = await asyncio.to_thread(load_json)
+
+    return data

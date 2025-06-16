@@ -8,4 +8,4 @@ services:
       - ./tmp:/app/tmp
     env_file:
       - .env
-    restart: unless-stopped 
+    restart: unless-stopped

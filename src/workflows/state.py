@@ -1,21 +1,26 @@
-from dataclasses import dataclass, field
+from dataclasses import field
 from typing import Annotated, Optional, Sequence
 
-from pydantic import BaseModel, Field
 from langchain_core.messages import AnyMessage
 from langgraph.graph import add_messages
+from pydantic import BaseModel, Field
 
+from src.settings import OUTPUT_DIR, TRANSLATIONS_DIR
 from src.structs import (
     TailwindStatus,
+    TranslatedHTMLStatus,
     WorkflowStatus,
 )
 from src.structs.planning import PlanningStep
-from src.utils import get_language_from_translation_files, install_tailwind
+from src.utils import (
+    extract_and_save_html_contents,
+    get_language_from_translation_files,
+    install_tailwind,
+)
 
 
 class BaseState(BaseModel):
-    """
-    Defines the input state for the agent, representing a narrower interface to the outside world.
+    """Defines the input state for the agent, representing a narrower interface to the outside world.
     This class is used to define the initial state and structure of incoming data.
     """
 
@@ -52,22 +57,9 @@ class ADTState(BaseState):
     # Information
     available_languages: list[str] = field(default_factory=list)
     tailwind_status: TailwindStatus = field(default=TailwindStatus.NOT_INSTALLED)
+    translated_html_status: TranslatedHTMLStatus = field(
+        default=TranslatedHTMLStatus.NOT_INSTALLED
+    )
 
     # Configs
     language: Optional[str] = None
-
-    async def initialize_languages(self) -> None:
-        """Initialize the available languages asynchronously."""
-        self.available_languages = await get_language_from_translation_files()
-
-    async def initialize_tailwind(self) -> None:
-        """Initialize Tailwind resources asynchronously."""
-        self.tailwind_status = TailwindStatus.INSTALLING
-        try:
-            success = await install_tailwind()
-            if success:
-                self.tailwind_status = TailwindStatus.INSTALLED
-            else:
-                self.tailwind_status = TailwindStatus.FAILED
-        except Exception:
-            self.tailwind_status = TailwindStatus.FAILED

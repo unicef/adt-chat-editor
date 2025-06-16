@@ -26,6 +26,7 @@ router = APIRouter(prefix="/chat", tags=["Chat"])
 @router.post("/edit", response_model=ChatEditResponse)
 async def chat_edit(request: ChatEditRequest) -> ChatEditResponse:
     """Make changes on the current version of the ADT using natural language."""
+    request.language = request.language.lower().strip()
     logger.debug(
         f"Chat edit request: session_id={request.session_id}, language={request.language}"
     )
@@ -63,6 +64,7 @@ async def chat_edit(request: ChatEditRequest) -> ChatEditResponse:
     # Create response
     response = ChatEditResponse(
         session_id=request.session_id,
+        status=output["status"],
         messages=messages,
         book_information=request.book_information,
     )

@@ -73,6 +73,14 @@ async def get_book_status(id: str):
     return {"status": "ready"}
 
 
+@router.get("/{id}/refresh")
+async def refresh_book(id: str):
+    """Refresh the book."""
+    logger.debug(f"Refreshing book: id={id}")
+    # TODO: Implement book refresh logic
+    return {"status": "refreshed"}
+
+
 @router.get("/{book_id}", response_model=BookInfo)
 async def get_book_info(book_id: str):
     """Get information about a specific book."""

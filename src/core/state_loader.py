@@ -11,7 +11,12 @@ from langchain_core.messages import (
 )
 
 from src.settings import custom_logger, STATE_CHECKPOINTS_DIR
-from src.structs import ChatEditRequest
+from src.structs import (
+    ChatEditRequest,
+    TranslatedHTMLStatus,
+    TailwindStatus,
+    WorkflowStatus,
+)
 from src.workflows.state import ADTState
 
 
@@ -45,6 +50,9 @@ class StateCheckpointManager:
             messages=[HumanMessage(content=request.user_message)],
             user_query=request.user_message,
             session_id=request.session_id,
+            language="en",
+            tailwind_status=TailwindStatus.INSTALLED,
+            translated_html_status=TranslatedHTMLStatus.INSTALLED,
         )
         if request.language:
             state_checkpoint.language = request.language
@@ -80,6 +88,8 @@ class StateCheckpointManager:
                     state_dict["user_query"] = request.user_message
                     state_dict["session_id"] = request.session_id
                     state_dict["current_step_index"] = -1
+                    state_dict["plan_accepted"] = False
+                    state_dict["status"] = WorkflowStatus.IN_PROGRESS
 
                     state_checkpoint = ADTState(**state_dict)
                     self.logger.debug(f"Loading state checkpoint: {state_checkpoint}")

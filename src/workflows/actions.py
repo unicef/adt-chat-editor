@@ -1,4 +1,3 @@
-from dataclasses import asdict
 import json
 import os
 import textwrap
@@ -8,7 +7,6 @@ from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
-from langgraph.types import interrupt
 
 from src.llm.llm_call import async_model_call
 from src.llm.llm_client import llm_client
@@ -16,22 +14,19 @@ from src.prompts import (
     ORCHESTRATOR_PLANNING_PROMPT,
     ORCHESTRATOR_SYSTEM_PROMPT,
 )
-from src.settings import custom_logger, STATE_CHECKPOINTS_DIR, OUTPUT_DIR
+from src.settings import (
+    STATE_CHECKPOINTS_DIR,
+    custom_logger,
+)
 from src.structs import (
     OrchestratorPlanningOutput,
     PlanningStep,
     StepStatus,
-    TailwindStatus,
+    WorkflowStatus,
 )
+from src.utils import load_translated_html_contents
 from src.workflows.agents import AVAILABLE_AGENTS
 from src.workflows.state import ADTState
-from src.utils import (
-    extract_html_content_async,
-    get_html_files,
-    read_html_file,
-)
-from src.workflows.agents import AVAILABLE_AGENTS
-
 
 # Initialize logger
 logger = custom_logger("Main Workflow Actions")
@@ -60,13 +55,6 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
     state.is_irrelevant_query = False
     state.is_forbidden_query = False
 
-    # Initialize languages
-    await state.initialize_languages()
-
-    # Initialize languages
-    if state.tailwind_status != TailwindStatus.INSTALLED:
-        await state.initialize_tailwind()
-
     # Set user query
     state.user_query = str(state.messages[-1].content)
 
@@ -86,17 +74,8 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
         if step.status == StepStatus.SUCCESS
     )
 
-    # Define available HTML files
-    html_files = await get_html_files(OUTPUT_DIR)
-    available_html_files = [
-        {
-            "html_name": html_file,
-            "html_content": await extract_html_content_async(
-                await read_html_file(html_file)
-            ),
-        }
-        for html_file in html_files
-    ]
+    # Load translated HTML contents
+    available_html_files = await load_translated_html_contents(language=state.language)
 
     # Format messages
     messages = ChatPromptTemplate(
@@ -185,8 +164,7 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
 
 
 async def rephrase_query(state: ADTState, config: RunnableConfig) -> dict[str, Any]:
-    """
-    Ask the user to rephrase the query to make it more specific and clear.
+    """Ask the user to rephrase the query to make it more specific and clear.
 
     Args:
         state: The state of the agent.
@@ -269,17 +247,8 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
         if step.status == StepStatus.SUCCESS
     )
 
-    # Define available HTML files
-    html_files = await get_html_files(OUTPUT_DIR)
-    available_html_files = [
-        {
-            "html_name": html_file,
-            "html_content": await extract_html_content_async(
-                await read_html_file(html_file)
-            ),
-        }
-        for html_file in html_files
-    ]
+    # Load translated HTML contents
+    available_html_files = await load_translated_html_contents(language=state.language)
 
     # Format messages
     messages = ChatPromptTemplate(
@@ -323,7 +292,6 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
     # Change the new steps if needed
     if parsed_response.modified:
         state.steps = parsed_response.steps
-        state.add_message(AIMessage(content=create_plan_display(state)))
 
     return state
 
@@ -405,12 +373,8 @@ async def finalize_task_execution(state: ADTState, config: RunnableConfig) -> AD
     """
     logger.info("Finalizing task execution")
 
+    # Save the state
     state.plan_shown_to_user = False
-    state_checkpoint = json.dumps(asdict(state))
-    state_checkpoint_path = os.path.join(
-        STATE_CHECKPOINTS_DIR, f"checkpoint-{state.session_id}.json"
-    )
-    with open(state_checkpoint_path, "w") as f:
-        f.write(state_checkpoint)
+    state.status = WorkflowStatus.SUCCESS
 
     return state
