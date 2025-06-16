@@ -21,6 +21,10 @@ Available agents:
 List of editable HTML files:
 {available_html_files}
 
+## Page Map
+The following mapping associates each HTML file with its corresponding page number or label:
+{html_page_map}
+
 ## User Feedback
 User-provided feedback regarding a previously generated plan:
 {user_feedback}
@@ -43,7 +47,7 @@ Each step in the `steps` list must follow this format:
 ```json
 {{
     "step": str,                  # A clear, detailed technical instruction for the agent
-    "non_technical_description": str,  # A simple summary understandable by a teacher with no programming background
+    "non_technical_description": str,  # A simple summary understandable by a teacher with no programming background. Always include the files (page and html name) in parentheses to be edited so user knows what pages are going to be edited
     "agent": str,                 # Name of the agent assigned to the step
     "html_files": list,           # List of HTML files to be modified
     "layout_template_files": list  # List of template HTML files, if applicable

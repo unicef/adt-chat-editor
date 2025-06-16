@@ -15,6 +15,7 @@ from src.utils.file_utils import (
     update_tailwind,
     write_html_file,
     write_nav_line,
+    parse_html_pages
 )
 
 __all__ = [
@@ -34,4 +35,5 @@ __all__ = [
     "read_translation_file",
     "extract_and_save_html_contents",
     "load_translated_html_contents",
+    "parse_html_pages"
 ]

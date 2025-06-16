@@ -1,14 +1,20 @@
 import asyncio
 import json
 import os
+import re
 import shutil
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Tuple
 
 import aiofiles
 from bs4 import BeautifulSoup, Tag
 
-from src.settings import OUTPUT_DIR, TRANSLATIONS_DIR, HTML_CONTENTS_DIR, custom_logger
+from src.settings import (
+    OUTPUT_DIR,
+    TRANSLATIONS_DIR,
+    HTML_CONTENTS_DIR,
+    custom_logger,
+)
 
 logger = custom_logger("Sub-agents Workflow Routes")
 
@@ -99,18 +105,21 @@ async def extract_html_content_async(
         for tag in soup.find_all(attrs={"data-id": True}):
             key = tag["data-id"]
             if key in translations:
-                full_content.append(translations[key])
+                content = {key: translations[key]}
+                full_content.append(content)
 
         for tag in soup.find_all(attrs={"data-aria-id": True}):
             key = tag["data-aria-id"]
             if key in translations:
-                full_content.append(translations[key])
+                content = {key: translations[key]}
+                full_content.append(content)
 
         # Replace placeholder attributes
-        for tag in soup.find_all(attrs={"placeholder": True}):
-            key = tag["placeholder"]
+        for tag in soup.find_all(attrs={"data-placeholder-id": True}):
+            key = tag["data-placeholder-id"]
             if key in translations:
-                full_content.append(translations[key])
+                content = {key: translations[key]}
+                full_content.append(content)
 
         return full_content
 
@@ -125,29 +134,25 @@ async def extract_layout_properties_async(
     include_styles: bool = False,
     include_position: bool = True,
     max_depth: Optional[int] = None,
-) -> List[Dict[str, Union[str, Dict[str, str]]]]:
-    """Async version of HTML layout properties extraction.
-
-    Args:
-        html (str): HTML string to parse
-        include_element_type (bool): Include HTML tag type
-        include_dimensions (bool): Include width/height if available
-        include_classes (bool): Include class list if available
-        include_styles (bool): Include style attributes if available
-        include_position (bool): Include position in DOM (parent-child relationships)
-        max_depth (Optional[int]): Maximum depth to traverse in DOM tree (None for unlimited)
+) -> Tuple[str, List[Dict[str, Union[str, Dict[str, str]]]]]:
+    """Async version of HTML layout properties extraction with inner text removed.
 
     Returns:
-        List[Dict]: List of elements with their layout properties
+        Tuple[str, List[Dict]]: Cleaned HTML string and layout metadata.
     """
 
-    def sync_extract(html_content):
+    def sync_extract(html_content: str):
         soup = BeautifulSoup(html_content, "html.parser")
         elements = []
 
         def traverse(node: Tag, depth: int = 0, parent_id: Optional[str] = None):
             if max_depth is not None and depth > max_depth:
                 return
+
+            # Remove inner NavigableStrings (text)
+            for child in list(node.children):
+                if not isinstance(child, Tag):
+                    child.extract()
 
             element_data = {
                 "id": f"element-{len(elements)}",
@@ -181,7 +186,7 @@ async def extract_layout_properties_async(
                     }
                 )
 
-            # Only include if we have at least one property
+            # Only include elements with relevant data
             if any(v is not None for v in element_data.values() if v != {}):
                 elements.append(
                     {k: v for k, v in element_data.items() if v is not None}
@@ -193,7 +198,8 @@ async def extract_layout_properties_async(
                         traverse(child, depth + 1, current_id)
 
         traverse(soup)
-        return elements
+        cleaned_html = str(soup)
+        return cleaned_html, elements
 
     return await asyncio.to_thread(sync_extract, html)
 
@@ -213,11 +219,11 @@ async def get_language_from_translation_files() -> List[str]:
         logger.debug(f"Translation file not found: {translations_path}")
         return []  # Directory doesn't exist → no languages
 
-    # Filter only directories that contain 'translations.json'
+    # Filter only directories that contain 'texts.json'
     valid_languages = []
     for lang_dir in items:
         lang_path = os.path.join(translations_path, lang_dir)
-        translations_file = os.path.join(lang_path, "translations.json")
+        translations_file = os.path.join(lang_path, "texts.json")
 
         if await asyncio.to_thread(
             os.path.isdir, lang_path
@@ -448,14 +454,12 @@ async def update_tailwind(output_dir: str, input_css_path: str, output_css_path:
         return False
 
 
-async def extract_and_save_html_contents(
-    language: str, output_dir: str, translations_dir: str
-) -> str:
+async def extract_and_save_html_contents(language: str) -> str:
     translation_file_path = os.path.join(
-        output_dir,
-        translations_dir,
+        OUTPUT_DIR,
+        TRANSLATIONS_DIR,
         language,
-        "translations.json",
+        "texts.json",
     )
 
     try:
@@ -463,23 +467,26 @@ async def extract_and_save_html_contents(
         translation_file = await read_translation_file(translation_file_path)
 
         # Get and process all HTML files
-        html_files = await get_html_files(output_dir)
+        html_files = await get_html_files(OUTPUT_DIR)
         available_html_files: List[Dict[str, str]] = []
 
         for html_file in html_files:
             html_content = await read_html_file(html_file)
             extracted_content = await extract_html_content_async(
                 html_content,
-                translation_file["texts"],
+                translation_file,
             )
             html_dict = {
-                "html_name": html_file,
-                "html_content": extracted_content,
+                html_file: extracted_content,
             }
             available_html_files.append(html_dict)
 
         # Save the result as a JSON file
-        save_path = f"{HTML_CONTENTS_DIR}/translation_{language}.json"
+        save_path = os.path.join(
+            OUTPUT_DIR,
+            HTML_CONTENTS_DIR,
+            f"translation_{language}.json"
+        )
 
         # Ensure the directory exists
         await asyncio.to_thread(os.makedirs, os.path.dirname(save_path), exist_ok=True)
@@ -502,12 +509,39 @@ async def extract_and_save_html_contents(
 
 
 async def load_translated_html_contents(language: str):
-    path = f"{HTML_CONTENTS_DIR}/translation_{language}.json"
+    load_path = os.path.join(
+        OUTPUT_DIR,
+        HTML_CONTENTS_DIR,
+        f"translation_{language}.json",
+    )
 
     def load_json():
-        with open(path, encoding="utf-8") as f:
+        with open(load_path, encoding="utf-8") as f:
             return json.load(f)
 
     data = await asyncio.to_thread(load_json)
 
     return data
+
+
+async def parse_html_pages(htmls):
+    result = {}
+
+    for path in htmls:
+        filename = path.split("/")[-1]
+        
+        # Case: X_Y_adt.html
+        match = re.match(r"(\d+)_(\d+)_adt\.html", filename)
+        if match:
+            main, sub = map(int, match.groups())
+            page_number = f"page {main - 1}.{sub + 1}"
+        # Case: X_adt.html
+        elif re.match(r"(\d+)_adt\.html", filename):
+            main = int(re.match(r"(\d+)_adt\.html", filename).group(1))
+            page_number = f"page {main - 1}"
+        else:
+            page_number = "page 0"
+        
+        result[path] = page_number
+    
+    return result

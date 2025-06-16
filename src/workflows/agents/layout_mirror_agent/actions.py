@@ -15,6 +15,8 @@ from src.utils import (
     get_html_files,
     read_html_file,
     write_html_file,
+    load_translated_html_contents,
+    extract_layout_properties_async, 
 )
 
 
@@ -73,6 +75,7 @@ async def mirror_layout(state: ADTState, config: RunnableConfig) -> ADTState:
         # Read the file content
         rel_path = await get_relative_path(html_file, "data")
         html_content = await read_html_file(html_file)
+        html_content, _ = await extract_layout_properties_async(html_content)
 
         # Format messages
         formatted_messages = await messages.ainvoke(
