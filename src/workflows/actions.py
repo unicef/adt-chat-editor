@@ -1,5 +1,3 @@
-import json
-import os
 import textwrap
 from typing import Any
 
@@ -15,22 +13,20 @@ from src.prompts import (
     ORCHESTRATOR_SYSTEM_PROMPT,
 )
 from src.settings import (
-    STATE_CHECKPOINTS_DIR,
     custom_logger,
 )
 from src.structs import (
     OrchestratorPlanningOutput,
     PlanningStep,
     StepStatus,
-    WorkflowStatus,
     TailwindStatus,
     TranslatedHTMLStatus,
+    WorkflowStatus,
 )
 from src.utils import (
-    parse_html_pages,
     load_translated_html_contents,
+    parse_html_pages,
 )
-from src.utils import load_translated_html_contents
 from src.workflows.agents import AVAILABLE_AGENTS
 from src.workflows.state import ADTState
 
@@ -58,7 +54,8 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
     logger.info("Planning steps")
 
     # Initialize languages
-    await state.initialize_languages()
+    if not state.available_languages:
+        await state.initialize_languages()
 
     # Initialize tailwind
     if state.tailwind_status != TailwindStatus.INSTALLED:
