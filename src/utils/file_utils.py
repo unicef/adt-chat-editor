@@ -1,9 +1,10 @@
 import asyncio
 import json
 import os
+import re
 import shutil
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Tuple
 
 import aiofiles
 from bs4 import BeautifulSoup, Tag
@@ -133,29 +134,25 @@ async def extract_layout_properties_async(
     include_styles: bool = False,
     include_position: bool = True,
     max_depth: Optional[int] = None,
-) -> List[Dict[str, Union[str, Dict[str, str]]]]:
-    """Async version of HTML layout properties extraction.
-
-    Args:
-        html (str): HTML string to parse
-        include_element_type (bool): Include HTML tag type
-        include_dimensions (bool): Include width/height if available
-        include_classes (bool): Include class list if available
-        include_styles (bool): Include style attributes if available
-        include_position (bool): Include position in DOM (parent-child relationships)
-        max_depth (Optional[int]): Maximum depth to traverse in DOM tree (None for unlimited)
+) -> Tuple[str, List[Dict[str, Union[str, Dict[str, str]]]]]:
+    """Async version of HTML layout properties extraction with inner text removed.
 
     Returns:
-        List[Dict]: List of elements with their layout properties
+        Tuple[str, List[Dict]]: Cleaned HTML string and layout metadata.
     """
 
-    def sync_extract(html_content):
+    def sync_extract(html_content: str):
         soup = BeautifulSoup(html_content, "html.parser")
         elements = []
 
         def traverse(node: Tag, depth: int = 0, parent_id: Optional[str] = None):
             if max_depth is not None and depth > max_depth:
                 return
+
+            # Remove inner NavigableStrings (text)
+            for child in list(node.children):
+                if not isinstance(child, Tag):
+                    child.extract()
 
             element_data = {
                 "id": f"element-{len(elements)}",
@@ -189,7 +186,7 @@ async def extract_layout_properties_async(
                     }
                 )
 
-            # Only include if we have at least one property
+            # Only include elements with relevant data
             if any(v is not None for v in element_data.values() if v != {}):
                 elements.append(
                     {k: v for k, v in element_data.items() if v is not None}
@@ -201,7 +198,8 @@ async def extract_layout_properties_async(
                         traverse(child, depth + 1, current_id)
 
         traverse(soup)
-        return elements
+        cleaned_html = str(soup)
+        return cleaned_html, elements
 
     return await asyncio.to_thread(sync_extract, html)
 
@@ -524,3 +522,26 @@ async def load_translated_html_contents(language: str):
     data = await asyncio.to_thread(load_json)
 
     return data
+
+
+async def parse_html_pages(htmls):
+    result = {}
+
+    for path in htmls:
+        filename = path.split("/")[-1]
+        
+        # Case: X_Y_adt.html
+        match = re.match(r"(\d+)_(\d+)_adt\.html", filename)
+        if match:
+            main, sub = map(int, match.groups())
+            page_number = f"page {main - 1}.{sub + 1}"
+        # Case: X_adt.html
+        elif re.match(r"(\d+)_adt\.html", filename):
+            main = int(re.match(r"(\d+)_adt\.html", filename).group(1))
+            page_number = f"page {main - 1}"
+        else:
+            page_number = "page 0"
+        
+        result[path] = page_number
+    
+    return result

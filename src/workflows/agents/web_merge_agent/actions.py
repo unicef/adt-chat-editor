@@ -22,6 +22,7 @@ from src.utils import (
     find_and_duplicate_nav_line,
     write_nav_line,
     load_translated_html_contents,
+    extract_layout_properties_async,
 )
 
 logger = custom_logger("Web Merge Agent")
@@ -56,6 +57,7 @@ async def web_merge(state: ADTState, config: RunnableConfig) -> ADTState:
 
         # Read the file content using the new async function
         html_content = await read_html_file(html_file)
+        html_content, _ = await extract_layout_properties_async(html_content)
 
         html_contents.append(html_content)
 

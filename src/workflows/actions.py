@@ -23,6 +23,12 @@ from src.structs import (
     PlanningStep,
     StepStatus,
     WorkflowStatus,
+    TailwindStatus,
+    TranslatedHTMLStatus,
+)
+from src.utils import (
+    parse_html_pages,
+    load_translated_html_contents,
 )
 from src.utils import load_translated_html_contents
 from src.workflows.agents import AVAILABLE_AGENTS
@@ -88,6 +94,16 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
     # Load translated HTML contents
     available_html_files = await load_translated_html_contents(language=state.language)
 
+    available_html_files = {
+        path: " ".join(val for item in content_list for val in item.values())
+        for entry in available_html_files
+        for path, content_list in entry.items()
+    }
+    
+    # Get all relevant HTML files map to pages
+    html_files = list(available_html_files.keys())
+    html_page_map = await parse_html_pages(html_files)
+    
     # Format messages
     messages = ChatPromptTemplate(
         messages=[
@@ -103,6 +119,7 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
                 f"{agent['name']}: {agent['description']}" for agent in AVAILABLE_AGENTS
             ],
             "available_html_files": available_html_files,
+            "html_page_map": html_page_map,
             "previous_conversation": previous_conversation,
             "user_feedback": "",  # Empty string for initial planning
             "completed_steps": completed_steps,
@@ -261,6 +278,16 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
     # Load translated HTML contents
     available_html_files = await load_translated_html_contents(language=state.language)
 
+    available_html_files = {
+        path: " ".join(val for item in content_list for val in item.values())
+        for entry in available_html_files
+        for path, content_list in entry.items()
+    }
+    
+    # Get all relevant HTML files map to pages
+    html_files = list(available_html_files.keys())
+    html_page_map = await parse_html_pages(html_files)
+
     # Format messages
     messages = ChatPromptTemplate(
         messages=[
@@ -276,6 +303,7 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
                 f"{agent['name']}: {agent['description']}" for agent in AVAILABLE_AGENTS
             ],
             "available_html_files": available_html_files,
+            "html_page_map": html_page_map,
             "previous_conversation": previous_conversation,
             "user_feedback": last_message,
             "completed_steps": completed_steps,

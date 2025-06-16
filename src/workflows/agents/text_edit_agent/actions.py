@@ -24,6 +24,7 @@ from src.utils import (
     read_html_file,
     write_html_file,
     load_translated_html_contents,
+    extract_layout_properties_async,
 )
 
 
@@ -76,6 +77,7 @@ async def detect_text_edits(state: ADTState, config: RunnableConfig) -> ADTState
 
         # Read the file content
         html_content = await read_html_file(html_file)
+        html_content, _ = await extract_layout_properties_async(html_content)
 
         translated_contents = next(
             (

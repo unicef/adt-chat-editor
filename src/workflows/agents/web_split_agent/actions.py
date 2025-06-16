@@ -24,6 +24,7 @@ from src.utils import (
     find_and_duplicate_nav_line,
     write_nav_line,
     load_translated_html_contents,
+    extract_layout_properties_async,
 )
 from src.workflows.state import ADTState
 
@@ -41,6 +42,7 @@ async def web_split(state: ADTState, config: RunnableConfig) -> ADTState:
     html_file = html_files[-1]
 
     html_content = await read_html_file(html_file)
+    html_content, _ = await extract_layout_properties_async(html_content)
     file_base = html_file.split("/")[-1].replace(".html", "")
 
     # Load translated HTML contents
