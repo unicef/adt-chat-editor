@@ -133,7 +133,7 @@ def edit_texts(state: ADTState, config: RunnableConfig) -> ADTState:
                 OUTPUT_DIR,
                 TRANSLATIONS_DIR,
                 text_edit_translation.language,
-                "translations.json",
+                "texts.json",
             )
 
             # Read and update the translation file
@@ -141,7 +141,7 @@ def edit_texts(state: ADTState, config: RunnableConfig) -> ADTState:
                 data = json.load(file)
 
             # Update the text
-            data["texts"][text_edit.element_id] = text_edit_translation.text
+            data[text_edit.element_id] = text_edit_translation.text
 
             # Write the updated data back to file
             with open(file_path, "w") as file:

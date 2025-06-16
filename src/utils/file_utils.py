@@ -219,11 +219,11 @@ async def get_language_from_translation_files() -> List[str]:
         logger.debug(f"Translation file not found: {translations_path}")
         return []  # Directory doesn't exist → no languages
 
-    # Filter only directories that contain 'translations.json'
+    # Filter only directories that contain 'texts.json'
     valid_languages = []
     for lang_dir in items:
         lang_path = os.path.join(translations_path, lang_dir)
-        translations_file = os.path.join(lang_path, "translations.json")
+        translations_file = os.path.join(lang_path, "texts.json")
 
         if await asyncio.to_thread(
             os.path.isdir, lang_path
@@ -459,7 +459,7 @@ async def extract_and_save_html_contents(language: str) -> str:
         OUTPUT_DIR,
         TRANSLATIONS_DIR,
         language,
-        "translations.json",
+        "texts.json",
     )
 
     try:
@@ -474,7 +474,7 @@ async def extract_and_save_html_contents(language: str) -> str:
             html_content = await read_html_file(html_file)
             extracted_content = await extract_html_content_async(
                 html_content,
-                translation_file["texts"],
+                translation_file,
             )
             html_dict = {
                 html_file: extracted_content,
