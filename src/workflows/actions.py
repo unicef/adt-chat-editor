@@ -13,6 +13,7 @@ from src.prompts import (
     ORCHESTRATOR_SYSTEM_PROMPT,
 )
 from src.settings import (
+    OUTPUT_DIR,
     custom_logger,
 )
 from src.structs import (
@@ -96,11 +97,11 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
         for entry in available_html_files
         for path, content_list in entry.items()
     }
-    
+
     # Get all relevant HTML files map to pages
     html_files = list(available_html_files.keys())
     html_page_map = await parse_html_pages(html_files)
-    
+
     # Format messages
     messages = ChatPromptTemplate(
         messages=[
@@ -238,12 +239,10 @@ async def show_plan_to_user(state: ADTState, config: RunnableConfig) -> dict[str
     logger.info("Showing plan to user")
 
     # Format the plan for display
-    plan_display = create_plan_display(state)
+    plan_display = create_plan_display(state).replace(f"{OUTPUT_DIR}/", "")
     logger.info(f"Plan display: {plan_display}")
 
     return {"messages": [AIMessage(content=plan_display)], "plan_shown_to_user": True}
-
-    # return {"messages": [AIMessage(content=plan_display)], "plan_shown_to_user": True}
 
 
 async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTState:
@@ -280,7 +279,7 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
         for entry in available_html_files
         for path, content_list in entry.items()
     }
-    
+
     # Get all relevant HTML files map to pages
     html_files = list(available_html_files.keys())
     html_page_map = await parse_html_pages(html_files)
