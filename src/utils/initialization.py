@@ -27,6 +27,9 @@ async def initialize_languages() -> list[str]:
 async def initialize_tailwind() -> TailwindStatus:
     """
     Initialize Tailwind resources asynchronously.
+
+    Returns:
+        TailwindStatus: The status of the Tailwind resources.
     """
     logger.info("Initializing Tailwind")
     tailwind_status = TailwindStatus.INSTALLING
@@ -45,6 +48,12 @@ async def initialize_tailwind() -> TailwindStatus:
 async def initialize_translated_html_content(language: str) -> TranslatedHTMLStatus:
     """
     Initialize translated HTML contents asynchronously.
+
+    Args:
+        language: The language to initialize the translated HTML content for.
+
+    Returns:
+        TranslatedHTMLStatus: The status of the translated HTML content.
     """
     logger.info(f"Initializing translated HTML content for language: {language}")
     translated_html_status = TranslatedHTMLStatus.INSTALLING
@@ -52,16 +61,13 @@ async def initialize_translated_html_content(language: str) -> TranslatedHTMLSta
         # Create HTML contents directory if it doesn't exist
         os.makedirs(HTML_CONTENTS_DIR, exist_ok=True)
 
-        success = await extract_and_save_html_contents(
-            language=language,
-            output_dir=OUTPUT_DIR,
-            translations_dir=TRANSLATIONS_DIR,
-        )
+        success = await extract_and_save_html_contents(language=language)
         if success:
             translated_html_status = TranslatedHTMLStatus.INSTALLED
         else:
             translated_html_status = TranslatedHTMLStatus.FAILED
-    except Exception:
+    except Exception as e:
         translated_html_status = TranslatedHTMLStatus.FAILED
+        logger.error(f"Error initializing translated HTML content: {e}")
     logger.info(f"Translated HTML status: {translated_html_status.value}")
     return translated_html_status

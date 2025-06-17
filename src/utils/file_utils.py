@@ -482,11 +482,7 @@ async def extract_and_save_html_contents(language: str) -> str:
             available_html_files.append(html_dict)
 
         # Save the result as a JSON file
-        save_path = os.path.join(
-            OUTPUT_DIR,
-            HTML_CONTENTS_DIR,
-            f"translation_{language}.json"
-        )
+        save_path = os.path.join(HTML_CONTENTS_DIR, f"translation_{language}.json")
 
         # Ensure the directory exists
         await asyncio.to_thread(os.makedirs, os.path.dirname(save_path), exist_ok=True)
@@ -510,7 +506,6 @@ async def extract_and_save_html_contents(language: str) -> str:
 
 async def load_translated_html_contents(language: str):
     load_path = os.path.join(
-        OUTPUT_DIR,
         HTML_CONTENTS_DIR,
         f"translation_{language}.json",
     )
@@ -529,7 +524,7 @@ async def parse_html_pages(htmls):
 
     for path in htmls:
         filename = path.split("/")[-1]
-        
+
         # Case: X_Y_adt.html
         match = re.match(r"(\d+)_(\d+)_adt\.html", filename)
         if match:
@@ -541,7 +536,7 @@ async def parse_html_pages(htmls):
             page_number = f"page {main - 1}"
         else:
             page_number = "page 0"
-        
+
         result[path] = page_number
-    
+
     return result
