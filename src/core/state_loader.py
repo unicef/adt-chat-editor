@@ -50,8 +50,6 @@ class StateCheckpointManager:
             messages=[HumanMessage(content=request.user_message)],
             user_query=request.user_message,
             session_id=request.session_id,
-            language=request.language,
-            current_pages=request.pages,
             tailwind_status=TailwindStatus.INSTALLED,
             translated_html_status=TranslatedHTMLStatus.INSTALLED,
         )
