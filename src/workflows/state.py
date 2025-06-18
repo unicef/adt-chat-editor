@@ -62,6 +62,7 @@ class ADTState(BaseState):
 
     # Configs
     language: Optional[str] = "en"
+    current_pages: list[str] = []
 
     async def initialize_languages(self) -> None:
         """Initialize the available languages asynchronously."""

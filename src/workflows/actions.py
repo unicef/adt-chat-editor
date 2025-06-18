@@ -100,6 +100,10 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
 
     # Get all relevant HTML files map to pages
     html_files = list(available_html_files.keys())
+    if state.current_pages:
+        html_files = [
+            html_file for html_file in html_files if html_file in state.current_pages
+        ]
     html_page_map = await parse_html_pages(html_files)
 
     # Format messages
@@ -282,6 +286,10 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
 
     # Get all relevant HTML files map to pages
     html_files = list(available_html_files.keys())
+    if state.current_pages:
+        html_files = [
+            html_file for html_file in html_files if html_file in state.current_pages
+        ]
     html_page_map = await parse_html_pages(html_files)
 
     # Format messages
