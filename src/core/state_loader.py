@@ -50,12 +50,15 @@ class StateCheckpointManager:
             messages=[HumanMessage(content=request.user_message)],
             user_query=request.user_message,
             session_id=request.session_id,
-            language="en",
+            language=request.language,
+            current_pages=request.pages,
             tailwind_status=TailwindStatus.INSTALLED,
             translated_html_status=TranslatedHTMLStatus.INSTALLED,
         )
         if request.language:
             state_checkpoint.language = request.language
+        if request.pages:
+            state_checkpoint.current_pages = request.pages
 
         return state_checkpoint
 
