@@ -12,6 +12,7 @@ from src.utils import (
     read_html_file,
     remove_nav_line_by_href,
     write_html_file,
+    get_message,
 )
 from src.workflows.state import ADTState
 
@@ -43,7 +44,7 @@ async def web_delete(state: ADTState, config: RunnableConfig) -> ADTState:
     state.add_message(SystemMessage(content=message))
     state.add_message(
         AIMessage(
-            content="The files had been deleted based on your request. Please check the files and make sure they are correct."
+            content=get_message(state.user_language.value, "final_response")
         )
     )
     logger.info(f"Total files deleted: {len(deleted_files)}")

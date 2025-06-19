@@ -25,6 +25,7 @@ from src.utils import (
     write_html_file,
     load_translated_html_contents,
     extract_layout_properties_async,
+    get_message,
 )
 
 
@@ -154,7 +155,7 @@ def edit_texts(state: ADTState, config: RunnableConfig) -> ADTState:
     state.add_message(SystemMessage(content=message))
     state.add_message(
         AIMessage(
-            content="The files had been edited and updated based on your request. Please check the files and make sure they are correct."
+            content=get_message(state.user_language.value, "final_response")
         )
     )
 
