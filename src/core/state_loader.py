@@ -85,12 +85,15 @@ class StateCheckpointManager:
                     state_dict["messages"] = self._deserialize_messages(
                         state_dict["messages"]
                     ) + [HumanMessage(content=request.user_message)]
+
                     state_dict["user_query"] = request.user_message
                     state_dict["session_id"] = request.session_id
                     state_dict["current_step_index"] = -1
                     state_dict["plan_accepted"] = False
                     state_dict["status"] = WorkflowStatus.IN_PROGRESS
                     state_dict["current_pages"] = request.pages
+                    if request.language:
+                        state_dict["language"] = request.language
 
                     state_checkpoint = ADTState(**state_dict)
                     self.logger.debug(f"Loading state checkpoint: {state_checkpoint}")
