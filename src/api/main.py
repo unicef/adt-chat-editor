@@ -4,16 +4,26 @@ import shutil
 import uvicorn
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi_pagination import add_pagination
+from starlette.responses import FileResponse
+from starlette.staticfiles import StaticFiles
 
 from src.api.routes import router
 from src.settings import custom_logger, STATE_CHECKPOINTS_DIR
 
-
 # Create the logger
 logger = custom_logger(__name__)
+
+
+# NoCache STATICFIELD
+class NoCacheStaticFiles(StaticFiles):
+    async def get_response(self, path, scope):
+        response: FileResponse = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
 
 
 # Create the app
@@ -46,12 +56,14 @@ def create_app() -> FastAPI:
     # Mount static files for frontend
     logger.info("Mounting frontend static files")
     app.mount(
-        "/assets", StaticFiles(directory="frontend/assets", html=True), name="assets"
+        "/assets", NoCacheStaticFiles(directory="frontend/assets", html=True), name="assets"
     )
 
     # Mount input and output folders
     logger.info("Mounting input and output folders with directory")
-    app.mount("/output", StaticFiles(directory="data/output", html=True), name="output")
+    app.mount(
+        "/output", NoCacheStaticFiles(directory="data/output", html=True), name="output"
+    )
 
     # Add a custom 404 handler
     @app.exception_handler(404)

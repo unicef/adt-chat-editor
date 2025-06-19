@@ -91,19 +91,24 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
 
     # Load translated HTML contents
     available_html_files = await load_translated_html_contents(language=state.language)
-
-    available_html_files = {
-        path: " ".join(val for item in content_list for val in item.values())
-        for entry in available_html_files
-        for path, content_list in entry.items()
-    }
+    if state.current_pages:
+        logger.info("Filtering selected page")
+        current_pages = [f"{OUTPUT_DIR}/{current_page}" for current_page in state.current_pages]
+        available_html_files = {
+            path: " ".join(val for item in content_list for val in item.values())
+            for entry in available_html_files
+            for path, content_list in entry.items() if path in current_pages
+        }
+        logger.info(f"The selected page is: {available_html_files.keys()}")
+    else:
+        available_html_files = {
+            path: " ".join(val for item in content_list for val in item.values())
+            for entry in available_html_files
+            for path, content_list in entry.items()
+        }
 
     # Get all relevant HTML files map to pages
     html_files = list(available_html_files.keys())
-    if state.current_pages:
-        html_files = [
-            html_file for html_file in html_files if html_file in state.current_pages
-        ]
     html_page_map = await parse_html_pages(html_files)
 
     # Format messages
@@ -277,19 +282,24 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
 
     # Load translated HTML contents
     available_html_files = await load_translated_html_contents(language=state.language)
-
-    available_html_files = {
-        path: " ".join(val for item in content_list for val in item.values())
-        for entry in available_html_files
-        for path, content_list in entry.items()
-    }
+    if state.current_pages:
+        logger.info("Filtering selected page")
+        current_pages = [f"{OUTPUT_DIR}/{current_page}" for current_page in state.current_pages]
+        available_html_files = {
+            path: " ".join(val for item in content_list for val in item.values())
+            for entry in available_html_files
+            for path, content_list in entry.items() if path in current_pages
+        }
+        logger.info(f"The selected page is: {available_html_files.keys()}")
+    else:
+        available_html_files = {
+            path: " ".join(val for item in content_list for val in item.values())
+            for entry in available_html_files
+            for path, content_list in entry.items()
+        }
 
     # Get all relevant HTML files map to pages
     html_files = list(available_html_files.keys())
-    if state.current_pages:
-        html_files = [
-            html_file for html_file in html_files if html_file in state.current_pages
-        ]
     html_page_map = await parse_html_pages(html_files)
 
     # Format messages
