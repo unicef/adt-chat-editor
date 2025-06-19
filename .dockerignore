@@ -6,7 +6,9 @@ __pycache__/
 node_modules/
 .git/
 tmp/
+data
 data/
+data/**
 .venv/
 venv/
 src.egg-info/
@@ -29,3 +31,12 @@ dist/
 build/
 *.tar.gz
 *.zip
+# Additional exclusions for faster builds
+.langgraph_api/
+.code_quality/
+*.md
+!README.md
+.pre-commit-config.yaml
+langgraph.json
+docker-compose.yml
+.dockerignore
