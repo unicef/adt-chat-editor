@@ -4,7 +4,9 @@
     "messages": {
       "rephrase_query": "The system did not detect any actionable steps to solve the task.\nPlease, rephrase the query to make it more specific and clear.",
       "plan_display": "Here are the planned steps:\n\n{steps}\n\nWould you like to proceed with this plan?",
-      "final_response": "The files have been edited and updated based on your request. Please check the files and make sure they are correct."
+      "final_response": "The files have been edited and updated based on your request. Please check the files and make sure they are correct.",
+      "forbidden_query": "The message sent was found as not allowed to be processed.\nPlease, rephrase the query to make it more specific and clear and aligned with the user guidelines.",
+      "irrelevant_query": "The message sent was found either not specific enough or not relevant to the user guidelines.\nThis system is intended to be used to help the reviewers to modify Accessible Digital Textbooks.\n\nPlease, rephrase the query to make it more specific and clear and aligned with the user guidelines."
     }
   },
   "es": {
@@ -12,7 +14,9 @@
     "messages": {
       "rephrase_query": "El sistema no detectó ningún paso procesable para resolver la tarea.\nPor favor, reformula la consulta para que sea más específica y clara.",
       "plan_display": "Aquí están los pasos planificados:\n\n{steps}\n\n¿Quieres proceder con este plan?",
-      "final_response": "Los archivos han sido editados y actualizados según tu solicitud. Por favor, revisa los archivos y asegúrate de que estén correctos."
+      "final_response": "Los archivos han sido editados y actualizados según tu solicitud. Por favor, revisa los archivos y asegúrate de que estén correctos.",
+      "forbidden_query": "El mensaje enviado fue considerado no permitido para ser procesado.\nPor favor, reformula la consulta para que sea más específica y clara y alineada con las directrices de usuario.",
+      "irrelevant_query": "El mensaje enviado fue considerado no suficientemente específico o no relevante para las directrices de usuario.\nEste sistema está diseñado para ayudar a los revisores a modificar los Libros Digitales Accesibles.\n\nPor favor, reformula la consulta para que sea más específica y clara y alineada con las directrices de usuario."
     }
   }
 }

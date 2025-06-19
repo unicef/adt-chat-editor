@@ -8,8 +8,8 @@ from pydantic import BaseModel, Field
 from src.structs import (
     TailwindStatus,
     TranslatedHTMLStatus,
-    WorkflowStatus,
     UserLanguage,
+    WorkflowStatus,
 )
 from src.structs.planning import PlanningStep
 from src.utils import (
@@ -63,7 +63,7 @@ class ADTState(BaseState):
 
     # Configs
     language: Optional[str] = "en"
-    user_language: UserLanguage = field(default=UserLanguage.es)
+    user_language: UserLanguage = field(default=UserLanguage.en)
     current_pages: list[str] = []
 
     async def initialize_languages(self) -> None:
