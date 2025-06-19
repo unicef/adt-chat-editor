@@ -55,8 +55,7 @@ class StateCheckpointManager:
         )
         if request.language:
             state_checkpoint.language = request.language
-        if request.pages:
-            state_checkpoint.current_pages = request.pages
+        state_checkpoint.current_pages = request.pages
 
         return state_checkpoint
 
@@ -91,6 +90,7 @@ class StateCheckpointManager:
                     state_dict["current_step_index"] = -1
                     state_dict["plan_accepted"] = False
                     state_dict["status"] = WorkflowStatus.IN_PROGRESS
+                    state_dict["current_pages"] = request.pages
 
                     state_checkpoint = ADTState(**state_dict)
                     self.logger.debug(f"Loading state checkpoint: {state_checkpoint}")
