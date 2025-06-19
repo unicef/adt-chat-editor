@@ -1,0 +1,18 @@
+{
+  "en": {
+    "llm_name": "English",
+    "messages": {
+      "rephrase_query": "The system did not detect any actionable steps to solve the task.\nPlease, rephrase the query to make it more specific and clear.",
+      "plan_display": "Here are the planned steps:\n\n{steps}\n\nWould you like to proceed with this plan?",
+      "final_response": "The files have been edited and updated based on your request. Please check the files and make sure they are correct."
+    }
+  },
+  "es": {
+    "llm_name": "Spanish",
+    "messages": {
+      "rephrase_query": "El sistema no detectó ningún paso procesable para resolver la tarea.\nPor favor, reformula la consulta para que sea más específica y clara.",
+      "plan_display": "Aquí están los pasos planificados:\n\n{steps}\n\n¿Quieres proceder con este plan?",
+      "final_response": "Los archivos han sido editados y actualizados según tu solicitud. Por favor, revisa los archivos y asegúrate de que estén correctos."
+    }
+  }
+}

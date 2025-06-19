@@ -9,6 +9,7 @@ from src.structs import (
     TailwindStatus,
     TranslatedHTMLStatus,
     WorkflowStatus,
+    UserLanguage,
 )
 from src.structs.planning import PlanningStep
 from src.utils import (
@@ -62,6 +63,7 @@ class ADTState(BaseState):
 
     # Configs
     language: Optional[str] = "en"
+    user_language: UserLanguage = field(default=UserLanguage.es)
     current_pages: list[str] = []
 
     async def initialize_languages(self) -> None:
@@ -80,15 +82,15 @@ class ADTState(BaseState):
         except Exception:
             self.tailwind_status = TailwindStatus.FAILED
 
-    async def initialize_translated_html_content(self, available_languages: list[str]) -> None:
+    async def initialize_translated_html_content(
+        self, available_languages: list[str]
+    ) -> None:
         """Initialize translated HTML contents asynchronously."""
         self.translated_html_status = TranslatedHTMLStatus.INSTALLING
         try:
             success = []
             for language in available_languages:
-                success.append(
-                    await extract_and_save_html_contents(language)
-                )
+                success.append(await extract_and_save_html_contents(language))
             success = all(success)
             if success:
                 self.translated_html_status = TranslatedHTMLStatus.INSTALLED

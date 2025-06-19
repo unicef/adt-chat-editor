@@ -27,6 +27,8 @@ from src.structs import (
 from src.utils import (
     load_translated_html_contents,
     parse_html_pages,
+    get_message,
+    get_language_name,
 )
 from src.workflows.agents import AVAILABLE_AGENTS
 from src.workflows.state import ADTState
@@ -132,6 +134,7 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
             "is_current_page": is_current_page,
             "previous_conversation": previous_conversation,
             "user_feedback": "",  # Empty string for initial planning
+            "user_language": get_language_name(state.user_language.value),
             "completed_steps": completed_steps,
         },
         config,
@@ -190,10 +193,7 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
     # Add the rephrase query message if no steps were found
     if not state.steps:
         rephrase_query_display = textwrap.dedent(
-            """
-            The system did not detect any actionable steps to solve the task.
-            Please, rephrase the query to make it more specific and clear.
-            """
+            get_message(state.user_language.value, "rephrase_query")
         )
         if not parsed_response.is_irrelevant and not parsed_response.is_forbidden:
             state.add_message(SystemMessage(content=rephrase_query_display))
@@ -212,10 +212,7 @@ async def rephrase_query(state: ADTState, config: RunnableConfig) -> dict[str, A
 
     # Format the plan for display
     rephrase_query_display = textwrap.dedent(
-        """
-        The system did not detect any actionable steps to solve the task.
-        Please, rephrase the query to make it more specific and clear.
-        """
+        get_message(state.user_language.value, "rephrase_query")
     )
 
     # Update the state
@@ -230,11 +227,12 @@ def create_plan_display(state: ADTState) -> str:
     Args:
         state: The state of the agent.
     """
-    plan_display = "Here are the planned steps:\n\n"
-    for i, step in enumerate(state.steps, 1):
-        plan_display += f"{i}. {step.non_technical_description}\n"
+    steps_description = [f"{i}. {step.non_technical_description}" for i, step in enumerate(state.steps, 1)]
+    steps_description_str = '\n'.join(steps_description)
 
-    plan_display += "\nWould you like to proceed with this plan?"
+    plan_display = get_message(state.user_language.value, "plan_display")
+    plan_display = plan_display.format(steps=steps_description_str)
+    
     return plan_display
 
 
@@ -326,6 +324,7 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
             "is_current_page": is_current_page,
             "previous_conversation": previous_conversation,
             "user_feedback": last_message,
+            "user_language": get_language_name(state.user_language.value),
             "completed_steps": completed_steps,
         },
         config,
