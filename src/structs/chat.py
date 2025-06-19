@@ -20,7 +20,7 @@ class ChatEditRequest(BaseModel):
     session_id: str
     user_message: str
     language: str
-    pages: List
+    pages: List[str]
     book_information: BookInformation
 
 
