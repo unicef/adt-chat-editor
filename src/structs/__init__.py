@@ -4,7 +4,7 @@ from src.structs.chat import (
     ChatEditResponse,
     ChatMessageResponse,
 )
-from src.structs.language import TranslatedHTMLStatus
+from src.structs.language import UserLanguage, TranslatedHTMLStatus
 from src.structs.llm_clients import LLMClient
 from src.structs.node_resources import TailwindStatus
 from src.structs.planning import OrchestratorPlanningOutput, PlanningStep
@@ -43,5 +43,6 @@ __all__ = [
     "TextEditResponse",
     "TextEditTranslation",
     "TranslatedHTMLStatus",
+    "UserLanguage",
     "WorkflowStatus",
 ]

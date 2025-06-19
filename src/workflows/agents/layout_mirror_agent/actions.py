@@ -16,7 +16,8 @@ from src.utils import (
     read_html_file,
     write_html_file,
     load_translated_html_contents,
-    extract_layout_properties_async, 
+    extract_layout_properties_async,
+    get_message,
 )
 
 
@@ -106,7 +107,7 @@ async def mirror_layout(state: ADTState, config: RunnableConfig) -> ADTState:
     state.add_message(SystemMessage(content=message))
     state.add_message(
         AIMessage(
-            content="The files had been mirrored and updated based on your request. Please check the files and make sure they are correct."
+            content=get_message(state.user_language.value, "final_response")
         )
     )
     logger.info(f"Total files modified: {len(modified_files)}")

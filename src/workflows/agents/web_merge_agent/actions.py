@@ -23,6 +23,7 @@ from src.utils import (
     write_nav_line,
     load_translated_html_contents,
     extract_layout_properties_async,
+    get_message,
 )
 
 logger = custom_logger("Web Merge Agent")
@@ -117,7 +118,7 @@ async def web_merge(state: ADTState, config: RunnableConfig) -> ADTState:
     state.add_message(SystemMessage(content=message))
     state.add_message(
         AIMessage(
-            content="The files had been merged and updated based on your request. Please check the files and make sure they are correct."
+            content=get_message(state.user_language.value, "final_response")
         )
     )
     logger.info(f"Total files modified: {len(modified_files)}")

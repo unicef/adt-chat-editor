@@ -16,6 +16,7 @@ from src.structs import (
     TranslatedHTMLStatus,
     TailwindStatus,
     WorkflowStatus,
+    UserLanguage,
 )
 from src.workflows.state import ADTState
 
@@ -55,6 +56,11 @@ class StateCheckpointManager:
         )
         if request.language:
             state_checkpoint.language = request.language
+        if request.user_language:
+            try:
+                state_checkpoint.user_language = UserLanguage(request.user_language.lower())
+            except ValueError:
+                state_checkpoint.user_language = UserLanguage.en
         state_checkpoint.current_pages = request.pages
 
         return state_checkpoint
@@ -94,6 +100,11 @@ class StateCheckpointManager:
                     state_dict["current_pages"] = request.pages
                     if request.language:
                         state_dict["language"] = request.language
+                    if request.user_language:
+                        try:
+                            state_dict["user_language"] = UserLanguage(request.user_language.lower())
+                        except ValueError:
+                            state_dict["user_language"] = UserLanguage.en
 
                     state_checkpoint = ADTState(**state_dict)
                     self.logger.debug(f"Loading state checkpoint: {state_checkpoint}")

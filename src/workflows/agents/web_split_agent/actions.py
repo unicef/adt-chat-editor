@@ -25,6 +25,7 @@ from src.utils import (
     write_nav_line,
     load_translated_html_contents,
     extract_layout_properties_async,
+    get_message,
 )
 from src.workflows.state import ADTState
 
@@ -106,7 +107,7 @@ async def web_split(state: ADTState, config: RunnableConfig) -> ADTState:
     state.add_message(SystemMessage(content=summary_message))
     state.add_message(
         AIMessage(
-            content="The files had been split and updated based on your request. Please check the files and make sure they are correct."
+            content=get_message(state.user_language.value, "final_response")
         )
     )
     logger.info(summary_message)
