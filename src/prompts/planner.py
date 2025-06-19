@@ -25,6 +25,10 @@ List of editable HTML files:
 The following mapping associates each HTML file with its corresponding page number or label:
 {html_page_map}
 
+## Selected Page:
+A boolean parameter indicating whether the user intends to edit only the currently selected page (true) or work across multiple pages (false):
+{is_current_page}
+
 ## User Feedback
 User-provided feedback regarding a previously generated plan:
 {user_feedback}
@@ -49,7 +53,7 @@ Each step in the `steps` list must follow this format:
     "step": str,                  # A clear, detailed technical instruction for the agent
     "non_technical_description": str,  # A simple summary understandable by a teacher with no programming background. Always include the files (page and html name) in parentheses to be edited so user knows what pages are going to be edited
     "agent": str,                 # Name of the agent assigned to the step
-    "html_files": list,           # List of HTML files to be modified. If none is referred by the user, select all the **available_html_files**
+    "html_files": list,           # List of HTML files to be modified. If `is_current_page` is True, automatically select all HTML files listed in `available_html_files`.
     "layout_template_files": list  # List of template HTML files, if applicable
 }}
 ```
@@ -57,7 +61,7 @@ Each step in the `steps` list must follow this format:
 ## Instructions
 1. **Step Generation Rules**
    - Only generate steps **if the query is relevant and permitted**:
-     - Mark as **irrelevant** if the query is casual, off-topic, or lacks actionable educational purpose.
+     - Mark as **irrelevant** if the query is casual, off-topic, or lacks actionable purposes.
      - Mark as **forbidden** if the query involves store IDs or content outside the allowed scope.
 
 2. **Step Structure**
@@ -126,7 +130,7 @@ Here is the previous conversation, provided **only for context**. Do not take di
 {previous_conversation}
 
 ## Completed Steps
-Here are the steps you have **already completed**. Do not include these again:
+Here are the steps you have **already completed**. Do not include these again unless explicitely requested by the user:
 {completed_steps}
 
 ## Begin
@@ -134,7 +138,7 @@ Now, generate the list of independent steps required to correct the issues in th
 
 Ensure that:
 - Every step is **explicitly requested or clearly implied by the user**
-- You do **not repeat** any previously completed steps
+- You do **not repeat** any previously completed steps unless explicitely requested by the user
 - Your plan is as **minimal** and **non-redundant** as possible
 
 If you solve this task correctly, you will receive a reward of **$1,000,000**.

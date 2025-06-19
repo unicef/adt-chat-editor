@@ -99,6 +99,7 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
             for entry in available_html_files
             for path, content_list in entry.items() if path in current_pages
         }
+        is_current_page = True
         logger.info(f"The selected page is: {available_html_files.keys()}")
     else:
         available_html_files = {
@@ -106,6 +107,7 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
             for entry in available_html_files
             for path, content_list in entry.items()
         }
+        is_current_page = False
 
     # Get all relevant HTML files map to pages
     html_files = list(available_html_files.keys())
@@ -127,6 +129,7 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
             ],
             "available_html_files": available_html_files,
             "html_page_map": html_page_map,
+            "is_current_page": is_current_page,
             "previous_conversation": previous_conversation,
             "user_feedback": "",  # Empty string for initial planning
             "completed_steps": completed_steps,
@@ -290,6 +293,7 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
             for entry in available_html_files
             for path, content_list in entry.items() if path in current_pages
         }
+        is_current_page = True
         logger.info(f"The selected page is: {available_html_files.keys()}")
     else:
         available_html_files = {
@@ -297,6 +301,7 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
             for entry in available_html_files
             for path, content_list in entry.items()
         }
+        is_current_page = False
 
     # Get all relevant HTML files map to pages
     html_files = list(available_html_files.keys())
@@ -318,6 +323,7 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
             ],
             "available_html_files": available_html_files,
             "html_page_map": html_page_map,
+            "is_current_page": is_current_page,
             "previous_conversation": previous_conversation,
             "user_feedback": last_message,
             "completed_steps": completed_steps,
