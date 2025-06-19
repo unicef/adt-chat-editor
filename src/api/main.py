@@ -20,7 +20,9 @@ logger = custom_logger(__name__)
 class NoCacheStaticFiles(StaticFiles):
     async def get_response(self, path, scope):
         response: FileResponse = await super().get_response(path, scope)
-        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Cache-Control"] = (
+            "no-store, no-cache, must-revalidate, max-age=0"
+        )
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
         return response
@@ -56,11 +58,18 @@ def create_app() -> FastAPI:
     # Mount static files for frontend
     logger.info("Mounting frontend static files")
     app.mount(
-        "/assets", NoCacheStaticFiles(directory="frontend/assets", html=True), name="assets"
+        "/assets",
+        NoCacheStaticFiles(directory="frontend/assets", html=True),
+        name="assets",
     )
 
     # Mount input and output folders
-    logger.info("Mounting input and output folders with directory")
+    logger.info("Mounting input folder with directory")
+    app.mount(
+        "/input", NoCacheStaticFiles(directory="data/input", html=True), name="input"
+    )
+
+    logger.info("Mounting output folders with directory")
     app.mount(
         "/output", NoCacheStaticFiles(directory="data/output", html=True), name="output"
     )
