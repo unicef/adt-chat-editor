@@ -1,6 +1,7 @@
 services:
   fastapi:
-    build: .
+    build:
+      context: .  # Path to the build context (the directory where Dockerfile exists)
     ports:
       - "8000:8000"
     volumes:

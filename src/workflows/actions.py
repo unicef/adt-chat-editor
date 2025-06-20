@@ -95,11 +95,14 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
     available_html_files = await load_translated_html_contents(language=state.language)
     if state.current_pages:
         logger.info("Filtering selected page")
-        current_pages = [f"{OUTPUT_DIR}/{current_page}" for current_page in state.current_pages]
+        current_pages = [
+            f"{OUTPUT_DIR}/{current_page}" for current_page in state.current_pages
+        ]
         available_html_files = {
             path: " ".join(val for item in content_list for val in item.values())
             for entry in available_html_files
-            for path, content_list in entry.items() if path in current_pages
+            for path, content_list in entry.items()
+            if path in current_pages
         }
         is_current_page = True
         logger.info(f"The selected page is: {available_html_files.keys()}")
@@ -285,11 +288,14 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
     available_html_files = await load_translated_html_contents(language=state.language)
     if state.current_pages:
         logger.info("Filtering selected page")
-        current_pages = [f"{OUTPUT_DIR}/{current_page}" for current_page in state.current_pages]
+        current_pages = [
+            f"{OUTPUT_DIR}/{current_page}" for current_page in state.current_pages
+        ]
         available_html_files = {
             path: " ".join(val for item in content_list for val in item.values())
             for entry in available_html_files
-            for path, content_list in entry.items() if path in current_pages
+            for path, content_list in entry.items()
+            if path in current_pages
         }
         is_current_page = True
         logger.info(f"The selected page is: {available_html_files.keys()}")

@@ -83,7 +83,7 @@ async def web_split(state: ADTState, config: RunnableConfig) -> ADTState:
     split_response = split_response.split_edits
 
     # Step 2: Initialize nav
-    nav_html = await read_html_file(OUTPUT_DIR + NAV_HTML_DIR)
+    nav_html = await read_html_file(f"{OUTPUT_DIR}/{NAV_HTML_DIR}")
 
     # Step 3: Write each split file and update nav
     splitted_file_paths = []
@@ -100,7 +100,7 @@ async def web_split(state: ADTState, config: RunnableConfig) -> ADTState:
         )
         nav_html = await write_nav_line(nav_html, nav_line)
 
-    await write_html_file(OUTPUT_DIR + NAV_HTML_DIR, nav_html)
+    await write_html_file(f"{OUTPUT_DIR}/{NAV_HTML_DIR}", nav_html)
 
     # Log and state update
     summary_message = (

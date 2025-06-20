@@ -34,7 +34,7 @@ async def web_delete(state: ADTState, config: RunnableConfig) -> ADTState:
     await delete_html_files_async(deleted_files, OUTPUT_DIR)
 
     # Update nav
-    nav_html = await read_html_file(OUTPUT_DIR + NAV_HTML_DIR)
+    nav_html = await read_html_file(f"{OUTPUT_DIR}/{NAV_HTML_DIR}")
     for file_name in deleted_files:
         file_name = file_name.split("/")[-1]
         try:
@@ -42,7 +42,7 @@ async def web_delete(state: ADTState, config: RunnableConfig) -> ADTState:
         except Exception as e:
             logger.info(f"File couldn't be deleted in nav: {e}")
             continue
-    await write_html_file(OUTPUT_DIR + NAV_HTML_DIR, nav_html)
+    await write_html_file(f"{OUTPUT_DIR}/{NAV_HTML_DIR}", nav_html)
 
     # Add message about the file being processed
     message = f"The following files have been deleted based on based on the instruction: '{current_step.step}'\n"
