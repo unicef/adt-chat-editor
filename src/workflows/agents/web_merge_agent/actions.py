@@ -107,12 +107,12 @@ async def web_merge(state: ADTState, config: RunnableConfig) -> ADTState:
     await write_html_file(merged_file_name, edited_html)
 
     # Update nav
-    nav_html = await read_html_file(OUTPUT_DIR + NAV_HTML_DIR)
+    nav_html = await read_html_file(f"{OUTPUT_DIR}/{NAV_HTML_DIR}")
     nav_line = await find_and_duplicate_nav_line(
         nav_html, file_names[0] + ".html", joined_name + ".html"
     )
     nav_html = await write_nav_line(nav_html, nav_line)
-    await write_html_file(OUTPUT_DIR + NAV_HTML_DIR, nav_html)
+    await write_html_file(f"{OUTPUT_DIR}/{NAV_HTML_DIR}", nav_html)
 
     # Add message about the file being processed
     message = f"The following files have been processed and updated based on the instruction: '{current_step.step}'\n"
