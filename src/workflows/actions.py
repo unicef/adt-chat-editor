@@ -25,10 +25,10 @@ from src.structs import (
     WorkflowStatus,
 )
 from src.utils import (
+    get_language_name,
+    get_message,
     load_translated_html_contents,
     parse_html_pages,
-    get_message,
-    get_language_name,
 )
 from src.workflows.agents import AVAILABLE_AGENTS
 from src.workflows.state import ADTState
@@ -404,19 +404,11 @@ async def add_non_valid_message(
     """
     if state.is_forbidden_query:
         non_valid_message = textwrap.dedent(
-            """
-            The message sent was found as not allowed to be processed.
-            Please, rephrase the query to make it more specific and clear and alligned with the user guidelines.
-            """
+            get_message(state.user_language.value, "forbidden_query")
         )
     elif state.is_irrelevant_query:
         non_valid_message = textwrap.dedent(
-            """
-            The message sent was found either not specific enough or not relevant to the user guidelines.
-            This system is intended to be used to help the reviewers to modify Accessible Digital Textbooks.
-
-            Please, rephrase the query to make it more specific and clear and alligned with the user guidelines.
-            """
+            get_message(state.user_language.value, "irrelevant_query")
         )
     else:
         raise ValueError(

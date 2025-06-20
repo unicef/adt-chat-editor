@@ -16,7 +16,11 @@ from src.settings import (
     OUTPUT_DIR,
     custom_logger,
 )
-from src.structs import StepStatus, SplitEditResponse
+from src.structs import (
+    StepStatus, 
+    SplitEditResponse, 
+    TranslatedHTMLStatus
+)
 from src.utils import (
     get_html_files,
     read_html_file,
@@ -112,6 +116,9 @@ async def web_split(state: ADTState, config: RunnableConfig) -> ADTState:
     )
     logger.info(summary_message)
 
+    # Set translated_html_status to not installed
+    state.translated_html_status = TranslatedHTMLStatus.NOT_INSTALLED
+        
     if 0 <= state.current_step_index < len(state.steps):
         state.steps[state.current_step_index].status = StepStatus.SUCCESS
 
