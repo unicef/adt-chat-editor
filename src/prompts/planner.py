@@ -53,7 +53,7 @@ Each step in the `steps` list must follow this format:
     "step": str,                  # A clear, detailed technical instruction for the agent
     "non_technical_description": str,  # A simple summary understandable by a teacher with no programming background. Always include the files (page and html name) in parentheses to be edited so user knows what pages are going to be edited. The description should be returned in the user's language, which is {user_language}
     "agent": str,                 # Name of the agent assigned to the step
-    "html_files": list,           # List of HTML files to be modified. If `is_current_page` is True, automatically select all HTML files listed in `available_html_files`.
+    "html_files": list,           # List of HTML files to be modified. If Selected Page is True, automatically select all HTML files listed in available html files
     "layout_template_files": list  # List of template HTML files, if applicable
 }}
 ```

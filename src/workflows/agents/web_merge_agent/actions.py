@@ -12,7 +12,10 @@ from src.settings import (
     OUTPUT_DIR,
     custom_logger,
 )
-from src.structs.status import StepStatus
+from src.structs import (
+    StepStatus, 
+    TranslatedHTMLStatus,
+)
 from src.workflows.state import ADTState
 from src.utils import (
     get_relative_path,
@@ -122,6 +125,9 @@ async def web_merge(state: ADTState, config: RunnableConfig) -> ADTState:
         )
     )
     logger.info(f"Total files modified: {len(modified_files)}")
+
+    # Set translated_html_status to not installed
+    state.translated_html_status = TranslatedHTMLStatus.NOT_INSTALLED
 
     # Update step status
     if 0 <= state.current_step_index < len(state.steps):

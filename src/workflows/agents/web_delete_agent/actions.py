@@ -6,7 +6,10 @@ from src.settings import (
     OUTPUT_DIR,
     custom_logger,
 )
-from src.structs.status import StepStatus
+from src.structs import (
+    StepStatus, 
+    TranslatedHTMLStatus
+)
 from src.utils import (
     delete_html_files_async,
     read_html_file,
@@ -34,7 +37,11 @@ async def web_delete(state: ADTState, config: RunnableConfig) -> ADTState:
     nav_html = await read_html_file(OUTPUT_DIR + NAV_HTML_DIR)
     for file_name in deleted_files:
         file_name = file_name.split("/")[-1]
-        nav_html = await remove_nav_line_by_href(nav_html, file_name)
+        try:
+            nav_html = await remove_nav_line_by_href(nav_html, file_name)
+        except Exception as e:
+            logger.info(f"File couldn't be deleted in nav: {e}")
+            continue
     await write_html_file(OUTPUT_DIR + NAV_HTML_DIR, nav_html)
 
     # Add message about the file being processed
@@ -48,6 +55,9 @@ async def web_delete(state: ADTState, config: RunnableConfig) -> ADTState:
         )
     )
     logger.info(f"Total files deleted: {len(deleted_files)}")
+
+    # Set translated_html_status to not installed
+    state.translated_html_status = TranslatedHTMLStatus.NOT_INSTALLED
 
     # Update step status
     if 0 <= state.current_step_index < len(state.steps):
