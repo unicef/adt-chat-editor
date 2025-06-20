@@ -1,7 +1,7 @@
 import ast
 import json
 
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
@@ -16,13 +16,20 @@ from src.settings import (
     OUTPUT_DIR,
     custom_logger,
 )
-from src.structs import StepStatus, SplitEditResponse
+from src.structs import (
+    StepStatus, 
+    SplitEditResponse, 
+    TranslatedHTMLStatus
+)
 from src.utils import (
     get_html_files,
     read_html_file,
     write_html_file,
     find_and_duplicate_nav_line,
     write_nav_line,
+    load_translated_html_contents,
+    extract_layout_properties_async,
+    get_message,
 )
 from src.workflows.state import ADTState
 
@@ -40,15 +47,32 @@ async def web_split(state: ADTState, config: RunnableConfig) -> ADTState:
     html_file = html_files[-1]
 
     html_content = await read_html_file(html_file)
+    html_content, _ = await extract_layout_properties_async(html_content)
     file_base = html_file.split("/")[-1].replace(".html", "")
 
+    # Load translated HTML contents
+    translated_html_contents = await load_translated_html_contents(
+        language=state.language
+    )
+
+    translated_contents = next(
+        (
+            item[html_file] for item in translated_html_contents 
+            if item.get(html_file)
+        ),
+        None
+    )
+
     # Step 1: Split HTML
-    split_prompt = ChatPromptTemplate.from_messages([
-        ("system", WEB_SPLIT_SYSTEM_PROMPT),
-        ("user", WEB_SPLIT_USER_PROMPT),
-    ])
+    split_prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", WEB_SPLIT_SYSTEM_PROMPT),
+            ("user", WEB_SPLIT_USER_PROMPT),
+        ]
+    )
     split_input = {
         "html_input": html_content,
+        "translated_texts": translated_contents,
         "instruction": state.messages[-1].content,
     }
     formatted_split_prompt = await split_prompt.ainvoke(split_input, config)
@@ -59,7 +83,7 @@ async def web_split(state: ADTState, config: RunnableConfig) -> ADTState:
     split_response = split_response.split_edits
 
     # Step 2: Initialize nav
-    nav_html = await read_html_file(OUTPUT_DIR + NAV_HTML_DIR)
+    nav_html = await read_html_file(f"{OUTPUT_DIR}/{NAV_HTML_DIR}")
 
     # Step 3: Write each split file and update nav
     splitted_file_paths = []
@@ -71,10 +95,12 @@ async def web_split(state: ADTState, config: RunnableConfig) -> ADTState:
         await write_html_file(full_path, html)
 
         # Update nav
-        nav_line = await find_and_duplicate_nav_line(nav_html, f"{file_base}.html", file_name)
+        nav_line = await find_and_duplicate_nav_line(
+            nav_html, f"{file_base}.html", file_name
+        )
         nav_html = await write_nav_line(nav_html, nav_line)
-            
-    await write_html_file(OUTPUT_DIR + NAV_HTML_DIR, nav_html)
+
+    await write_html_file(f"{OUTPUT_DIR}/{NAV_HTML_DIR}", nav_html)
 
     # Log and state update
     summary_message = (
@@ -82,9 +108,17 @@ async def web_split(state: ADTState, config: RunnableConfig) -> ADTState:
         + "\n".join(f"- {name}" for name in splitted_file_paths)
         + "\nUpdated nav.html for each new file."
     )
-    state.add_message(AIMessage(content=summary_message))
+    state.add_message(SystemMessage(content=summary_message))
+    state.add_message(
+        AIMessage(
+            content=get_message(state.user_language.value, "final_response")
+        )
+    )
     logger.info(summary_message)
 
+    # Set translated_html_status to not installed
+    state.translated_html_status = TranslatedHTMLStatus.NOT_INSTALLED
+        
     if 0 <= state.current_step_index < len(state.steps):
         state.steps[state.current_step_index].status = StepStatus.SUCCESS
 

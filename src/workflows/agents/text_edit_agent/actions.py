@@ -2,7 +2,7 @@ import os
 import json
 from typing import List
 
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
@@ -13,8 +13,8 @@ from src.prompts import (
     TEXT_EDIT_USER_PROMPT,
 )
 from src.settings import (
-    custom_logger, 
-    OUTPUT_DIR, 
+    custom_logger,
+    OUTPUT_DIR,
     TRANSLATIONS_DIR,
 )
 from src.structs import StepStatus, TextEdit, TextEditResponse
@@ -23,6 +23,9 @@ from src.utils import (
     get_html_files,
     read_html_file,
     write_html_file,
+    load_translated_html_contents,
+    extract_layout_properties_async,
+    get_message,
 )
 
 
@@ -64,17 +67,32 @@ async def detect_text_edits(state: ADTState, config: RunnableConfig) -> ADTState
     html_files = await get_html_files(OUTPUT_DIR)
     html_files = [html_file for html_file in html_files if html_file in filtered_files]
 
+    # Load translated HTML contents
+    translated_html_contents = await load_translated_html_contents(
+        language=state.language
+    )
+
     # Process each file
     text_edits: List[TextEdit] = []
     for html_file in html_files:
 
         # Read the file content
         html_content = await read_html_file(html_file)
+        html_content, _ = await extract_layout_properties_async(html_content)
+
+        translated_contents = next(
+            (
+                item[html_file] for item in translated_html_contents 
+                if item.get(html_file)
+            ),
+            None
+        )
 
         # Format messages
         formatted_messages = await messages.ainvoke(
             {
                 "text": html_content,
+                "translated_texts": translated_contents,
                 "instruction": current_step.step,
                 "languages": state.available_languages,
             },
@@ -113,7 +131,10 @@ def edit_texts(state: ADTState, config: RunnableConfig) -> ADTState:
     for text_edit in state.steps[state.current_step_index].text_edits:  # type: ignore
         for text_edit_translation in text_edit.translations:
             file_path = os.path.join(
-                OUTPUT_DIR, TRANSLATIONS_DIR, text_edit_translation.language, "translations.json"
+                OUTPUT_DIR,
+                TRANSLATIONS_DIR,
+                text_edit_translation.language,
+                "texts.json",
             )
 
             # Read and update the translation file
@@ -121,7 +142,7 @@ def edit_texts(state: ADTState, config: RunnableConfig) -> ADTState:
                 data = json.load(file)
 
             # Update the text
-            data["texts"][text_edit.element_id] = text_edit_translation.text
+            data[text_edit.element_id] = text_edit_translation.text
 
             # Write the updated data back to file
             with open(file_path, "w") as file:
@@ -131,7 +152,12 @@ def edit_texts(state: ADTState, config: RunnableConfig) -> ADTState:
     message = f"The following files have been processed and updated based on the instruction: '{state.steps[state.current_step_index].step}' for the languages: '{', '.join(state.available_languages)}'\n"
     for file in state.steps[state.current_step_index].html_files:  # type: ignore
         message += f"\n- {file}"
-    state.add_message(AIMessage(content=message))
+    state.add_message(SystemMessage(content=message))
+    state.add_message(
+        AIMessage(
+            content=get_message(state.user_language.value, "final_response")
+        )
+    )
 
     logger.info(
         f"Total files modified: {len(state.steps[state.current_step_index].html_files)}"

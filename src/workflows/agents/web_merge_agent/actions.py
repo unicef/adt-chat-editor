@@ -1,4 +1,4 @@
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
@@ -12,7 +12,10 @@ from src.settings import (
     OUTPUT_DIR,
     custom_logger,
 )
-from src.structs.status import StepStatus
+from src.structs import (
+    StepStatus, 
+    TranslatedHTMLStatus,
+)
 from src.workflows.state import ADTState
 from src.utils import (
     get_relative_path,
@@ -21,6 +24,9 @@ from src.utils import (
     write_html_file,
     find_and_duplicate_nav_line,
     write_nav_line,
+    load_translated_html_contents,
+    extract_layout_properties_async,
+    get_message,
 )
 
 logger = custom_logger("Web Merge Agent")
@@ -40,7 +46,7 @@ async def web_merge(state: ADTState, config: RunnableConfig) -> ADTState:
     # Define current state step
     current_step = state.steps[state.current_step_index]
 
-    # Get the relevant and layout-base-template html files 
+    # Get the relevant and layout-base-template html files
     filtered_files = current_step.html_files
 
     # Get all relevant HTML files from output directory
@@ -55,13 +61,31 @@ async def web_merge(state: ADTState, config: RunnableConfig) -> ADTState:
 
         # Read the file content using the new async function
         html_content = await read_html_file(html_file)
+        html_content, _ = await extract_layout_properties_async(html_content)
 
         html_contents.append(html_content)
+
+    # Load translated HTML contents
+    translated_html_contents = await load_translated_html_contents(
+        language=state.language
+    )
+
+    translated_contents = [
+        next(
+                (
+                    item[html_file] for item in translated_html_contents 
+                    if item.get(html_file)
+                ),
+                None
+            )
+        for html_file in html_files
+    ]
 
     # Format messages
     formatted_messages = await messages.ainvoke(
         {
             "html_inputs": html_contents,
+            "translated_texts": translated_contents,
             "instruction": state.messages[-1].content,
         },
         config,
@@ -78,22 +102,32 @@ async def web_merge(state: ADTState, config: RunnableConfig) -> ADTState:
     joined_name = "_".join(file_names)
     merged_file_name = OUTPUT_DIR + "/" + joined_name + ".html"
     modified_files = [merged_file_name]
-    
+
     # Save edited text back to the same file
     await write_html_file(merged_file_name, edited_html)
 
     # Update nav
-    nav_html = await read_html_file(OUTPUT_DIR + NAV_HTML_DIR)
-    nav_line = await find_and_duplicate_nav_line(nav_html, file_names[0] + ".html", joined_name + ".html")
-    nav_html = await write_nav_line(nav_html, nav_line)       
-    await write_html_file(OUTPUT_DIR + NAV_HTML_DIR, nav_html)
+    nav_html = await read_html_file(f"{OUTPUT_DIR}/{NAV_HTML_DIR}")
+    nav_line = await find_and_duplicate_nav_line(
+        nav_html, file_names[0] + ".html", joined_name + ".html"
+    )
+    nav_html = await write_nav_line(nav_html, nav_line)
+    await write_html_file(f"{OUTPUT_DIR}/{NAV_HTML_DIR}", nav_html)
 
     # Add message about the file being processed
     message = f"The following files have been processed and updated based on the instruction: '{current_step.step}'\n"
     for file in modified_files:
         message += f"- {file}\n"
-    state.add_message(AIMessage(content=message))
+    state.add_message(SystemMessage(content=message))
+    state.add_message(
+        AIMessage(
+            content=get_message(state.user_language.value, "final_response")
+        )
+    )
     logger.info(f"Total files modified: {len(modified_files)}")
+
+    # Set translated_html_status to not installed
+    state.translated_html_status = TranslatedHTMLStatus.NOT_INSTALLED
 
     # Update step status
     if 0 <= state.current_step_index < len(state.steps):

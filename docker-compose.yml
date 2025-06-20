@@ -1,0 +1,12 @@
+services:
+  fastapi:
+    build:
+      context: .  # Path to the build context (the directory where Dockerfile exists)
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./tmp:/app/tmp
+    env_file:
+      - .env
+    restart: unless-stopped

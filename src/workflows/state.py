@@ -1,25 +1,30 @@
-
-from dataclasses import dataclass, field
+from dataclasses import field
 from typing import Annotated, Optional, Sequence
 
 from langchain_core.messages import AnyMessage
 from langgraph.graph import add_messages
+from pydantic import BaseModel, Field
 
 from src.structs import (
     TailwindStatus,
+    TranslatedHTMLStatus,
+    UserLanguage,
     WorkflowStatus,
 )
 from src.structs.planning import PlanningStep
-from src.utils import get_language_from_translation_files, install_tailwind
+from src.utils import (
+    extract_and_save_html_contents,
+    get_language_from_translation_files,
+    install_tailwind,
+)
 
 
-@dataclass
-class BaseState:
+class BaseState(BaseModel):
     """Defines the input state for the agent, representing a narrower interface to the outside world.
     This class is used to define the initial state and structure of incoming data.
     """
 
-    messages: Annotated[Sequence[AnyMessage], add_messages] = field(
+    messages: Annotated[Sequence[AnyMessage], add_messages] = Field(
         default_factory=list
     )
 
@@ -27,33 +32,39 @@ class BaseState:
         self.messages = list(self.messages) + [message]
 
 
-@dataclass
 class ADTState(BaseState):
     """Represents the complete state of the agent, extending State with additional attributes.
     This class can be used to store any information needed throughout the agent's lifecycle.
     """
 
     # Main task
-    user_query: Annotated[str, add_messages] = field(default="")
-    status: WorkflowStatus = field(default=WorkflowStatus.IN_PROGRESS)
+    user_query: Annotated[str, add_messages] = Field(default="")
+    status: WorkflowStatus = Field(default=WorkflowStatus.IN_PROGRESS)
+    session_id: str = Field(default="")
 
     # Steps
-    steps: list[PlanningStep] = field(default_factory=list)
-    current_step_index: int = field(default=-1)
-    completed_steps: list[PlanningStep] = field(default_factory=list)
-    plan_accepted: bool = field(default=False)
-    plan_display: str = field(default="")
+    steps: list[PlanningStep] = Field(default_factory=list)
+    current_step_index: int = Field(default=-1)
+    completed_steps: list[PlanningStep] = Field(default_factory=list)
+    plan_accepted: bool = Field(default=False)
+    plan_shown_to_user: bool = Field(default=False)
+    plan_display: str = Field(default="")
 
     # Flags
-    is_irrelevant_query: bool = field(default=False)
-    is_forbidden_query: bool = field(default=False)
+    is_irrelevant_query: bool = Field(default=False)
+    is_forbidden_query: bool = Field(default=False)
 
     # Information
     available_languages: list[str] = field(default_factory=list)
     tailwind_status: TailwindStatus = field(default=TailwindStatus.NOT_INSTALLED)
+    translated_html_status: TranslatedHTMLStatus = field(
+        default=TranslatedHTMLStatus.NOT_INSTALLED
+    )
 
     # Configs
-    language: Optional[str] = None
+    language: Optional[str] = "en"
+    user_language: UserLanguage = field(default=UserLanguage.en)
+    current_pages: list[str] = []
 
     async def initialize_languages(self) -> None:
         """Initialize the available languages asynchronously."""
@@ -70,3 +81,20 @@ class ADTState(BaseState):
                 self.tailwind_status = TailwindStatus.FAILED
         except Exception:
             self.tailwind_status = TailwindStatus.FAILED
+
+    async def initialize_translated_html_content(
+        self, available_languages: list[str]
+    ) -> None:
+        """Initialize translated HTML contents asynchronously."""
+        self.translated_html_status = TranslatedHTMLStatus.INSTALLING
+        try:
+            success = []
+            for language in available_languages:
+                success.append(await extract_and_save_html_contents(language))
+            success = all(success)
+            if success:
+                self.translated_html_status = TranslatedHTMLStatus.INSTALLED
+            else:
+                self.translated_html_status = TranslatedHTMLStatus.FAILED
+        except Exception:
+            self.translated_html_status = TranslatedHTMLStatus.FAILED

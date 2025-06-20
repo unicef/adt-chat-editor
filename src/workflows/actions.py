@@ -1,10 +1,10 @@
 import textwrap
+from typing import Any
 
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
-from langgraph.types import interrupt
 
 from src.llm.llm_call import async_model_call
 from src.llm.llm_client import llm_client
@@ -12,17 +12,23 @@ from src.prompts import (
     ORCHESTRATOR_PLANNING_PROMPT,
     ORCHESTRATOR_SYSTEM_PROMPT,
 )
-from src.settings import OUTPUT_DIR, custom_logger
+from src.settings import (
+    OUTPUT_DIR,
+    custom_logger,
+)
 from src.structs import (
     OrchestratorPlanningOutput,
     PlanningStep,
     StepStatus,
     TailwindStatus,
+    TranslatedHTMLStatus,
+    WorkflowStatus,
 )
 from src.utils import (
-    extract_html_content_async,
-    get_html_files,
-    read_html_file,
+    get_language_name,
+    get_message,
+    load_translated_html_contents,
+    parse_html_pages,
 )
 from src.workflows.agents import AVAILABLE_AGENTS
 from src.workflows.state import ADTState
@@ -50,16 +56,21 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
     """
     logger.info("Planning steps")
 
+    # Initialize languages
+    if not state.available_languages:
+        await state.initialize_languages()
+
+    # Initialize tailwind
+    if state.tailwind_status != TailwindStatus.INSTALLED:
+        await state.initialize_tailwind()
+
+    # Initialize translated HTML contents
+    if state.translated_html_status != TranslatedHTMLStatus.INSTALLED:
+        await state.initialize_translated_html_content(state.available_languages)
+
     # Initialize the flags
     state.is_irrelevant_query = False
     state.is_forbidden_query = False
-
-    # Initialize languages
-    await state.initialize_languages()
-    
-    # Initialize languages
-    if state.tailwind_status != TailwindStatus.INSTALLED:
-        await state.initialize_tailwind()
 
     # Set user query
     state.user_query = str(state.messages[-1].content)
@@ -80,17 +91,32 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
         if step.status == StepStatus.SUCCESS
     )
 
-    # Define available HTML files
-    html_files = await get_html_files(OUTPUT_DIR)
-    available_html_files = [
-        {
-            "html_name": html_file,
-            "html_content": await extract_html_content_async(
-                await read_html_file(html_file)
-            ),
+    # Load translated HTML contents
+    available_html_files = await load_translated_html_contents(language=state.language)
+    if state.current_pages:
+        logger.info("Filtering selected page")
+        current_pages = [
+            f"{OUTPUT_DIR}/{current_page}" for current_page in state.current_pages
+        ]
+        available_html_files = {
+            path: " ".join(val for item in content_list for val in item.values())
+            for entry in available_html_files
+            for path, content_list in entry.items()
+            if path in current_pages
         }
-        for html_file in html_files
-    ]
+        is_current_page = True
+        logger.info(f"The selected page is: {available_html_files.keys()}")
+    else:
+        available_html_files = {
+            path: " ".join(val for item in content_list for val in item.values())
+            for entry in available_html_files
+            for path, content_list in entry.items()
+        }
+        is_current_page = False
+
+    # Get all relevant HTML files map to pages
+    html_files = list(available_html_files.keys())
+    html_page_map = await parse_html_pages(html_files)
 
     # Format messages
     messages = ChatPromptTemplate(
@@ -107,8 +133,11 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
                 f"{agent['name']}: {agent['description']}" for agent in AVAILABLE_AGENTS
             ],
             "available_html_files": available_html_files,
+            "html_page_map": html_page_map,
+            "is_current_page": is_current_page,
             "previous_conversation": previous_conversation,
             "user_feedback": "",  # Empty string for initial planning
+            "user_language": get_language_name(state.user_language.value),
             "completed_steps": completed_steps,
         },
         config,
@@ -164,23 +193,18 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
             )
         )
 
-    # Add the plan display to the messages
-    state.add_message(AIMessage(content=create_plan_display(state)))
-
     # Add the rephrase query message if no steps were found
     if not state.steps:
         rephrase_query_display = textwrap.dedent(
-            """
-            The system did not detect any actionable steps to solve the task.
-            Please, rephrase the query to make it more specific and clear.
-            """
+            get_message(state.user_language.value, "rephrase_query")
         )
-        state.add_message(AIMessage(content=rephrase_query_display))
+        if not parsed_response.is_irrelevant and not parsed_response.is_forbidden:
+            state.add_message(SystemMessage(content=rephrase_query_display))
 
     return state
 
 
-async def rephrase_query(state: ADTState, config: RunnableConfig) -> ADTState:
+async def rephrase_query(state: ADTState, config: RunnableConfig) -> dict[str, Any]:
     """Ask the user to rephrase the query to make it more specific and clear.
 
     Args:
@@ -191,21 +215,13 @@ async def rephrase_query(state: ADTState, config: RunnableConfig) -> ADTState:
 
     # Format the plan for display
     rephrase_query_display = textwrap.dedent(
-        """
-        The system did not detect any actionable steps to solve the task.
-        Please, rephrase the query to make it more specific and clear.
-        """
+        get_message(state.user_language.value, "rephrase_query")
     )
 
-    # Use interrupt to get user input
-    user_response = interrupt(
-        {
-            "type": "rephrase_query",
-            "content": rephrase_query_display,
-        }
-    )
+    # Update the state
+    state.add_message(AIMessage(content=rephrase_query_display))
 
-    return state
+    return {"messages": [AIMessage(content=rephrase_query_display)]}
 
 
 def create_plan_display(state: ADTState) -> str:
@@ -214,15 +230,16 @@ def create_plan_display(state: ADTState) -> str:
     Args:
         state: The state of the agent.
     """
-    plan_display = "Here are the planned steps:\n\n"
-    for i, step in enumerate(state.steps, 1):
-        plan_display += f"{i}. {step.non_technical_description}\n"
+    steps_description = [f"{i}. {step.non_technical_description}" for i, step in enumerate(state.steps, 1)]
+    steps_description_str = '\n'.join(steps_description)
 
-    plan_display += "\nWould you like to proceed with this plan?"
+    plan_display = get_message(state.user_language.value, "plan_display")
+    plan_display = plan_display.format(steps=steps_description_str)
+    
     return plan_display
 
 
-async def show_plan_to_user(state: ADTState, config: RunnableConfig) -> ADTState:
+async def show_plan_to_user(state: ADTState, config: RunnableConfig) -> dict[str, Any]:
     """Show the planned steps to the user and allow for adjustments.
 
     Args:
@@ -235,18 +252,10 @@ async def show_plan_to_user(state: ADTState, config: RunnableConfig) -> ADTState
     logger.info("Showing plan to user")
 
     # Format the plan for display
-    plan_display = create_plan_display(state)
+    plan_display = create_plan_display(state).replace(f"{OUTPUT_DIR}/", "")
     logger.info(f"Plan display: {plan_display}")
 
-    # Use interrupt to get user input
-    user_response = interrupt(
-        {
-            "type": "plan_review",
-            "content": plan_display,
-        }
-    )
-
-    return state
+    return {"messages": [AIMessage(content=plan_display)], "plan_shown_to_user": True}
 
 
 async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTState:
@@ -275,15 +284,32 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
         if step.status == StepStatus.SUCCESS
     )
 
-    # Define available HTML files
-    html_files = await get_html_files(OUTPUT_DIR)
-    available_html_files = [
-        {
-            "html_name": html_file,
-            "html_content": await extract_html_content_async(html_file),
+    # Load translated HTML contents
+    available_html_files = await load_translated_html_contents(language=state.language)
+    if state.current_pages:
+        logger.info("Filtering selected page")
+        current_pages = [
+            f"{OUTPUT_DIR}/{current_page}" for current_page in state.current_pages
+        ]
+        available_html_files = {
+            path: " ".join(val for item in content_list for val in item.values())
+            for entry in available_html_files
+            for path, content_list in entry.items()
+            if path in current_pages
         }
-        for html_file in html_files
-    ]
+        is_current_page = True
+        logger.info(f"The selected page is: {available_html_files.keys()}")
+    else:
+        available_html_files = {
+            path: " ".join(val for item in content_list for val in item.values())
+            for entry in available_html_files
+            for path, content_list in entry.items()
+        }
+        is_current_page = False
+
+    # Get all relevant HTML files map to pages
+    html_files = list(available_html_files.keys())
+    html_page_map = await parse_html_pages(html_files)
 
     # Format messages
     messages = ChatPromptTemplate(
@@ -300,8 +326,11 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
                 f"{agent['name']}: {agent['description']}" for agent in AVAILABLE_AGENTS
             ],
             "available_html_files": available_html_files,
+            "html_page_map": html_page_map,
+            "is_current_page": is_current_page,
             "previous_conversation": previous_conversation,
             "user_feedback": last_message,
+            "user_language": get_language_name(state.user_language.value),
             "completed_steps": completed_steps,
         },
         config,
@@ -327,13 +356,12 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
     # Change the new steps if needed
     if parsed_response.modified:
         state.steps = parsed_response.steps
-        state.add_message(AIMessage(content=create_plan_display(state)))
 
     return state
 
 
-async def execute_step(state: ADTState, config: RunnableConfig) -> ADTState:
-    """Execute the current step in the plan.
+async def execute_next_step(state: ADTState, config: RunnableConfig) -> ADTState:
+    """Execute the next step in the plan.
 
     Args:
         state: The state of the agent.
@@ -343,6 +371,7 @@ async def execute_step(state: ADTState, config: RunnableConfig) -> ADTState:
         The state of the agent.
     """
     logger.info("Executing current step")
+    logger.debug(f"State at execute_next_step: {state}")
 
     # Increment the step index
     state.current_step_index += 1
@@ -375,19 +404,11 @@ async def add_non_valid_message(
     """
     if state.is_forbidden_query:
         non_valid_message = textwrap.dedent(
-            """
-            The message sent was found as not allowed to be processed.
-            Please, rephrase the query to make it more specific and clear and alligned with the user guidelines.
-            """
+            get_message(state.user_language.value, "forbidden_query")
         )
     elif state.is_irrelevant_query:
         non_valid_message = textwrap.dedent(
-            """
-            The message sent was not found relevant to the user guidelines.
-            This system is intended to be used to help the reviewers to modify Accessible Digital Textbooks.
-
-            Please, rephrase the query to make it more specific and clear and alligned with the user guidelines.
-            """
+            get_message(state.user_language.value, "irrelevant_query")
         )
     else:
         raise ValueError(
@@ -397,3 +418,19 @@ async def add_non_valid_message(
     state.add_message(AIMessage(content=non_valid_message))
 
     return {"messages": [AIMessage(content=non_valid_message)]}
+
+
+async def finalize_task_execution(state: ADTState, config: RunnableConfig) -> ADTState:
+    """Finalize the task execution.
+
+    Args:
+        state: The state of the agent.
+        config: The configuration of the agent.
+    """
+    logger.info("Finalizing task execution")
+
+    # Save the state
+    state.plan_shown_to_user = False
+    state.status = WorkflowStatus.SUCCESS
+
+    return state

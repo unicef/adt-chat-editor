@@ -1,4 +1,4 @@
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
@@ -15,6 +15,9 @@ from src.utils import (
     get_html_files,
     read_html_file,
     write_html_file,
+    load_translated_html_contents,
+    extract_layout_properties_async,
+    get_message,
 )
 
 
@@ -73,6 +76,7 @@ async def mirror_layout(state: ADTState, config: RunnableConfig) -> ADTState:
         # Read the file content
         rel_path = await get_relative_path(html_file, "data")
         html_content = await read_html_file(html_file)
+        html_content, _ = await extract_layout_properties_async(html_content)
 
         # Format messages
         formatted_messages = await messages.ainvoke(
@@ -100,7 +104,12 @@ async def mirror_layout(state: ADTState, config: RunnableConfig) -> ADTState:
     message = f"The following files have been processed and updated based on the instruction: '{current_step.step}'\n"
     for file in modified_files:
         message += f"- {file}\n"
-    state.add_message(AIMessage(content=message))
+    state.add_message(SystemMessage(content=message))
+    state.add_message(
+        AIMessage(
+            content=get_message(state.user_language.value, "final_response")
+        )
+    )
     logger.info(f"Total files modified: {len(modified_files)}")
 
     # Update step status

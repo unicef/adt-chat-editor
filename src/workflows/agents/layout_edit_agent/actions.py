@@ -1,4 +1,4 @@
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
@@ -20,6 +20,9 @@ from src.utils import (
     read_html_file,
     update_tailwind,
     write_html_file,
+    load_translated_html_contents,
+    extract_layout_properties_async,
+    get_message,
 )
 from src.workflows.state import ADTState
 
@@ -55,7 +58,12 @@ async def edit_layout(state: ADTState, config: RunnableConfig) -> ADTState:
     # Get all relevant HTML files from output directory
     html_files = await get_html_files(OUTPUT_DIR)
     html_files = [html_file for html_file in html_files if html_file in filtered_files]
-    
+
+    # Load translated HTML contents
+    translated_html_contents = await load_translated_html_contents(
+        language=state.language
+    )
+
     # Process each relevant HTML file
     modified_files = []
     for html_file in html_files:
@@ -63,11 +71,21 @@ async def edit_layout(state: ADTState, config: RunnableConfig) -> ADTState:
         # Read the file content
         rel_path = await get_relative_path(html_file, "data")
         html_content = await read_html_file(html_file)
+        html_content, _ = await extract_layout_properties_async(html_content)
+
+        translated_contents = next(
+            (
+                item[html_file] for item in translated_html_contents 
+                if item.get(html_file)
+            ),
+            None
+        )
 
         # Format messages
         formatted_messages = await messages.ainvoke(
             {
                 "target_html_file": html_content,
+                "translated_texts": translated_contents,
                 "instruction": current_step.step,
             },
             config,
@@ -87,18 +105,21 @@ async def edit_layout(state: ADTState, config: RunnableConfig) -> ADTState:
 
     # Command to update the tailwind.css
     updated_tailwind = await update_tailwind(
-        OUTPUT_DIR, 
-        TAILWIND_CSS_IN_DIR, 
-        TAILWIND_CSS_OUT_DIR
+        OUTPUT_DIR, TAILWIND_CSS_IN_DIR, TAILWIND_CSS_OUT_DIR
     )
 
     logger.info(f"Updated_tailwind: {updated_tailwind}")
-    
+
     # Add message about the file being processed
     message = f"The following files have been processed and updated based on the instruction: '{current_step.step}'\n"
     for file in modified_files:
         message += f"- {file}\n"
-    state.add_message(AIMessage(content=message))
+    state.add_message(SystemMessage(content=message))
+    state.add_message(
+        AIMessage(
+            content=get_message(state.user_language.value, "final_response")
+        )
+    )
     logger.info(f"Total files modified: {len(modified_files)}")
 
     # Update step status

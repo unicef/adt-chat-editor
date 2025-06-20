@@ -2,6 +2,7 @@ from typing import List
 from pydantic import BaseModel
 
 from src.structs.books import BookInformation
+from src.structs.status import WorkflowStatus
 
 
 class ChatMessageResponse(BaseModel):
@@ -19,6 +20,8 @@ class ChatEditRequest(BaseModel):
     session_id: str
     user_message: str
     language: str
+    user_language: str
+    pages: List[str]
     book_information: BookInformation
 
 
@@ -26,5 +29,6 @@ class ChatEditResponse(BaseModel):
     """Model for chat-based editing responses."""
 
     session_id: str
+    status: WorkflowStatus
     messages: List[ChatMessageResponse]
     book_information: BookInformation
