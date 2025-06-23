@@ -3,7 +3,7 @@ FROM python:3.10-slim
 
 # Install system dependencies in a single layer
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+    apt-get install -y --no-install-recommends --fix-missing \
     curl \
     gnupg && \
     curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
