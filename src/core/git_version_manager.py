@@ -23,6 +23,13 @@ class AsyncGitVersionManager:
         self.repo_path = Path(repo_path).resolve()
         if not self.repo_path.exists():
             raise FileNotFoundError(f"Repository path not found: {self.repo_path}")
+        if not (self.repo_path / '.git').exists():
+            raise FileNotFoundError(f"No git repository found at: {self.repo_path}")
+        asyncio.create_task(self._configure_git_identity())
+
+    async def _configure_git_identity(self):
+        await self._run_git("config", "user.email", "bot@example.com")
+        await self._run_git("config", "user.name", "AI Publisher Bot")
 
     async def _run_git(self, *args):
         process = await asyncio.create_subprocess_exec(

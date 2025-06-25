@@ -11,6 +11,7 @@ TRANSLATIONS_DIR = "content/i18n"
 TAILWIND_CSS_IN_DIR = "assets/tailwind_css.css"
 TAILWIND_CSS_OUT_DIR = "content/tailwind_output.css"
 
+BASE_BRANCH_NAME = "adt_chat_editor/"
 
 class Settings(BaseSettings):
     INPUT_DIR: str = INPUT_DIR
@@ -21,3 +22,4 @@ class Settings(BaseSettings):
     TRANSLATIONS_DIR: str = TRANSLATIONS_DIR
     TAILWIND_CSS_IN_DIR: str = TAILWIND_CSS_IN_DIR
     TAILWIND_CSS_OUT_DIR: str = TAILWIND_CSS_OUT_DIR
+    BASE_BRANCH_NAME: str = BASE_BRANCH_NAME
