@@ -12,10 +12,9 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 
 
 class AsyncGitVersionManager:
-    """
-    Asynchronous manager for handling Git versioning workflows in a local GitHub repository.
+    """Asynchronous manager for handling Git versioning workflows in a local GitHub repository.
     Designed to support AI agents modifying code in a project directory.
-    
+
     Attributes:
         repo_path (Path): Path to the local git repository.
     """
@@ -26,10 +25,50 @@ class AsyncGitVersionManager:
         if not (self.repo_path / '.git').exists():
             raise FileNotFoundError(f"No git repository found at: {self.repo_path}")
         asyncio.create_task(self._configure_git_identity())
+        asyncio.create_task(self._ensure_https_remote())
 
     async def _configure_git_identity(self):
         await self._run_git("config", "user.email", "bot@example.com")
         await self._run_git("config", "user.name", "AI Publisher Bot")
+
+    async def _ensure_https_remote(self):
+        token = GITHUB_TOKEN
+        if not token:
+            raise RuntimeError("Missing GITHUB_TOKEN in environment")
+
+        remote_url = await self._run_git("remote", "get-url", "origin")
+
+        if remote_url.startswith("git@github.com:"):
+            path = remote_url.split("git@github.com:")[1].rstrip(".git")
+            https_url = f"https://{token}:x-oauth-basic@github.com/{path}.git"
+        elif remote_url.startswith("https://github.com/"):
+            path = remote_url.split("https://github.com/")[1].rstrip(".git")
+            https_url = f"https://{token}:x-oauth-basic@github.com/{path}.git"
+        elif token not in remote_url:
+            raise RuntimeError(f"Unrecognized or already rewritten remote URL: {remote_url}")
+        else:
+            return
+
+        await self._run_git("remote", "set-url", "origin", https_url)
+
+    async def _gh_auth_login(self):
+        """Authenticates the GitHub CLI (`gh`) using the GitHub token provided in the GITHUB_TOKEN env var.
+        """
+        token = GITHUB_TOKEN
+        if not token:
+            raise RuntimeError("Missing GITHUB_TOKEN in environment for gh auth login")
+
+        process = await asyncio.create_subprocess_exec(
+            "gh", "auth", "login", "--with-token",
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=self.repo_path
+        )
+        stdout, stderr = await process.communicate(input=f"{token}\n".encode())
+
+        if process.returncode != 0:
+            raise RuntimeError(f"`gh auth login` failed:\n{stderr.decode()}")
 
     async def _run_git(self, *args):
         process = await asyncio.create_subprocess_exec(
@@ -61,14 +100,12 @@ class AsyncGitVersionManager:
         return stdout.decode().strip()
 
     async def create_branch(self, branch_name: str):
-        """Create a new git branch."""
         try:
             await self._run_git('checkout', '-b', branch_name)
         except Exception as e:
             raise RuntimeError(f"Failed to create branch '{branch_name}': {e}")
 
     async def commit_changes(self, message: str):
-        """Stage all changes and commit with a message."""
         try:
             await self._run_git('add', '.')
             await self._run_git('commit', '-m', message)
@@ -76,7 +113,6 @@ class AsyncGitVersionManager:
             raise RuntimeError(f"Failed to commit changes: {e}")
 
     async def get_branches(self) -> Dict[str, str]:
-        """List all branches in the repository."""
         try:
             output = await self._run_git('branch', '--list')
             branches = [line.strip().lstrip('* ') for line in output.splitlines()]
@@ -85,21 +121,18 @@ class AsyncGitVersionManager:
             raise RuntimeError(f"Failed to list branches: {e}")
 
     async def checkout_branch(self, branch_name: str):
-        """Switch to a specific branch."""
         try:
             await self._run_git('checkout', branch_name)
         except Exception as e:
             raise RuntimeError(f"Failed to checkout branch '{branch_name}': {e}")
 
     async def push_branch(self, branch_name: str):
-        """Push the branch to the remote repository."""
         try:
             await self._run_git('push', '--set-upstream', 'origin', branch_name)
         except Exception as e:
             raise RuntimeError(f"Failed to push branch '{branch_name}': {e}")
 
     async def current_branch(self) -> str:
-        """Return the name of the currently checked out branch."""
         try:
             return await self._run_git('rev-parse', '--abbrev-ref', 'HEAD')
         except Exception as e:
@@ -120,7 +153,6 @@ class AsyncGitVersionManager:
             raise RuntimeError(f"Failed to create pull request: {e}")
 
     async def save_branch_versions_as_json(self, file_path: str):
-        """Save the list of branches as a JSON file."""
         try:
             branches = await self.get_branches()
             json_path = Path(file_path)
@@ -129,13 +161,6 @@ class AsyncGitVersionManager:
             raise RuntimeError(f"Failed to save branches to JSON: {e}")
 
     async def remove_branch(self, branch_name: str, force: bool = False):
-        """
-        Remove a local git branch.
-
-        Args:
-            branch_name (str): Name of the branch to remove.
-            force (bool): Whether to force deletion (use -D instead of -d).
-        """
         try:
             current = await self.current_branch()
             if current == branch_name:
