@@ -2,7 +2,7 @@ import asyncio
 import json
 import os
 from pathlib import Path
-from typing import Dict
+from typing import List, Dict
 
 from dotenv import load_dotenv
 
@@ -105,12 +105,86 @@ class AsyncGitVersionManager:
         except Exception as e:
             raise RuntimeError(f"Failed to create branch '{branch_name}': {e}")
 
-    async def commit_changes(self, message: str):
+    async def commit_changes(self, message: str) -> bool:
         try:
+            # Stage all files
             await self._run_git('add', '.')
+    
+            # Check if staged changes differ from HEAD (avoid empty commit)
+            diff_process = await asyncio.create_subprocess_exec(
+                'git', 'diff', '--cached', '--exit-code', '--quiet', 'HEAD',
+                cwd=self.repo_path
+            )
+            await diff_process.wait()
+    
+            if diff_process.returncode == 0:
+                # No actual content changes to commit
+                return False
+    
+            # Perform the commit
             await self._run_git('commit', '-m', message)
+            return True
+    
         except Exception as e:
             raise RuntimeError(f"Failed to commit changes: {e}")
+
+    async def checkout_commit(self, commit_hash: str):
+        """Checkout a specific commit in detached HEAD mode."""
+        try:
+            await self._run_git('checkout', commit_hash)
+        except Exception as e:
+            raise RuntimeError(f"Failed to checkout commit {commit_hash}: {e}")
+
+    async def list_commits(
+        self, 
+        branch_name: str, 
+        limit: int = 50, 
+        author_email: str = "bot@example.com", 
+        since_last_push: bool = True
+    ) -> List[Dict[str, str]]:
+        try:
+            await self.checkout_branch(branch_name)
+    
+            # If asking only for unpublished changes (since last push)
+            if since_last_push:
+                try:
+                    # Check if the tag exists
+                    _ = await self._run_git("rev-parse", "last_published")
+                    range_arg = "last_published..HEAD"
+                except Exception:
+                    # Tag does not exist → no published point → return empty list
+                    return []
+    
+            else:
+                # Include all commits in branch
+                range_arg = branch_name
+    
+            output = await self._run_git(
+                "log",
+                range_arg,
+                f"--max-count={limit}",
+                f"--author={author_email}",
+                "--pretty=format:%H|%s"
+            )
+            commits = []
+            for line in output.splitlines():
+                if "|" in line:
+                    commit_hash, message = line.split("|", 1)
+                    commits.append({"hash": commit_hash, "message": message})
+            return commits[::-1]
+    
+        except Exception as e:
+            raise RuntimeError(f"Failed to list commits: {e}")
+
+    async def commit_versions_dict(
+        self, 
+        branch_name: str, 
+        limit: int = 50, 
+        author_email: str = "bot@example.com", 
+        since_last_push: bool = True
+    ) -> Dict[str, str]:
+        commits = await self.list_commits(branch_name, limit, author_email, since_last_push)
+        return {f"version_{i+1}": c["hash"] for i, c in enumerate(commits)}
 
     async def get_branches(self) -> Dict[str, str]:
         try:
@@ -132,6 +206,10 @@ class AsyncGitVersionManager:
         except Exception as e:
             raise RuntimeError(f"Failed to push branch '{branch_name}': {e}")
 
+    async def tag_last_published_commit(self, tag_name: str = "last_published"):
+        commit_hash = await self._run_git("rev-parse", "HEAD")
+        await self._run_git("tag", "-f", tag_name, commit_hash)  # -f to overwrite
+
     async def current_branch(self) -> str:
         try:
             return await self._run_git('rev-parse', '--abbrev-ref', 'HEAD')
@@ -151,6 +229,21 @@ class AsyncGitVersionManager:
             )
         except Exception as e:
             raise RuntimeError(f"Failed to create pull request: {e}")
+
+    async def pull_request_exists(self, branch_name: str) -> bool:
+        """
+        Check if a pull request exists for the given branch (as the head branch).
+        """
+        try:
+            output = await self._run_gh(
+                "pr", "list",
+                "--head", branch_name,
+                "--json", "number",
+                "--jq", ".[0].number"
+            )
+            return output.strip().isdigit()
+        except Exception as e:
+            raise RuntimeError(f"Failed to check pull request existence for '{branch_name}': {e}")
 
     async def save_branch_versions_as_json(self, file_path: str):
         try:
