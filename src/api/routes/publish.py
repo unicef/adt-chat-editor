@@ -34,6 +34,8 @@ async def ensure_branch_on_startup():
             new_branch = f"{BASE_BRANCH_NAME}_{uu_id}"
             await git_manager.create_branch(branch_name=new_branch)
             logger.debug(f"Created new working branch: {new_branch}")
+        await git_manager.tag_last_published_commit()
+        logger.debug("Tagged last published commit")
     except Exception as e:
         logger.error(f"Failed to set up working branch on startup: {e}")
 
