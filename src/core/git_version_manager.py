@@ -2,7 +2,7 @@ import asyncio
 import json
 import os
 from pathlib import Path
-from typing import List, Dict
+from typing import Dict, List
 
 from dotenv import load_dotenv
 
@@ -19,6 +19,7 @@ class AsyncGitVersionManager:
         repo_path (Path): Path to the local git repository.
     """
     def __init__(self, repo_path: str):
+        self.true_branch_name = None
         self.repo_path = Path(repo_path).resolve()
         if not self.repo_path.exists():
             raise FileNotFoundError(f"Repository path not found: {self.repo_path}")
@@ -131,6 +132,7 @@ class AsyncGitVersionManager:
     async def checkout_commit(self, commit_hash: str):
         """Checkout a specific commit in detached HEAD mode."""
         try:
+            self.true_branch_name = await self.current_branch()
             await self._run_git('checkout', commit_hash)
         except Exception as e:
             raise RuntimeError(f"Failed to checkout commit {commit_hash}: {e}")
@@ -206,6 +208,41 @@ class AsyncGitVersionManager:
         except Exception as e:
             raise RuntimeError(f"Failed to push branch '{branch_name}': {e}")
 
+    async def force_branch_to_current_commit(self, branch_name: str):
+        """Move <branch_name> so it points at the commit currently checked out
+        (which may be a detached‑HEAD commit), then force‑push it to origin.
+
+        Equivalent shell:
+            COMMIT=$(git rev-parse HEAD)
+            git checkout <branch_name>
+            git reset --hard $COMMIT
+            git push --force origin <branch_name>
+        """
+        try:
+            # 1. Remember the detached‑HEAD commit we want
+            current_commit = await self._run_git("rev-parse", "HEAD")
+
+            # 2. Switch to the target branch
+            await self._run_git("checkout", branch_name)
+
+            # 3. Rewind the branch pointer to that commit
+            await self._run_git("reset", "--hard", current_commit)
+
+            # 4. Force‑push so remote matches local
+            await self._run_git("push", "--force", "origin", branch_name)
+
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to force branch '{branch_name}' to commit {current_commit}: {e}"
+            )
+
+    async def safe_push(self, branch_name: str):
+        branch = await self.current_branch()
+        if branch == "HEAD":
+            await self.force_branch_to_current_commit(branch_name)
+        else:
+            await self.push_branch(branch_name)
+
     async def tag_last_published_commit(self, tag_name: str = "last_published"):
         commit_hash = await self._run_git("rev-parse", "HEAD")
         await self._run_git("tag", "-f", tag_name, commit_hash)  # -f to overwrite
@@ -231,8 +268,7 @@ class AsyncGitVersionManager:
             raise RuntimeError(f"Failed to create pull request: {e}")
 
     async def pull_request_exists(self, branch_name: str) -> bool:
-        """
-        Check if a pull request exists for the given branch (as the head branch).
+        """Check if a pull request exists for the given branch (as the head branch).
         """
         try:
             output = await self._run_gh(

@@ -1,16 +1,11 @@
-import asyncio
 import uuid
 from typing import Dict, List
 
 from fastapi import APIRouter, Body
 
-from src.structs import PublishMetadata, PublishRequest, PublishResponse
-from src.settings import (
-    custom_logger, 
-    OUTPUT_DIR,
-    BASE_BRANCH_NAME
-)
 from src.core.git_version_manager import AsyncGitVersionManager
+from src.settings import BASE_BRANCH_NAME, OUTPUT_DIR, custom_logger
+from src.structs import PublishMetadata, PublishRequest, PublishResponse
 
 # Create logger
 logger = custom_logger("Publish API Router")
@@ -25,7 +20,7 @@ git_manager = AsyncGitVersionManager(OUTPUT_DIR)
 # Ensure working branch on app startup
 @router.on_event("startup")
 async def ensure_branch_on_startup():
-    logger.debug(f"Setting GitHub Branching Logics")
+    logger.debug("Setting GitHub Branching Logics")
     try:
         current_branch = await git_manager.current_branch()
         logger.debug(f"Curent branch: {current_branch}")
@@ -105,10 +100,13 @@ async def publish_changes(request: PublishRequest):
         previous_commits = await git_manager.list_commits(branch_name=current_branch)
         current_commit = await git_manager.commit_changes(message=message)
 
+        if current_branch == "HEAD":
+            current_branch = git_manager.true_branch_name
+        
         if current_commit:
             logger.debug(f"Committed changes with message: {message}")
 
-            await git_manager.push_branch(branch_name=current_branch)
+            await git_manager.safe_push(branch_name=current_branch)
             logger.debug(f"Pushed branch '{current_branch}' to origin")
 
             await git_manager.tag_last_published_commit()
@@ -131,7 +129,7 @@ async def publish_changes(request: PublishRequest):
             )
 
         elif previous_commits:
-            await git_manager.push_branch(branch_name=current_branch)
+            await git_manager.safe_push(branch_name=current_branch)
             logger.debug(f"Pushed branch '{current_branch}' to origin")
 
             await git_manager.tag_last_published_commit()
