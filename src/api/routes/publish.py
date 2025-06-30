@@ -1,4 +1,3 @@
-import uuid
 from typing import Dict, List
 
 from fastapi import APIRouter, Body
@@ -14,25 +13,10 @@ logger = custom_logger("Publish API Router")
 router = APIRouter(prefix="/publish", tags=["Publish"])
 
 # Git manager instance
-git_manager = AsyncGitVersionManager(OUTPUT_DIR)
-
-
-# Ensure working branch on app startup
-@router.on_event("startup")
-async def ensure_branch_on_startup():
-    logger.debug("Setting GitHub Branching Logics")
-    try:
-        current_branch = await git_manager.current_branch()
-        logger.debug(f"Curent branch: {current_branch}")
-        if not current_branch.startswith(BASE_BRANCH_NAME):
-            uu_id = uuid.uuid4().hex
-            new_branch = f"{BASE_BRANCH_NAME}_{uu_id}"
-            await git_manager.create_branch(branch_name=new_branch)
-            logger.debug(f"Created new working branch: {new_branch}")
-        await git_manager.tag_last_published_commit()
-        logger.debug("Tagged last published commit")
-    except Exception as e:
-        logger.error(f"Failed to set up working branch on startup: {e}")
+git_manager = AsyncGitVersionManager(
+    repo_path=OUTPUT_DIR,
+    base_branch_name=BASE_BRANCH_NAME
+)
 
 
 # Save user changes (commit)
