@@ -133,7 +133,7 @@ class AsyncGitVersionManager:
         """Checkout a specific commit in detached HEAD mode."""
         try:
             self.true_branch_name = await self.current_branch()
-            await self._run_git('checkout', commit_hash)
+            await self._run_git('checkout', '-f', commit_hash)
         except Exception as e:
             raise RuntimeError(f"Failed to checkout commit {commit_hash}: {e}")
 
