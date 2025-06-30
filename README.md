@@ -61,6 +61,9 @@ LANGSMITH_API_KEY=dummy_key
 # OpenAI
 OPENAI_API_KEY=sk-proj-...
 OPENAI_MODEL=gpt-4.1
+
+# GitHUb Token
+GITHUB_TOKEN=github_pat_...
 ```
 
 ### Basic Setup
@@ -133,4 +136,14 @@ To visualize changes properly on a local website, you can also run a local serve
 
 ```bash
 (env)$ python3 -m http.server 8000
+```
+
+### Running API via Docker
+
+First, you need to install Docker
+
+#### Running API
+
+```bash
+(env)$ docker-compose up --build 
 ```
