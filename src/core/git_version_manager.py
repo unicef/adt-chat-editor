@@ -1,6 +1,8 @@
 import asyncio
 import json
 import os
+import uuid
+
 from pathlib import Path
 from typing import Dict, List
 
@@ -18,15 +20,19 @@ class AsyncGitVersionManager:
     Attributes:
         repo_path (Path): Path to the local git repository.
     """
-    def __init__(self, repo_path: str):
-        self.true_branch_name = None
+    def __init__(self, repo_path: str, base_branch_name: str):
         self.repo_path = Path(repo_path).resolve()
+        self.base_branch_name = base_branch_name
+        self.true_branch_name = None  
+
         if not self.repo_path.exists():
             raise FileNotFoundError(f"Repository path not found: {self.repo_path}")
         if not (self.repo_path / '.git').exists():
             raise FileNotFoundError(f"No git repository found at: {self.repo_path}")
+
         asyncio.create_task(self._configure_git_identity())
         asyncio.create_task(self._ensure_https_remote())
+        asyncio.create_task(self._initialise_working_branch())
 
     async def _configure_git_identity(self):
         await self._run_git("config", "user.email", "bot@example.com")
@@ -51,6 +57,29 @@ class AsyncGitVersionManager:
             return
 
         await self._run_git("remote", "set-url", "origin", https_url)
+
+    async def _initialise_working_branch(self):
+        """
+        Mirrors the old FastAPI‐router startup logic:
+        • Ensures we are on (or create) a branch that begins with `base_branch_name`.
+        • Tags HEAD as `last_published`.
+        • Sets `self.true_branch_name` for later use.
+        """
+        try:
+            current = await self.current_branch()
+
+            if not current.startswith(self.base_branch_name):
+                new_branch = f"{self.base_branch_name}_{uuid.uuid4().hex}"
+                await self.create_branch(new_branch)
+                self.true_branch_name = new_branch
+            else:
+                self.true_branch_name = current
+
+            await self.tag_last_published_commit()
+
+        except Exception as e:
+            # Up to you: replace with your logger
+            print(f"[GitManager] Startup branch initialisation failed: {e}")
 
     async def _gh_auth_login(self):
         """Authenticates the GitHub CLI (`gh`) using the GitHub token provided in the GITHUB_TOKEN env var.
@@ -132,7 +161,6 @@ class AsyncGitVersionManager:
     async def checkout_commit(self, commit_hash: str):
         """Checkout a specific commit in detached HEAD mode."""
         try:
-            self.true_branch_name = await self.current_branch()
             await self._run_git('checkout', '-f', commit_hash)
         except Exception as e:
             raise RuntimeError(f"Failed to checkout commit {commit_hash}: {e}")
