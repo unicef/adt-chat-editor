@@ -7,6 +7,7 @@ from src.settings.config import (
     TAILWIND_CSS_IN_DIR,
     TAILWIND_CSS_OUT_DIR,
     TRANSLATIONS_DIR,
+    BASE_BRANCH_NAME,
 )
 from src.settings.logger import custom_logger
 
@@ -20,4 +21,5 @@ __all__ = [
     "TRANSLATIONS_DIR",
     "TAILWIND_CSS_IN_DIR",
     "TAILWIND_CSS_OUT_DIR",
+    "BASE_BRANCH_NAME"
 ]

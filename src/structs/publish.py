@@ -15,6 +15,7 @@ class PublishMetadata(BaseModel):
 class PublishRequest(BaseModel):
     """Model for publishing requests."""
 
+    message: str
     book_information: BookInformation
 
 
