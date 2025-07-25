@@ -1,3 +1,7 @@
+from src.prompts.asset_transferring_agent import (
+    ASSET_TRANSFER_SYSTEM_PROMPT,
+    ASSET_TRANSFER_USER_PROMPT,
+)
 from src.prompts.layout_editing_agent import (
     LAYOUT_EDIT_SYSTEM_PROMPT,
     LAYOUT_EDIT_USER_PROMPT,
