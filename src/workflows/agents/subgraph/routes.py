@@ -3,7 +3,6 @@ from typing import Literal
 from src.settings import custom_logger
 from src.workflows.state import ADTState, PlanningStep
 
-
 # Create logger
 logger = custom_logger("Agents Subgraph Routes")
 
@@ -18,13 +17,12 @@ def route_to_agent(
     "web_merge_agent",
     "web_split_agent",
     "web_delete_agent",
+    "asset_transfer_agent"
     "finalize_task",
     "__end__",
 ]:
+    """Route to the appropriate agent based on the current step.
     """
-    Route to the appropriate agent based on the current step.
-    """
-
     current_step: PlanningStep = state.steps[state.current_step_index]
     agent_name = current_step.agent.lstrip("- ").strip()
 
@@ -40,5 +38,7 @@ def route_to_agent(
         return "web_split_agent"
     elif "Web Delete Agent" in agent_name:
         return "web_delete_agent"
+    elif "Asset Transfer Agent" in agent_name:
+        return "asset_transfer_agent"
     else:
         raise ValueError(f"Invalid agent name: {agent_name}")
