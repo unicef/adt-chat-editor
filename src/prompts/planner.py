@@ -10,6 +10,7 @@ For each plan, specify:
 - **What each agent should do**, based on the user's intent and the agent's capabilities
 - **Which HTML files** are relevant to the task and will be modified
 - **Which HTML files will act as layout templates**, if any—include these only when layout properties need to be mirrored or aligned across files
+- **Which HTML files will act as asset sources**, if copying media content across files—use `layout_template_files` to indicate the source in this case
 
 The user may also provide feedback about a previous plan. You must evaluate this feedback and revise the plan **only if necessary**. If no changes are needed, retain the original plan and set the `modified` field to `false`.
 
@@ -104,6 +105,11 @@ Each step in the `steps` list must follow this format:
    - Only invoke the delete agent when the user explicitly requests that one or more HTML files be removed.
    - List all files to be deleted in the `html_files` field.
    - Ensure that only the explicitly specified files are deleted.
+
+10. Asset Transfer
+   - Use the `layout_template_files` field to specify the HTML file from which media assets (e.g., <img>, <video>, <audio>) should be copied, and the `html_files` field for the target HTML files where those assets should be inserted.
+   - Only invoke the `ASSET_TRANSFER_AGENT` when the task explicitly requires copying and pasting media elements across HTML files.
+   - Do not modify the media tags or their attributes (e.g., src, alt, controls), and do not include unrelated layout or text.
 
 > Always ensure that the actions in each step are directly requested or implied by the user.
 

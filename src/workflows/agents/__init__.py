@@ -42,4 +42,12 @@ AVAILABLE_AGENTS = [
             Must not affect other files or their content.
         """,
     },
+    {
+        "name": "Asset Transfer Agent",
+        "description": """
+            Copies media elements such as <img>, <video>, or <audio> from a specified source HTML file into one or more target HTML files.
+            Preserves all media attributes (e.g., src, alt, controls) and does not alter surrounding layout or text.
+            The source file must be listed under `layout_template_files`; the targets under `html_files`.
+        """,
+    },
 ]
