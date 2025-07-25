@@ -1,7 +1,7 @@
 services:
   fastapi:
     build:
-      context: .  # Path to the build context (the directory where Dockerfile exists)
+      context: .
     ports:
       - "8000:8000"
     volumes:
@@ -10,3 +10,8 @@ services:
     env_file:
       - .env
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
