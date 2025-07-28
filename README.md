@@ -147,3 +147,39 @@ First, you need to install Docker
 ```bash
 (env)$ docker-compose up --build 
 ```
+
+### 🚀 Running the System in One Step
+
+1. **Install Docker**  
+   If you don’t have Docker installed, follow the official instructions:  
+   👉 [https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
+
+2. **Set up your environment variables**  
+   Copy the example environment file and fill in the required credentials:
+   ```bash
+   cp .env.example .env
+   ```
+   Edit .env and provide the necessary values (e.g., API keys, GitHub token, etc.).
+
+### 🚀 Running the System in One Step
+
+1. **Install Docker**  
+   If you don’t have Docker installed, follow the official instructions:  
+   👉 https://docs.docker.com/engine/install/
+
+2. **Set up your environment variables**  
+   Copy the example environment file and fill in the required credentials:
+   ```bash
+   cp .env.example .env
+   ```
+   Then edit `.env` and provide the necessary values (e.g., API keys, GitHub token, etc.).
+
+4. **Start the system**  
+   ```bash
+   make run
+   ```
+5. **Stop the system**  
+   When you're done, stop and remove all running containers with:
+   ```bash
+   make stop
+   ```
