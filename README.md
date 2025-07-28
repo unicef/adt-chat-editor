@@ -165,21 +165,36 @@ First, you need to install Docker
 
 1. **Install Docker**  
    If you don’t have Docker installed, follow the official instructions:  
-   👉 https://docs.docker.com/engine/install/
+   https://docs.docker.com/engine/install/
 
 2. **Set up your environment variables**  
-   Copy the example environment file and fill in the required credentials:
+   Copy the example environment file and fill in the required credentials and ADT URLs:
    ```bash
    cp .env.example .env
    ```
-   Then edit `.env` and provide the necessary values (e.g., API keys, GitHub token, etc.).
+   Then edit `.env` and provide the necessary values:
+   - `LANGSMITH_API_KEY`, `OPENAI_API_KEY`, etc.
+   - List of ADT repositories under `ADTS`
+   - Choose the default `ACTIVE_ADT` (name of one repo)
 
-4. **Start the system**  
+3. **Start the system**
    ```bash
    make run
    ```
-5. **Stop the system**  
-   When you're done, stop and remove all running containers with:
+   This will:
+   - Check your environment
+   - Clone all ADT repos (if not already cloned)
+   - Prompt you to select the active ADT
+   - Create symlinks from `data/input` and `data/output` to the chosen ADT's folders
+   - Start the backend and initialize the app
+
+4. **Switch to another ADT**  
+   To change which ADT is active and relink `data/input`/`data/output`, run:
+   ```bash
+   make set-active-adt
+   ```
+
+5. **Stop the system**
    ```bash
    make stop
    ```
