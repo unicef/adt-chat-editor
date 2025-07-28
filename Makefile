@@ -1,11 +1,11 @@
 # Makefile
 
 ENV_FILE=.env
-REQUIRED_VARS=LANGSMITH_API_KEY OPENAI_API_KEY OPENAI_MODEL GITHUB_TOKEN REPO_SSH INPUT_DIR OUTPUT_DIR
+REQUIRED_VARS=LANGSMITH_API_KEY OPENAI_API_KEY OPENAI_MODEL GITHUB_TOKEN ADT_REPOS
 
-.PHONY: all check docker-up initialize run stop
+.PHONY: all check docker-up initialize run stop clone-repos select-adt
 
-all: check clone-repos docker-up initialize
+all: check clone-repos select-adt docker-up initialize
 
 check:
 	@echo "🔍 Checking prerequisites..."
@@ -36,17 +36,34 @@ check:
 	@echo "✅ All checks passed."
 
 clone-repos:
-	@echo "🔁 Cloning required Git repositories..."
+	@echo "🔁 Cloning ADT Git repositories..."
 	@set -a; . $(ENV_FILE); set +a; \
-	for dir in $$INPUT_REPO_DIR $$OUTPUT_REPO_DIR; do \
-		if [ -d "$$dir" ] && [ "$$(ls -A $$dir 2>/dev/null)" ]; then \
-			echo "✅ Repo already exists and is not empty at $$dir. Skipping clone."; \
-		else \
-			echo "📥 Cloning $$GITHUB_SSH_URL into $$dir..."; \
-			git clone $$GITHUB_SSH_URL $$dir || { echo "❌ Failed to clone repo."; exit 1; }; \
-		fi; \
-	done
-	@echo "✅ Repositories are ready."
+	for repo_url in $$ADTS; do \
+		repo_name=$$(basename $$repo_url .git); \
+		input_dir="data/$$repo_name/input"; \
+		output_dir="data/$$repo_name/output"; \
+		for dir in $$input_dir $$output_dir; do \
+			if [ -d "$$dir" ] && [ "$$(ls -A $$dir 2>/dev/null)" ]; then \
+				echo "✅ Repo already exists and is not empty at $$dir. Skipping clone."; \
+			else \
+				echo "📥 Cloning $$repo_url into $$dir..."; \
+				mkdir -p "$$(dirname $$dir)"; \
+				git clone "$$repo_url" "$$dir" || { echo "❌ Failed to clone repo $$repo_url into $$dir"; exit 1; }; \
+			fi; \
+		done; \
+	done; \
+	echo "✅ All ADT repositories are ready."
+
+select-adt:
+	@echo "📂 Available ADTs:"; \
+	ls -1 data | nl; \
+	read -p "Select ADT number: " choice; \
+	adt=$$(ls -1 data | sed -n "$${choice}p"); \
+	echo "🔗 Linking to $$adt..."; \
+	rm -rf data/input data/output; \
+	ln -sfn "$$adt/input" data/input; \
+	ln -sfn "$$adt/output" data/output; \
+	echo "✅ Linked to ADT: $$adt"
 
 docker-up:
 	@echo "🐳 Starting Docker containers..."
