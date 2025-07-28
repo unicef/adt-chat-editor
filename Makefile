@@ -5,10 +5,14 @@ REQUIRED_VARS=LANGSMITH_API_KEY OPENAI_API_KEY OPENAI_MODEL GITHUB_TOKEN
 
 .PHONY: all check docker-up initialize run stop
 
-all: check docker-up initialize
+all: check clone-repos docker-up initialize
 
 check:
 	@echo "🔍 Checking prerequisites..."
+	@if ! [ -x "$$(command -v git)" ]; then \
+		echo "❌ Git is not installed. Please install Git first."; \
+		exit 1; \
+	fi
 	@if ! [ -x "$$(command -v docker)" ]; then \
 		echo "❌ Docker is not installed. Please install Docker first."; \
 		exit 1; \
@@ -30,6 +34,19 @@ check:
 		fi; \
 	done
 	@echo "✅ All checks passed."
+
+clone-repos:
+	@echo "🔁 Cloning required Git repositories..."
+	@set -a; . $(ENV_FILE); set +a; \
+	for dir in $$INPUT_REPO_DIR $$OUTPUT_REPO_DIR; do \
+		if [ -d $$dir/.git ]; then \
+			echo "✅ Repo already exists at $$dir. Skipping clone."; \
+		else \
+			echo "📥 Cloning $$GITHUB_SSH_URL into $$dir..."; \
+			git clone $$GITHUB_SSH_URL $$dir || { echo "❌ Failed to clone repo."; exit 1; }; \
+		fi \
+	done
+	@echo "✅ Repositories are ready."
 
 docker-up:
 	@echo "🐳 Starting Docker containers..."
