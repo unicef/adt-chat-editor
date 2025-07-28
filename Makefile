@@ -1,7 +1,7 @@
 # Makefile
 
 ENV_FILE=.env
-REQUIRED_VARS=LANGSMITH_API_KEY OPENAI_API_KEY OPENAI_MODEL GITHUB_TOKEN
+REQUIRED_VARS=LANGSMITH_API_KEY OPENAI_API_KEY OPENAI_MODEL GITHUB_TOKEN REPO_SSH INPUT_DIR OUTPUT_DIR
 
 .PHONY: all check docker-up initialize run stop
 
@@ -39,12 +39,12 @@ clone-repos:
 	@echo "🔁 Cloning required Git repositories..."
 	@set -a; . $(ENV_FILE); set +a; \
 	for dir in $$INPUT_REPO_DIR $$OUTPUT_REPO_DIR; do \
-		if [ -d $$dir/.git ]; then \
-			echo "✅ Repo already exists at $$dir. Skipping clone."; \
+		if [ -d "$$dir" ] && [ "$$(ls -A $$dir 2>/dev/null)" ]; then \
+			echo "✅ Repo already exists and is not empty at $$dir. Skipping clone."; \
 		else \
 			echo "📥 Cloning $$GITHUB_SSH_URL into $$dir..."; \
 			git clone $$GITHUB_SSH_URL $$dir || { echo "❌ Failed to clone repo."; exit 1; }; \
-		fi \
+		fi; \
 	done
 	@echo "✅ Repositories are ready."
 
