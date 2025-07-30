@@ -2,7 +2,6 @@ import asyncio
 import json
 import os
 import uuid
-
 from pathlib import Path
 from typing import Dict, List
 
@@ -42,25 +41,26 @@ class AsyncGitVersionManager:
         token = GITHUB_TOKEN
         if not token:
             raise RuntimeError("Missing GITHUB_TOKEN in environment")
-
+    
         remote_url = await self._run_git("remote", "get-url", "origin")
-
-        if remote_url.startswith("git@github.com:"):
-            path = remote_url.split("git@github.com:")[1].rstrip(".git")
-            https_url = f"https://{token}:x-oauth-basic@github.com/{path}.git"
-        elif remote_url.startswith("https://github.com/"):
-            path = remote_url.split("https://github.com/")[1].rstrip(".git")
-            https_url = f"https://{token}:x-oauth-basic@github.com/{path}.git"
-        elif token not in remote_url:
-            raise RuntimeError(f"Unrecognized or already rewritten remote URL: {remote_url}")
-        else:
-            return
-
-        await self._run_git("remote", "set-url", "origin", https_url)
+    
+        # Always re-derive the correct URL using the *new* token
+        if "github.com" in remote_url:
+            if "@" in remote_url:
+                # Strip the old auth
+                remote_url = remote_url.split("@github.com/")[-1]
+            elif remote_url.startswith("https://github.com/"):
+                remote_url = remote_url.split("https://github.com/")[-1]
+            elif remote_url.startswith("git@github.com:"):
+                remote_url = remote_url.split("git@github.com:")[-1]
+            else:
+                raise RuntimeError(f"Unrecognized remote format: {remote_url}")
+    
+            https_url = f"https://{token}:x-oauth-basic@github.com/{remote_url.rstrip('.git')}.git"
+            await self._run_git("remote", "set-url", "origin", https_url)
 
     async def _initialise_working_branch(self):
-        """
-        Mirrors the old FastAPI‐router startup logic:
+        """Mirrors the old FastAPI‐router startup logic:
         • Ensures we are on (or create) a branch that begins with `base_branch_name`.
         • Tags HEAD as `last_published`.
         • Sets `self.true_branch_name` for later use.
