@@ -1,7 +1,11 @@
 from fastapi import APIRouter, HTTPException
 from typing import List
+from src.settings import custom_logger
 from src.structs.terminal import ExecuteCommandRequest, CommandResponse, CommandHistory
 from src.utils.terminal_service import TerminalService
+
+# Initialize logger
+logger = custom_logger("Terminal API")
 
 router = APIRouter(prefix="/terminal", tags=["terminal"])
 
@@ -15,6 +19,7 @@ async def execute_command(request: ExecuteCommandRequest):
     try:
         return _terminal_service.execute_command(request)
     except ValueError as e:
+        logger.info(f"Error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
