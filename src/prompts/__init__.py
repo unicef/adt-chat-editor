@@ -26,6 +26,7 @@ from src.prompts.web_splitting_agent import (
     WEB_SPLIT_SYSTEM_PROMPT,
     WEB_SPLIT_USER_PROMPT,
 )
+from src.prompts.codex_context import CODEX_CONTEXT
 
 __all__ = [
     "ORCHESTRATOR_PLANNING_PROMPT",
@@ -40,4 +41,5 @@ __all__ = [
     "WEB_MERGE_USER_PROMPT",
     "WEB_SPLIT_SYSTEM_PROMPT",
     "WEB_SPLIT_USER_PROMPT",
+    "CODEX_CONTEXT",
 ]
