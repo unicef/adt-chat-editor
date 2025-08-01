@@ -2,8 +2,21 @@ import os
 import subprocess
 import datetime
 from typing import List, Optional
-from src.settings import OUTPUT_DIR
+from src.prompts import CODEX_CONTEXT
+from src.settings import (
+    OUTPUT_DIR,
+    TAILWIND_CSS_IN_DIR,
+    TAILWIND_CSS_OUT_DIR,
+    custom_logger,
+)
 from src.structs.terminal import ExecuteCommandRequest, CommandResponse, CommandHistory
+
+# Initialize logger
+logger = custom_logger("Terminal Service")
+
+
+def to_single_line(text: str) -> str:
+    return ' '.join(text.strip().split())
 
 
 class TerminalService:
@@ -50,7 +63,7 @@ class TerminalService:
 
             self.command_history.append(CommandHistory(
                 command=command,
-                output=output.strip()[:2000],
+                output=output.strip()[:],
                 timestamp=timestamp,
                 exit_code=exit_code,
             ))
@@ -68,10 +81,11 @@ class TerminalService:
 
         working_dir = working_dir or os.getcwd()
         timestamp = datetime.datetime.now().isoformat()
+        context = to_single_line(CODEX_CONTEXT)
+        
+        codex_cmd = f'codex "{context}" exec -m gpt-4.1 --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check "{prompt}"'
 
-        codex_cmd = f'codex exec -m gpt-4.1 --full-auto --skip-git-repo-check "{prompt}"'
-
-        print(codex_cmd)
+        logger.info(f"Codex command: {codex_cmd}")
 
         try:
             result = subprocess.run(
@@ -80,7 +94,7 @@ class TerminalService:
                 capture_output=True,
                 text=True,
                 cwd=working_dir,
-                timeout=120,
+                timeout=600,
                 env=os.environ.copy(),
             )
 
@@ -95,10 +109,27 @@ class TerminalService:
 
             self.command_history.append(CommandHistory(
                 command=f"[codex] {prompt}",
-                output=output.strip()[:2000],
+                output=output.strip()[:],
                 timestamp=timestamp,
                 exit_code=exit_code,
             ))
+
+            # Run Tailwind CSS build in same working directory
+            cmd = f"npx tailwindcss -i {TAILWIND_CSS_IN_DIR} -o {TAILWIND_CSS_OUT_DIR}"
+            tailwind_result = subprocess.run(
+                cmd,
+                shell=True,
+                capture_output=True,
+                text=True,
+                cwd=working_dir,
+                timeout=60,
+                env=os.environ.copy(),
+            )
+    
+            if tailwind_result.returncode != 0:
+                logger.warning(f"Tailwind build failed:\n{tailwind_result.stderr}")
+            else:
+                logger.info("Tailwind CSS updated successfully.")
 
             return response
 
