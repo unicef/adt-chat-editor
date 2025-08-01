@@ -22,6 +22,8 @@ RUN apt-get update && \
     # Install Node.js
     curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
     apt-get install -y nodejs && \
+    # Install Codex Cli
+    npm install -g @openai/codex && \
     # Install Poetry
     pip install --no-cache-dir poetry && \
     # Clean up
