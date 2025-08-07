@@ -16,9 +16,12 @@ from src.settings import (
     custom_logger,
 )
 
-
 # Create logger
 logger = custom_logger("Sub-agents Workflow Routes")
+
+
+def to_single_line(text: str) -> str:
+    return ' '.join(text.strip().split())
 
 
 # Define util functions

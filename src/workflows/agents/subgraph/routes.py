@@ -17,7 +17,8 @@ def route_to_agent(
     "web_merge_agent",
     "web_split_agent",
     "web_delete_agent",
-    "asset_transfer_agent"
+    "asset_transfer_agent",
+    "codex_fallback_agent"
     "finalize_task",
     "__end__",
 ]:
@@ -40,5 +41,7 @@ def route_to_agent(
         return "web_delete_agent"
     elif "Asset Transfer Agent" in agent_name:
         return "asset_transfer_agent"
+    elif "Codex Fallback Agent" in agent_name:
+        return "codex_fallback_agent"
     else:
         raise ValueError(f"Invalid agent name: {agent_name}")
