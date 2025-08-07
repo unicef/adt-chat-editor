@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 
+# Define default values
 INPUT_DIR = "data/input"
 OUTPUT_DIR = "data/output"
 
@@ -13,6 +14,7 @@ TAILWIND_CSS_OUT_DIR = "content/tailwind_output.css"
 
 BASE_BRANCH_NAME = "adt_chat_editor/"
 
+
 class Settings(BaseSettings):
     INPUT_DIR: str = INPUT_DIR
     OUTPUT_DIR: str = OUTPUT_DIR
@@ -23,3 +25,10 @@ class Settings(BaseSettings):
     TAILWIND_CSS_IN_DIR: str = TAILWIND_CSS_IN_DIR
     TAILWIND_CSS_OUT_DIR: str = TAILWIND_CSS_OUT_DIR
     BASE_BRANCH_NAME: str = BASE_BRANCH_NAME
+
+    OPENAI_MODEL: str = "gpt-4.1"  # Default fallback if not in .env
+
+    class Config:
+        env_file = ".env"
+
+settings = Settings()

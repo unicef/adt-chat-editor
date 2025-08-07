@@ -15,7 +15,8 @@ from src.utils.file_utils import (
     update_tailwind,
     write_html_file,
     write_nav_line,
-    parse_html_pages
+    parse_html_pages,
+    to_single_line,
 )
 from src.utils.language_utils import (
     get_message,
@@ -41,5 +42,6 @@ __all__ = [
     "load_translated_html_contents",
     "parse_html_pages",
     "get_message",
-    "get_language_name"
+    "get_language_name",
+    "to_single_line"
 ]
