@@ -8,15 +8,13 @@ from src.settings import (
     TAILWIND_CSS_IN_DIR,
     TAILWIND_CSS_OUT_DIR,
     custom_logger,
+    settings
 )
 from src.structs.terminal import ExecuteCommandRequest, CommandResponse, CommandHistory
+from src.utils import to_single_line
 
 # Initialize logger
 logger = custom_logger("Terminal Service")
-
-
-def to_single_line(text: str) -> str:
-    return ' '.join(text.strip().split())
 
 
 class TerminalService:
@@ -77,13 +75,11 @@ class TerminalService:
 
     def _run_codex_instruction(self, prompt: str, working_dir: Optional[str]) -> CommandResponse:
         """Use Codex CLI to process natural-language instructions"""
-        import shlex
-
         working_dir = working_dir or os.getcwd()
         timestamp = datetime.datetime.now().isoformat()
         context = to_single_line(CODEX_CONTEXT)
         
-        codex_cmd = f'codex "{context}" exec -m gpt-4.1 --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check "{prompt}"'
+        codex_cmd = f'codex "{context}" exec -m {settings.OPENAI_MODEL} --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check "{prompt}"'
 
         logger.info(f"Codex command: {codex_cmd}")
 
