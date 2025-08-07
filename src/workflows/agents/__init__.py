@@ -50,4 +50,13 @@ AVAILABLE_AGENTS = [
             The source file must be listed under `layout_template_files`; the targets under `html_files`.
         """,
     },
+    {
+        "name": "Codex Fallback Agent",
+        "description": """
+            A general-purpose backup agent powered by OpenAI Codex (GPT model).
+            This agent is only invoked when no specialized agent is capable of fulfilling the user request.
+            Its behavior is less constrained and may produce unsafe or structurally risky modifications.
+            Use with caution and notify the user that this is a fallback strategy.
+        """,
+    }
 ]
