@@ -2,7 +2,7 @@ import os
 import subprocess
 from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
-from src.prompts import CODEX_CONTEXT
+from src.prompts import CODEX_FALLBACK_SYSTEM_PROMPT
 from src.settings import (
     OUTPUT_DIR,
     TAILWIND_CSS_IN_DIR,
@@ -31,7 +31,7 @@ async def fallback_agent(state: ADTState, config: RunnableConfig) -> ADTState:
 
     # command flags & contents
     working_dir = OUTPUT_DIR
-    context = to_single_line(CODEX_CONTEXT)
+    context = to_single_line(CODEX_FALLBACK_SYSTEM_PROMPT)
     user_prompt = to_single_line(current_step.non_technical_description)
     
     codex_cmd = f'codex "{context}" exec -m {settings.OPENAI_MODEL} --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check "{user_prompt}"'
