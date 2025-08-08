@@ -2,7 +2,7 @@ import os
 import subprocess
 import datetime
 from typing import List, Optional
-from src.prompts import CODEX_CONTEXT
+from src.prompts import CODEX_FALLBACK_SYSTEM_PROMPT
 from src.settings import (
     OUTPUT_DIR,
     TAILWIND_CSS_IN_DIR,
@@ -77,7 +77,7 @@ class TerminalService:
         """Use Codex CLI to process natural-language instructions"""
         working_dir = working_dir or os.getcwd()
         timestamp = datetime.datetime.now().isoformat()
-        context = to_single_line(CODEX_CONTEXT)
+        context = to_single_line(CODEX_FALLBACK_SYSTEM_PROMPT)
         
         codex_cmd = f'codex "{context}" exec -m {settings.OPENAI_MODEL} --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check "{prompt}"'
 

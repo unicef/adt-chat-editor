@@ -17,9 +17,9 @@ Available agents with strict boundaries:
 
 **Specialized Agents:**
 - **Text Edit Agent**: Plain text content only (grammar, phrasing, tone). No HTML structure/layout changes.
-- **Layout Edit Agent**: Visual layout only (spacing, alignment, fonts, Tailwind classes). No HTML restructuring or content moves.
-- **Layout Mirror Agent**: Copies layout structure from template to targets. Preserves template as-is.
-- **Asset Transfer Agent**: Copies media elements (`<img>`, `<audio>`) between files. No creation/modification of media tags.
+- **Layout Edit Agent**: Visual layout only (spacing, alignment, fonts, Tailwind classes). No HTML restructuring or content moves acroos HTMLs.
+- **Layout Mirror Agent**: Copies layout structure from template HTML to target HTMLs. Preserves template as-is.
+- **Asset Transfer Agent**: Copies media elements (`<img>`, `<audio>`) between files. No creation/delete/modification of media tags.
 - **Web Merge Agent**: Combines multiple HTML files into one. No new content creation.
 - **Web Split Agent**: Splits one HTML file into multiple standalone pages. No new content generation.
 - **Web Delete Agent**: Deletes entire HTML files only. Cannot remove content within files.
@@ -50,11 +50,11 @@ JSON only (no markdown, no extra text):
 Step format:
 ```json
 {{
-    "step": str,                  # Technical instruction for agent
+    "step": str,                       # Technical instruction for agent
     "non_technical_description": str,  # Simple summary in {user_language}, include files/pages in parentheses
-    "agent": str,                 # Agent name
-    "html_files": list,           # Files to modify (all files if Selected Page is True)
-    "layout_template_files": list  # Templates when applicable
+    "agent": str,                      # Agent name
+    "html_files": list,                # Files to modify (all files if Selected Page is True)
+    "layout_template_files": list      # Templates when applicable
 }}
 ```
 
