@@ -1,87 +1,208 @@
-# Makefile
+# Makefile for ADT Chat Editor
+# This Makefile automates the setup and deployment of the ADT Chat Editor application
+# It handles environment validation, repository cloning, Docker container management, and app initialization
+#
+# MODES:
+# - Reviewer mode: Works with multiple repositories from ADT_REPOS environment variable
+#   Usage: make reviewer or make run-reviewer
+# - Creator mode: Works with a single local repository
+#   Usage: make creator or make run-creator
+# - Default mode: Runs in reviewer mode
+#   Usage: make run
 
+# Environment configuration
 ENV_FILE=.env
-REQUIRED_VARS=LANGSMITH_API_KEY OPENAI_API_KEY OPENAI_MODEL GITHUB_TOKEN ADT_REPOS
+# List of required environment variables that must be set in .env file
+REQUIRED_VARS=OPENAI_API_KEY OPENAI_MODEL GITHUB_TOKEN ADTS
 
-.PHONY: all check docker-up initialize run stop clone-repos select-adt
+# Define all available targets (commands that can be run with 'make')
+.PHONY: check docker-up initialize run stop clone-repos select-adt reviewer creator
 
-all: check clone-repos select-adt docker-up initialize
+# Reviewer mode - works with multiple repositories from ADT_REPOS
+reviewer: check clone-repos select-adt ensure-data-dirs docker-up initialize
 
+# Creator mode - works with a single local repository
+creator: check setup-creator ensure-data-dirs docker-up initialize
+
+# Validate all prerequisites before proceeding
 check:
 	@echo "🔍 Checking prerequisites..."
-	@if ! [ -x "$$(command -v git)" ]; then \
+	@if [ -x "$$(command -v git)" ]; then \
+		echo "✅ Git is installed: $$(git --version)"; \
+	else \
 		echo "❌ Git is not installed. Please install Git first."; \
 		exit 1; \
 	fi
-	@if ! [ -x "$$(command -v docker)" ]; then \
+	@if [ -x "$$(command -v docker)" ]; then \
+		echo "✅ Docker is installed: $$(docker --version)"; \
+	else \
 		echo "❌ Docker is not installed. Please install Docker first."; \
 		exit 1; \
 	fi
-	@if ! docker info > /dev/null 2>&1; then \
+	@if docker info > /dev/null 2>&1; then \
+		echo "✅ Docker daemon is running"; \
+	else \
 		echo "❌ Docker daemon is not running. Please start Docker Desktop."; \
 		exit 1; \
 	fi
-	@if [ ! -f $(ENV_FILE) ]; then \
+	@if [ -f $(ENV_FILE) ]; then \
+		echo "✅ $(ENV_FILE) file exists"; \
+	else \
 		echo "❌ $(ENV_FILE) file not found. Please create it or copy from .env.example."; \
 		exit 1; \
 	fi
-	@echo "📄 Validating environment variables in $(ENV_FILE)..."
 	@set -a; . $(ENV_FILE); \
 	for var in $(REQUIRED_VARS); do \
-		if [ -z "$$${var}" ]; then \
-			echo "❌ Environment variable '$$${var}' is missing or empty in $(ENV_FILE)"; \
+		if [ -z "$${!var}" ]; then \
+			echo "❌ Environment variable '$$var' is missing or empty in $(ENV_FILE)"; \
 			exit 1; \
 		fi; \
-	done
+	done; \
+	echo "✅ All required environment variables are set correctly"
 	@echo "✅ All checks passed."
 
+# Clone ADT (Accessible Digital Textbook) repositories from the URLs specified in ADT_REPOS
 clone-repos:
-	@echo "🔁 Cloning ADT Git repositories..."
+	@echo "🔁 Managing ADT Git repositories..."
+	@echo "📋 Creating data directory if it doesn't exist..."
+	@mkdir -p data
 	@set -a; . $(ENV_FILE); set +a; \
 	for repo_url in $$ADTS; do \
 		repo_name=$$(basename $$repo_url .git); \
-		input_dir="data/$$repo_name/input"; \
-		output_dir="data/$$repo_name/output"; \
-		for dir in $$input_dir $$output_dir; do \
-			if [ -d "$$dir" ] && [ "$$(ls -A $$dir 2>/dev/null)" ]; then \
-				echo "✅ Repo already exists and is not empty at $$dir. Skipping clone."; \
+		echo "📋 Processing repository: $$repo_name"; \
+		repo_dir="data/$$repo_name"; \
+		echo "📋 Checking repository status: $$repo_dir"; \
+		if [ -d "$$repo_dir/.git" ]; then \
+			echo "📋 Repository already exists: $$repo_dir"; \
+			echo "📥 Pulling latest changes from $$repo_url..."; \
+			cd "$$repo_dir" && rm -f .git/config.lock && git remote set-url origin "$$repo_url" && git pull origin main || git pull origin master || git pull || { \
+				echo "❌ Failed to pull latest changes from $$repo_url"; \
+				exit 1; \
+			}; \
+			echo "✅ Successfully updated $$repo_name"; \
+		elif [ -d "$$repo_dir" ] && [ "$$(ls -A $$repo_dir 2>/dev/null)" ]; then \
+			echo "⚠️  Directory exists but is not a git repository: $$repo_dir"; \
+			echo "📋 Removing non-git directory and cloning fresh..."; \
+			rm -rf "$$repo_dir"; \
+			if git clone "$$repo_url" "$$repo_dir"; then \
+				echo "✅ Successfully cloned $$repo_name"; \
 			else \
-				echo "📥 Cloning $$repo_url into $$dir..."; \
-				mkdir -p "$$(dirname $$dir)"; \
-				git clone "$$repo_url" "$$dir" || { echo "❌ Failed to clone repo $$repo_url into $$dir"; exit 1; }; \
+				echo "❌ Failed to clone repo $$repo_url into $$repo_dir"; \
+				exit 1; \
 			fi; \
-		done; \
+		else \
+			echo "📥 Cloning $$repo_url into $$repo_dir..."; \
+			if git clone "$$repo_url" "$$repo_dir"; then \
+				echo "✅ Successfully cloned $$repo_name"; \
+			else \
+				echo "❌ Failed to clone repo $$repo_url into $$repo_dir"; \
+				exit 1; \
+			fi; \
+		fi; \
 	done; \
 	echo "✅ All ADT repositories are ready."
 
+# Interactive selection of which ADT repository to work with
 select-adt:
 	@echo "📂 Available ADTs:"; \
-	ls -1 data | nl; \
+	echo "📋 Checking data directory contents..."; \
+	ls -la data/ 2>/dev/null || echo "📋 Data directory is empty or doesn't exist"; \
+	if [ ! -d "data" ] || [ -z "$$(ls -A data 2>/dev/null)" ]; then \
+		echo "❌ No repositories found in data directory. Please check your ADT_REPOS environment variable."; \
+		exit 1; \
+	fi; \
+	echo "📋 Filtering out input/output directories..."; \
+	ls -1 data | grep -v "^input$$" | grep -v "^output$$" | nl; \
 	read -p "Select ADT number: " choice; \
-	adt=$$(ls -1 data | sed -n "$${choice}p"); \
-	echo "🔗 Linking to $$adt..."; \
+	adt=$$(ls -1 data | grep -v "^input$$" | grep -v "^output$$" | sed -n "$${choice}p"); \
+	if [ -z "$$adt" ]; then \
+		echo "❌ Invalid selection. Please try again."; \
+		exit 1; \
+	fi; \
+	echo "🔗 Setting up $$adt..."; \
 	rm -rf data/input data/output; \
-	ln -sfn "$$adt/input" data/input; \
-	ln -sfn "$$adt/output" data/output; \
-	echo "✅ Linked to ADT: $$adt"
+	echo "📋 Copying files to data/input..."; \
+	cp -r "data/$$adt" data/input; \
+	echo "📋 Setting up data/output with repository..."; \
+	cp -r "data/$$adt" data/output; \
+	echo "✅ Successfully set up ADT: $$adt (copied to input and output)"
 
+# Ensure data directories exist before starting Docker
+ensure-data-dirs:
+	@echo "📋 Ensuring data directories exist..."
+	@if [ ! -d "data/input" ]; then \
+		echo "❌ data/input directory does not exist. Please run select-adt (reviewer mode) or setup-creator (creator mode) first."; \
+		exit 1; \
+	fi; \
+	if [ ! -d "data/output" ] && [ ! -L "data/output" ]; then \
+		echo "❌ data/output directory or symlink does not exist. Please run select-adt (reviewer mode) or setup-creator (creator mode) first."; \
+		exit 1; \
+	fi; \
+	echo "✅ Data directories are ready"
+
+# Setup creator mode with a single local repository
+# Usage: make creator REPO_PATH=/path/to/your/repository
+setup-creator:
+	@echo "🎨 Setting up Creator mode..."
+	@if [ -z "$(REPO_PATH)" ]; then \
+		echo "❌ REPO_PATH argument is required. Usage: make creator REPO_PATH=/path/to/your/repository"; \
+		exit 1; \
+	fi; \
+	repo_path=$$(eval echo "$(REPO_PATH)"); \
+	if [ ! -d "$$repo_path" ]; then \
+		echo "❌ Directory does not exist: $$repo_path"; \
+		exit 1; \
+	fi; \
+	if [ ! -d "$$repo_path/.git" ]; then \
+		echo "❌ Directory is not a git repository: $$repo_path"; \
+		exit 1; \
+	fi; \
+	echo "📋 Setting up creator mode directories..."; \
+	rm -rf data/input data/output; \
+	mkdir -p data; \
+	echo "📋 Copying files to data/input..."; \
+	cp -r "$$repo_path" data/input; \
+	echo "📋 Creating symbolic link for data/output..."; \
+	ln -sfn "/app/external_repo" data/output; \
+	echo "📋 Setting EXTERNAL_REPO_PATH environment variable..."; \
+	echo "EXTERNAL_REPO_PATH=$$repo_path" >> .env; \
+	echo "✅ Successfully set up creator mode: files copied to data/input, symlink created for data/output"
+
+# Start Docker containers using docker-compose
 docker-up:
 	@echo "🐳 Starting Docker containers..."
-	docker-compose up --build -d
-	@echo "✅ Docker containers are up."
+	@echo "📋 Loading environment variables..."
+	@set -a; . .env; set +a; \
+	if docker-compose up --build -d; then \
+		echo "✅ Docker containers started successfully"; \
+	else \
+		echo "❌ Failed to start Docker containers"; \
+		exit 1; \
+	fi
 
+# Initialize the application after containers are running
 initialize:
 	@echo "🚀 Initializing app..."
 	@echo "⏳ Waiting for FastAPI to be ready (max 30s)..."
+	@echo "📋 Checking Docker container status..."
+	@docker-compose ps
+	@echo "📋 Checking container logs..."
+	@docker-compose logs --tail=20
 	@start=$$(date +%s); \
 	while ! curl -s http://localhost:8000/docs > /dev/null; do \
 		now=$$(date +%s); \
 		if [ $$((now - start)) -gt 30 ]; then \
 			echo "❌ Timeout waiting for FastAPI to become available."; \
+			echo "📋 Final container status:"; \
+			docker-compose ps; \
+			echo "📋 Final container logs:"; \
+			docker-compose logs --tail=50; \
 			exit 1; \
 		fi; \
+		echo "⏳ Still waiting... ($$((now - start))s elapsed)"; \
 		sleep 1; \
 	done; \
+	echo "✅ FastAPI server is ready"; \
 	echo "🔧 Sending initialization request..."; \
 	if command -v jq >/dev/null 2>&1; then \
 		curl -s -X POST http://localhost:8000/setup/initialize | jq .; \
@@ -89,12 +210,22 @@ initialize:
 		echo "⚠️  jq not found. Showing raw response:"; \
 		curl -s -X POST http://localhost:8000/setup/initialize; \
 	fi; \
-	echo "\n✅ App initialized."; \
+	echo "\n✅ App initialized successfully."; \
 	echo "🟢 App is running at: http://localhost:8000/"; \
 	python3 -m webbrowser http://localhost:8000
 
-run: all
+# Convenience targets for different modes
+run: reviewer
+run-reviewer: reviewer
+run-creator: creator
+# Usage: make run-creator REPO_PATH=/path/to/your/repository
 
+# Stop and remove Docker containers
 stop:
 	@echo "🛑 Stopping Docker containers..."
-	@docker-compose down
+	if docker-compose down; then \
+		echo "✅ Docker containers stopped successfully"; \
+	else \
+		echo "❌ Failed to stop Docker containers"; \
+		exit 1; \
+	fi
