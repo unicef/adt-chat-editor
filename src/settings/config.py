@@ -26,7 +26,13 @@ class Settings(BaseSettings):
     TAILWIND_CSS_OUT_DIR: str = TAILWIND_CSS_OUT_DIR
     BASE_BRANCH_NAME: str = BASE_BRANCH_NAME
 
-    OPENAI_MODEL: str = "gpt-4.1"  # Default fallback if not in .env
+    # From .env
+    LANGSMITH_API_KEY: str | None = None
+    OPENAI_API_KEY: str | None = None
+    OPENAI_MODEL: str = "gpt-4.1"  # default if not in .env
+    GITHUB_TOKEN: str | None = None
+    ADTS: str | None = None
+    ACTIVE_ADT: str | None = None
 
     class Config:
         env_file = ".env"
