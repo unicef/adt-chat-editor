@@ -22,7 +22,7 @@ class TerminalService:
         self.command_history: List[CommandHistory] = []
         self.allowed_commands = [
             "ls", "pwd", "cd", "mkdir", "rm", "echo", "touch",
-            "cat", "cp", "mv", "git", "python", "pip",
+            "cat", "cp", "mv", "git", "python", "pip", "clean",
         ]
 
     def is_command_allowed(self, command: str) -> bool:
@@ -31,7 +31,7 @@ class TerminalService:
 
     def execute_command(self, request: ExecuteCommandRequest) -> CommandResponse:
         if self.is_command_allowed(request.command):
-            return self._run_shell_command(request.command, request.working_directory)
+            return self._run_shell_command(request.command, OUTPUT_DIR)
         else:
             # Fallback to Codex
             return self._run_codex_instruction(request.command, OUTPUT_DIR)
