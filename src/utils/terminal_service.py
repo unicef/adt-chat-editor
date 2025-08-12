@@ -22,7 +22,7 @@ class TerminalService:
         self.command_history: List[CommandHistory] = []
         self.allowed_commands = [
             "ls", "pwd", "cd", "mkdir", "rm", "echo", "touch",
-            "cat", "cp", "mv", "git", "python", "pip", "clean",
+            "cat", "cp", "mv", "git", "python", "pip", "clear",
         ]
 
     def is_command_allowed(self, command: str) -> bool:
