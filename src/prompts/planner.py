@@ -50,7 +50,7 @@ JSON only (no markdown, no extra text):
 Step format:
 ```json
 {{
-    "step": str,                       # Technical instruction for agent
+    "step": str,                       # Technical instruction for agent, include files/pages in parentheses
     "non_technical_description": str,  # Simple summary in {user_language}, include files/pages in parentheses
     "agent": str,                      # Agent name
     "html_files": list,                # Files to modify (all files if Selected Page is True)
