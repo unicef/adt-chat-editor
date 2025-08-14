@@ -4,11 +4,11 @@
 #
 # MODES:
 # - Reviewer mode: Works with multiple repositories from ADT_REPOS environment variable
-#   Usage: make reviewer or make run-reviewer
+#   Usage: make reviewer or make run-reviewer
 # - Creator mode: Works with a single local repository
-#   Usage: make creator or make run-creator
+#   Usage: make creator or make run-creator
 # - Default mode: Runs in reviewer mode
-#   Usage: make run
+#   Usage: make run
 
 # Environment configuration
 ENV_FILE=.env
@@ -19,7 +19,7 @@ REQUIRED_VARS=OPENAI_API_KEY OPENAI_MODEL GITHUB_TOKEN ADTS
 .PHONY: check docker-up initialize run stop clone-repos select-adt reviewer creator
 
 # Reviewer mode - works with multiple repositories from ADT_REPOS
-reviewer: check clone-repos select-adt ensure-data-dirs docker-up initialize
+reviewer: check clone-repos clone-utils select-adt ensure-data-dirs docker-up initialize
 
 # Creator mode - works with a single local repository
 creator: check setup-creator ensure-data-dirs docker-up initialize
@@ -81,7 +81,7 @@ clone-repos:
 			}; \
 			echo "✅ Successfully updated $$repo_name"; \
 		elif [ -d "$$repo_dir" ] && [ "$$(ls -A $$repo_dir 2>/dev/null)" ]; then \
-			echo "⚠️  Directory exists but is not a git repository: $$repo_dir"; \
+			echo "⚠️  Directory exists but is not a git repository: $$repo_dir"; \
 			echo "📋 Removing non-git directory and cloning fresh..."; \
 			rm -rf "$$repo_dir"; \
 			if git clone "$$repo_url" "$$repo_dir"; then \
@@ -102,6 +102,48 @@ clone-repos:
 	done; \
 	echo "✅ All ADT repositories are ready."
 
+# Clone the ADT Utils repository if defined in .env
+clone-utils:
+	@echo "🔧 Managing ADT Utils repository..."
+	@set -a; . $(ENV_FILE); set +a; \
+	if [ -z "$$ADT_UTILS_REPO" ]; then \
+		echo "ℹ️  ADT_UTILS_REPO not set in $(ENV_FILE). Skipping."; \
+		exit 0; \
+	fi; \
+	repo_url="$$ADT_UTILS_REPO"; \
+	repo_name="adt-utils"; \
+	repo_dir="data/$$repo_name"; \
+	echo "📋 Processing repository: $$repo_name"; \
+	echo "📋 Checking repository status: $$repo_dir"; \
+	if [ -d "$$repo_dir/.git" ]; then \
+		echo "📋 Repository already exists: $$repo_dir"; \
+		echo "📥 Pulling latest changes from $$repo_url..."; \
+		cd "$$repo_dir" && git pull || { \
+			echo "❌ Failed to pull latest changes from $$repo_url"; \
+			exit 1; \
+		}; \
+		echo "✅ Successfully updated $$repo_name"; \
+	elif [ -d "$$repo_dir" ]; then \
+		echo "⚠️  Directory exists but is not a git repository: $$repo_dir"; \
+		echo "📋 Removing non-git directory and cloning fresh..."; \
+		rm -rf "$$repo_dir"; \
+		if git clone "$$repo_url" "$$repo_dir"; then \
+			echo "✅ Successfully cloned $$repo_name"; \
+		else \
+			echo "❌ Failed to clone repo $$repo_url into $$repo_dir"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "📥 Cloning $$repo_url into $$repo_dir..."; \
+		if git clone "$$repo_url" "$$repo_dir"; then \
+			echo "✅ Successfully cloned $$repo_name"; \
+		else \
+			echo "❌ Failed to clone repo $$repo_url into $$repo_dir"; \
+			exit 1; \
+		fi; \
+	fi; \
+	echo "✅ ADT Utils repository is ready."
+
 # Interactive selection of which ADT repository to work with
 select-adt:
 	@echo "📂 Available ADTs:"; \
@@ -111,10 +153,10 @@ select-adt:
 		echo "❌ No repositories found in data directory. Please check your ADT_REPOS environment variable."; \
 		exit 1; \
 	fi; \
-	echo "📋 Filtering out input/output directories..."; \
-	ls -1 data | grep -v "^input$$" | grep -v "^output$$" | nl; \
+	echo "📋 Filtering out input/output/utils directories..."; \
+	ls -1 data | grep -v "^input$$" | grep -v "^output$$" | grep -v "^adt-utils$$" | nl; \
 	read -p "Select ADT number: " choice; \
-	adt=$$(ls -1 data | grep -v "^input$$" | grep -v "^output$$" | sed -n "$${choice}p"); \
+	adt=$$(ls -1 data | grep -v "^input$$" | grep -v "^output$$" | grep -v "^adt-utils$$" | sed -n "$${choice}p"); \
 	if [ -z "$$adt" ]; then \
 		echo "❌ Invalid selection. Please try again."; \
 		exit 1; \
@@ -207,7 +249,7 @@ initialize:
 	if command -v jq >/dev/null 2>&1; then \
 		curl -s -X POST http://localhost:8000/setup/initialize | jq .; \
 	else \
-		echo "⚠️  jq not found. Showing raw response:"; \
+		echo "⚠️  jq not found. Showing raw response:"; \
 		curl -s -X POST http://localhost:8000/setup/initialize; \
 	fi; \
 	echo "\n✅ App initialized successfully."; \
