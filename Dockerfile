@@ -37,12 +37,13 @@ WORKDIR /app
 RUN poetry config virtualenvs.create false
 
 # Copy dependency files first for better caching
-COPY pyproject.toml poetry.lock ./
+COPY pyproject.toml poetry.lock* ./
 
-# Install Python dependencies (production only for smaller image)
-RUN poetry install --no-interaction --no-ansi --no-root --only=main
+# Regenerate lock file if necessary and install dependencies
+RUN poetry lock || echo "Lock file created" \
+    && poetry install --no-interaction --no-ansi --no-root --only=main
 
-# Copy files
+# Copy application code
 COPY src/ src/
 COPY frontend/ frontend/
 

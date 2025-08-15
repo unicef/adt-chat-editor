@@ -1,8 +1,9 @@
 from src.settings.config import (
     INPUT_DIR,
+    OUTPUT_DIR,
+    ADT_UTILS_DIR,
     NAV_HTML_DIR,
     HTML_CONTENTS_DIR,
-    OUTPUT_DIR,
     STATE_CHECKPOINTS_DIR,
     TAILWIND_CSS_IN_DIR,
     TAILWIND_CSS_OUT_DIR,
@@ -16,6 +17,7 @@ __all__ = [
     "custom_logger",
     "INPUT_DIR",
     "OUTPUT_DIR",
+    "ADT_UTILS_DIR",
     "NAV_HTML_DIR",
     "STATE_CHECKPOINTS_DIR",
     "HTML_CONTENTS_DIR",
