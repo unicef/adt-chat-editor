@@ -3,6 +3,7 @@ from pydantic_settings import BaseSettings
 # Define default values
 INPUT_DIR = "data/input"
 OUTPUT_DIR = "data/output"
+ADT_UTILS_DIR = "data/adt-utils"
 
 STATE_CHECKPOINTS_DIR = "tmp/state_checkpoints"
 HTML_CONTENTS_DIR = "tmp/html_contents"
@@ -18,6 +19,7 @@ BASE_BRANCH_NAME = "adt_chat_editor/"
 class Settings(BaseSettings):
     INPUT_DIR: str = INPUT_DIR
     OUTPUT_DIR: str = OUTPUT_DIR
+    ADT_UTILS_DIR: str = ADT_UTILS_DIR    
     STATE_CHECKPOINTS_DIR: str = STATE_CHECKPOINTS_DIR
     HTML_CONTENTS_DIR: str = HTML_CONTENTS_DIR
     NAV_HTML_DIR: str = NAV_HTML_DIR

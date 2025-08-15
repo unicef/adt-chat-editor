@@ -22,6 +22,7 @@ from src.structs.text_editing import (
     TextEditResponse,
     TextEditTranslation,
 )
+from src.structs.adt_utils import RunAllRequest, RunAllResponse
 
 __all__ = [
     "BaseStep",
@@ -45,4 +46,6 @@ __all__ = [
     "TranslatedHTMLStatus",
     "UserLanguage",
     "WorkflowStatus",
+    "RunAllRequest",
+    "RunAllResponse",
 ]

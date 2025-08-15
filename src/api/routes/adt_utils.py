@@ -1,9 +1,8 @@
 import subprocess
 import os
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
-from typing import Optional
-from src.settings import custom_logger
+from src.settings import custom_logger, ADT_UTILS_DIR
+from src.structs import RunAllRequest, RunAllResponse
 
 # Create logger
 logger = custom_logger("ADT Utils API Router")
@@ -11,16 +10,6 @@ logger = custom_logger("ADT Utils API Router")
 # Create router
 router = APIRouter(prefix="/adt-utils", tags=["ADT Utils"])
 
-class RunAllRequest(BaseModel):
-    target_dir: str
-    start: int
-    end: int
-
-class RunAllResponse(BaseModel):
-    status: str
-    message: str
-    output: Optional[str] = None
-    error: Optional[str] = None
 
 @router.post("/run-all")
 async def run_all(request: RunAllRequest):
@@ -34,9 +23,8 @@ async def run_all(request: RunAllRequest):
             raise HTTPException(status_code=400, detail="START value must be less than or equal to END value")
         
         # Change to the adt-utils directory
-        adt_utils_dir = "data/adt-utils"
-        if not os.path.exists(adt_utils_dir):
-            raise HTTPException(status_code=404, detail=f"Directory {adt_utils_dir} not found")
+        if not os.path.exists(ADT_UTILS_DIR):
+            raise HTTPException(status_code=404, detail=f"Directory {ADT_UTILS_DIR} not found")
         
         # Prepare the command
         command = [
@@ -48,12 +36,12 @@ async def run_all(request: RunAllRequest):
             f"{request.target_dir}",
         ]
 
-        logger.info(f"Executing command: {' '.join(command)} in directory: {adt_utils_dir}")
+        logger.info(f"Executing command: {' '.join(command)} in directory: {ADT_UTILS_DIR}")
         
         # Execute the command
         result = subprocess.run(
             command,
-            cwd=adt_utils_dir,
+            cwd=ADT_UTILS_DIR,
             capture_output=True,
             text=True,
             timeout=300  # 5 minute timeout
@@ -84,16 +72,14 @@ async def run_all(request: RunAllRequest):
 
 @router.get("/status")
 async def check_adt_utils_status():
-    """Endpoint to check if adt-utils directory exists and is accessible."""
-    adt_utils_dir = "data/adt-utils"
-    
-    if os.path.exists(adt_utils_dir):
+    """Endpoint to check if adt-utils directory exists and is accessible."""    
+    if os.path.exists(ADT_UTILS_DIR):
         try:
             # Try to list directory contents to verify accessibility
-            contents = os.listdir(adt_utils_dir)
+            contents = os.listdir(ADT_UTILS_DIR)
             return {
                 "status": "ok",
-                "directory": adt_utils_dir,
+                "directory": ADT_UTILS_DIR,
                 "exists": True,
                 "accessible": True,
                 "files_count": len(contents)
@@ -101,7 +87,7 @@ async def check_adt_utils_status():
         except PermissionError:
             return {
                 "status": "error",
-                "directory": adt_utils_dir,
+                "directory": ADT_UTILS_DIR,
                 "exists": True,
                 "accessible": False,
                 "message": "Directory exists but is not accessible"
@@ -109,7 +95,7 @@ async def check_adt_utils_status():
     else:
         return {
             "status": "error",
-            "directory": adt_utils_dir,
+            "directory": ADT_UTILS_DIR,
             "exists": False,
             "accessible": False,
             "message": "Directory does not exist"
