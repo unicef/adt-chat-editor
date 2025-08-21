@@ -75,10 +75,10 @@ clone-repos:
 		if [ -d "$$repo_dir/.git" ]; then \
 			echo "📋 Repository already exists: $$repo_dir"; \
 			echo "📥 Pulling latest changes from $$repo_url..."; \
-			cd "$$repo_dir" && rm -f .git/config.lock && git remote set-url origin "$$repo_url" && git pull origin main || git pull origin master || git pull || { \
+			(cd "$$repo_dir" && rm -f .git/config.lock && git remote set-url origin "$$repo_url" && git pull origin main || git pull origin master || git pull || { \
 				echo "❌ Failed to pull latest changes from $$repo_url"; \
 				exit 1; \
-			}; \
+			}); \
 			echo "✅ Successfully updated $$repo_name"; \
 		elif [ -d "$$repo_dir" ] && [ "$$(ls -A $$repo_dir 2>/dev/null)" ]; then \
 			echo "⚠️  Directory exists but is not a git repository: $$repo_dir"; \
@@ -107,7 +107,7 @@ clone-utils:
 	@echo "🔧 Managing ADT Utils repository..."
 	@set -a; . $(ENV_FILE); set +a; \
 	if [ -z "$$ADT_UTILS_REPO" ]; then \
-		echo "ℹ️  ADT_UTILS_REPO not set in $(ENV_FILE). Skipping."; \
+		echo "ℹ️  ADT_UTILS_REPO not set in $(ENV_FILE). Skipping."; \
 		exit 0; \
 	fi; \
 	repo_url="$$ADT_UTILS_REPO"; \
@@ -118,13 +118,13 @@ clone-utils:
 	if [ -d "$$repo_dir/.git" ]; then \
 		echo "📋 Repository already exists: $$repo_dir"; \
 		echo "📥 Pulling latest changes from $$repo_url..."; \
-		cd "$$repo_dir" && git pull || { \
+		(cd "$$repo_dir" && git pull || { \
 			echo "❌ Failed to pull latest changes from $$repo_url"; \
 			exit 1; \
-		}; \
+		}); \
 		echo "✅ Successfully updated $$repo_name"; \
 	elif [ -d "$$repo_dir" ]; then \
-		echo "⚠️  Directory exists but is not a git repository: $$repo_dir"; \
+		echo "⚠️  Directory exists but is not a git repository: $$repo_dir"; \
 		echo "📋 Removing non-git directory and cloning fresh..."; \
 		rm -rf "$$repo_dir"; \
 		if git clone "$$repo_url" "$$repo_dir"; then \
@@ -163,17 +163,18 @@ select-adt:
 	fi; \
 	echo "🔗 Setting up $$adt..."; \
 	rm -rf data/input data/output; \
-	echo "📋 Copying files to data/input..."; \
-	cp -r "data/$$adt" data/input; \
-	echo "📋 Setting up data/output with repository..."; \
-	cp -r "data/$$adt" data/output; \
-	echo "✅ Successfully set up ADT: $$adt (copied to input and output)"
+	mkdir -p data; \
+	echo "📋 Creating symbolic link for data/input..."; \
+	(cd data && ln -sfn "$$adt" input); \
+	echo "📋 Creating symbolic link for data/output..."; \
+	(cd data && ln -sfn "$$adt" output); \
+	echo "✅ Successfully set up ADT: $$adt (linked to input and output)"
 
 # Ensure data directories exist before starting Docker
 ensure-data-dirs:
 	@echo "📋 Ensuring data directories exist..."
-	@if [ ! -d "data/input" ]; then \
-		echo "❌ data/input directory does not exist. Please run select-adt (reviewer mode) or setup-creator (creator mode) first."; \
+	@if [ ! -d "data/input" ] && [ ! -L "data/input" ]; then \
+		echo "❌ data/input directory or symlink does not exist. Please run select-adt (reviewer mode) or setup-creator (creator mode) first."; \
 		exit 1; \
 	fi; \
 	if [ ! -d "data/output" ] && [ ! -L "data/output" ]; then \

@@ -21,7 +21,7 @@ from src.utils import (
 )
 from src.workflows.state import ADTState
 
-logger = custom_logger("Codex Fallback Agent")
+logger = custom_logger("Create Activity Agent")
 
 
 async def fallback_agent(state: ADTState, config: RunnableConfig) -> ADTState:
@@ -32,9 +32,17 @@ async def fallback_agent(state: ADTState, config: RunnableConfig) -> ADTState:
     # command flags & contents
     working_dir = OUTPUT_DIR
     context = to_single_line(CODEX_FALLBACK_SYSTEM_PROMPT)
-    user_prompt = to_single_line(current_step.step)
+    user_prompt = to_single_line(
+        current_step.step
+    ).replace("\"", "'").replace(OUTPUT_DIR + "/", "")
     
-    codex_cmd = f'codex "{context}" exec -m {settings.OPENAI_MODEL} --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check "{user_prompt}"'
+    codex_cmd = (
+        f'codex "{context}" '
+        f'exec -m {settings.OPENAI_MODEL} '
+        f'--dangerously-bypass-approvals-and-sandbox '
+        f'--skip-git-repo-check '
+        f'"{user_prompt}"'
+    )
 
     logger.info(f"Codex command: {codex_cmd}")
 

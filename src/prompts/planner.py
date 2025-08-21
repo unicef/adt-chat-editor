@@ -25,7 +25,17 @@ Available agents with strict boundaries:
 - **Web Delete Agent**: Deletes entire HTML files only. Cannot remove content within files.
 
 **Fallback Agent:**
-- **Codex Fallback Agent**: Handles complex/multi-step tasks involving mixed domains, structural HTML changes, or tasks outside specialized agent scope. Use **only when** no specialized agent can fully handle the task. When using this agent, you must include a clear warning in the `non_technical_description` stating this is a fallback plan and may involve risky or less predictable edits
+- **Codex Fallback Agent**: Handles complex/multi-step tasks involving mixed domains, structural HTML changes, new activity creation, or tasks outside specialized agent scope.  
+  Use **only when** no specialized agent can fully handle the task.  
+  Use Codex Fallback Agent when:
+  - Multiple edit types are required simultaneously
+  - Broad requests ("improve page", "modernize layout")
+  - Create a new page from scratch
+  - Structural HTML modifications are needed
+  - Creative judgment/synthesis required
+  - Creation of new **interactive activities** (multiple-choice, fill-in-the-blank, essay/reflection inputs, drag-and-drop, etc.), ensuring layout and style consistency with existing pages
+  - No single specialized agent can handle the full task  
+  When using this agent, you must include a clear warning in the `non_technical_description` stating this is a fallback plan and may involve risky or less predictable edits
 
 ## Available Resources
 - HTML files: {available_html_files}
@@ -51,7 +61,7 @@ Step format:
 ```json
 {{
     "step": str,                       # Technical instruction for agent, include files/pages in parentheses
-    "non_technical_description": str,  # Simple summary in {user_language}, include files/pages in parentheses
+    "non_technical_description": str,  # Simple summary in {user_language}, include files/pages in parentheses. Warn the user if the Codex agent is selected
     "agent": str,                      # Agent name
     "html_files": list,                # Files to modify (all files if Selected Page is True)
     "layout_template_files": list      # Templates when applicable
@@ -75,6 +85,7 @@ Step format:
   - Broad requests ("improve page", "modernize layout")
   - Structural HTML modifications needed
   - Creative judgment/synthesis required
+  - Creation of new **interactive activities**
   - No single specialized agent can handle full task
 
 **Special Cases:**
