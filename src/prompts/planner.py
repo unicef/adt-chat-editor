@@ -30,7 +30,7 @@ Available agents with strict boundaries:
   Use Codex Fallback Agent when:
   - Multiple edit types are required simultaneously
   - Broad requests ("improve page", "modernize layout")
-  - Create a new page from scratch
+  - Create a new HTML file page from scratch
   - Structural HTML modifications are needed
   - Creative judgment/synthesis required
   - Creation of new **interactive activities** (multiple-choice, fill-in-the-blank, essay/reflection inputs, drag-and-drop, etc.), ensuring layout and style consistency with existing pages
@@ -60,7 +60,7 @@ JSON only (no markdown, no extra text):
 Step format:
 ```json
 {{
-    "step": str,                       # Technical instruction for agent, include files/pages in parentheses
+    "step": str,                       # Technical instruction for agent, include files/pages in parentheses. It should be always in English
     "non_technical_description": str,  # Simple summary in {user_language}, include files/pages in parentheses. Warn the user if the Codex agent is selected
     "agent": str,                      # Agent name
     "html_files": list,                # Files to modify (all files if Selected Page is True)
@@ -85,6 +85,7 @@ Step format:
   - Broad requests ("improve page", "modernize layout")
   - Structural HTML modifications needed
   - Creative judgment/synthesis required
+  - Creation of new HTML files (each new HTML file created should be named as follows: `<section>_<subsection>_adt.html` such as `20_1_adt.html`)
   - Creation of new **interactive activities**
   - No single specialized agent can handle full task
 
@@ -93,6 +94,12 @@ Step format:
 - **Asset Transfer**: Source in `layout_template_files`, targets in `html_files`
 - **Merge/Split**: List source files in `html_files`
 - **Delete**: List files to delete in `html_files`
+
+**New HTML File Creation:**
+- Always add a new `<li>` entry to **content/navigation/nav.html**, keeping the correct order (the order of `<li>` items defines navigation). Example:<li class="nav__list-item"><a class="nav__list-link" data-text-id="text-29-0" href="29_0_adt.html">Autocuidado emocional</a></li>
+- Each `<li>` = one page, and order defines navigation
+- Inside each new HTML file, include a `<meta>` tag whose `page-section-id` matches the filename. Example for `30_0_adt.html`: <meta content="30_0" name="page-section-id"/>
+- Each new HTML file must be named: **`<section>_<subsection>_adt.html`** (e.g., `30_0_adt.html`)
 
 **Feedback Handling:**
 - Retain original plan if feedback shows satisfaction ("It's okay")
