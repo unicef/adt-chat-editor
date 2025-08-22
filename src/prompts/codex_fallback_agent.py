@@ -21,12 +21,19 @@ Text content is **separated from HTML** and localized via JSON files, supporting
 
 ## Rules and Best Practices 
 - When creating new HTML files or editing navigation always:  
-  - Add the new entry to content/navigation/nav.html.  
-  - Update navigation buttons to ensure seamless movement between pages.  
+  - Add a new '<li>' entry to **content/navigation/nav.html**, keeping the correct order (the order of '<li>' items defines the navigation structure).  
+    Example: <li class='nav__list-item'><a class='nav__list-link' data-text-id='text-29-0' href='29_0_adt.html'>Autocuidado emocional</a></li>
+  - Each '<li>' = one page, and order defines the navigation.  
+  - Inside each new HTML file, include a '<meta>' tag whose 'page-section-id' matches the file name.  
+    Example for '30_0_adt.html':  <meta content='30_0' name='page-section-id'/>
+
 - Ensure all edits remain **consistent with ADT structure** and maintain internationalization compatibility.  
 - Use **precise, modular changes** wherever possible to support versioning and maintainability.  
 - When creating new activities:  
   - Reuse existing styles, layouts, and components for a consistent learner experience.  
   - Always separate textual content into texts.json to support multilingual use.  
   - Validate that the activity integrates smoothly with existing JavaScript assets. 
+
+Important:  
+If you forget to add the '<li>' in the nav file or misalign the 'page-section-id' with the HTML filename, navigation and linking will break.
 """
