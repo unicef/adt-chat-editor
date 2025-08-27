@@ -230,12 +230,18 @@ def create_plan_display(state: ADTState) -> str:
     Args:
         state: The state of the agent.
     """
-    steps_description = [f"{i}. {step.non_technical_description}" for i, step in enumerate(state.steps, 1)]
-    steps_description_str = '\n'.join(steps_description)
+    # Escape underscores in step descriptions to prevent markdown formatting issues
+    steps_description = []
+    for i, step in enumerate(state.steps, 1):
+        # Escape underscores in the non_technical_description to prevent markdown italics
+        escaped_description = step.non_technical_description.replace("_", "\\_")
+        steps_description.append(f"{i}. {escaped_description}")
+
+    steps_description_str = "\n".join(steps_description)
 
     plan_display = get_message(state.user_language.value, "plan_display")
     plan_display = plan_display.format(steps=steps_description_str)
-    
+
     return plan_display
 
 
