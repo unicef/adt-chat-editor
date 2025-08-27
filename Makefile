@@ -22,7 +22,7 @@ REQUIRED_VARS=OPENAI_API_KEY OPENAI_MODEL GITHUB_TOKEN ADTS
 reviewer: check clone-repos clone-utils select-adt ensure-data-dirs docker-up initialize
 
 # Creator mode - works with a single local repository
-creator: check setup-creator ensure-data-dirs docker-up initialize
+creator: check clone-utils setup-creator ensure-data-dirs docker-up initialize
 
 # Validate all prerequisites before proceeding
 check:
