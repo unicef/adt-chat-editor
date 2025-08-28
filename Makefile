@@ -51,7 +51,7 @@ check:
 		echo "❌ $(ENV_FILE) file not found. Please create it or copy from .env.example."; \
 		exit 1; \
 	fi
-	@set -a; . $(ENV_FILE); \
+	@set -a; . ./$(ENV_FILE); \
 	for var in $(REQUIRED_VARS); do \
 		if [ -z "$${!var}" ]; then \
 			echo "❌ Environment variable '$$var' is missing or empty in $(ENV_FILE)"; \
@@ -66,7 +66,7 @@ clone-repos:
 	@echo "🔁 Managing ADT Git repositories..."
 	@echo "📋 Creating data directory if it doesn't exist..."
 	@mkdir -p data
-	@set -a; . $(ENV_FILE); set +a; \
+	@set -a; . ./$(ENV_FILE); set +a; \
 	for repo_url in $$ADTS; do \
 		repo_name=$$(basename $$repo_url .git); \
 		echo "📋 Processing repository: $$repo_name"; \
@@ -105,7 +105,7 @@ clone-repos:
 # Clone the ADT Utils repository if defined in .env
 clone-utils:
 	@echo "🔧 Managing ADT Utils repository..."
-	@set -a; . $(ENV_FILE); set +a; \
+	@set -a; . ./$(ENV_FILE); set +a; \
 	if [ -z "$$ADT_UTILS_REPO" ]; then \
 		echo "ℹ️  ADT_UTILS_REPO not set in $(ENV_FILE). Skipping."; \
 		exit 0; \
@@ -205,17 +205,23 @@ setup-creator:
 	mkdir -p data; \
 	echo "📋 Copying files to data/input..."; \
 	cp -r "$$repo_path" data/input; \
-	echo "📋 Creating symbolic link for data/output..."; \
-	ln -sfn "/app/external_repo" data/output; \
+	echo "📋 Creating output directory..."; \
+	if [ "$$(uname -s)" = "Linux" ] || [ "$$(uname -s)" = "Darwin" ]; then \
+		ln -sfn "/app/external_repo" data/output; \
+		echo "📋 Created symlink for data/output"; \
+	else \
+		cp -r "$$repo_path" data/output; \
+		echo "📋 Copied files to data/output (symlink not supported)"; \
+	fi; \
 	echo "📋 Setting EXTERNAL_REPO_PATH environment variable..."; \
 	echo "EXTERNAL_REPO_PATH=$$repo_path" >> .env; \
-	echo "✅ Successfully set up creator mode: files copied to data/input, symlink created for data/output"
+	echo "✅ Successfully set up creator mode: files copied to data/input and output"
 
 # Start Docker containers using docker-compose
 docker-up:
 	@echo "🐳 Starting Docker containers..."
 	@echo "📋 Loading environment variables..."
-	@set -a; . .env; set +a; \
+	@set -a; . ./$(ENV_FILE); set +a; \
 	if docker-compose up --build -d; then \
 		echo "✅ Docker containers started successfully"; \
 	else \
@@ -254,8 +260,7 @@ initialize:
 		curl -s -X POST http://localhost:8000/setup/initialize; \
 	fi; \
 	echo "\n✅ App initialized successfully."; \
-	echo "🟢 App is running at: http://localhost:8000/"; \
-	python3 -m webbrowser http://localhost:8000
+	echo "🟢 App is running at: http://localhost:8000/"
 
 # Convenience targets for different modes
 run: reviewer
