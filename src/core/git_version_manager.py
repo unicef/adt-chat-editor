@@ -18,11 +18,14 @@ class AsyncGitVersionManager:
 
     Attributes:
         repo_path (Path): Path to the local git repository.
+        base_branch_name (str): Name of the base branch to work from.
+        init_working_branch (bool): Whether to initialise the working branch on creation.
     """
-    def __init__(self, repo_path: str, base_branch_name: str):
+    def __init__(self, repo_path: str, base_branch_name: str, init_working_branch: bool = True):
         self.repo_path = Path(repo_path).resolve()
         self.base_branch_name = base_branch_name
         self.true_branch_name = None  
+        self.init_working_branch = init_working_branch
 
         if not self.repo_path.exists():
             raise FileNotFoundError(f"Repository path not found: {self.repo_path}")
@@ -31,7 +34,9 @@ class AsyncGitVersionManager:
 
         asyncio.create_task(self._configure_git_identity())
         asyncio.create_task(self._ensure_https_remote())
-        asyncio.create_task(self._initialise_working_branch())
+
+        if self.init_working_branch:
+            asyncio.create_task(self._initialise_working_branch())
 
     async def _configure_git_identity(self):
         await self._run_git("config", "user.email", "bot@example.com")
@@ -76,6 +81,7 @@ class AsyncGitVersionManager:
                 self.true_branch_name = current
 
             await self.tag_last_published_commit()
+            await self.first_commit("First commit")
 
         except Exception as e:
             # Up to you: replace with your logger
@@ -157,6 +163,13 @@ class AsyncGitVersionManager:
     
         except Exception as e:
             raise RuntimeError(f"Failed to commit changes: {e}")
+
+    async def first_commit(self, message: str) -> bool:
+        try:            
+            # Perform the commit
+            await self._run_git('commit', '--allow-empty', '-m', message)    
+        except Exception as e:
+            raise RuntimeError(f"Failed to create the first commit: {e}")
 
     async def checkout_commit(self, commit_hash: str):
         """Checkout a specific commit in detached HEAD mode."""
