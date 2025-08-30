@@ -6,6 +6,7 @@ from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
+from src.core.git_version_manager import AsyncGitVersionManager
 from src.llm.llm_call import async_model_call
 from src.llm.llm_client import llm_client
 from src.prompts import (
@@ -13,6 +14,7 @@ from src.prompts import (
     ORCHESTRATOR_SYSTEM_PROMPT,
 )
 from src.settings import (
+    BASE_BRANCH_NAME,
     OUTPUT_DIR,
     custom_logger,
 )
@@ -40,6 +42,14 @@ logger = custom_logger("Main Workflow Actions")
 # Response parsers
 orchestrator_planning_parser = PydanticOutputParser(
     pydantic_object=OrchestratorPlanningOutput
+)
+
+
+# Git manager instance
+git_manager = AsyncGitVersionManager(
+    repo_path=OUTPUT_DIR,
+    base_branch_name=BASE_BRANCH_NAME,
+    init_working_branch=False,
 )
 
 
@@ -438,5 +448,30 @@ async def finalize_task_execution(state: ADTState, config: RunnableConfig) -> AD
     # Save the state
     state.plan_shown_to_user = False
     state.status = WorkflowStatus.SUCCESS
+
+    try:
+        message = "New Change Saved"
+        committed = await git_manager.commit_changes(message=message)
+
+        if committed:
+            logger.debug(f"Committed changes with message: {message}")
+        else:
+            logger.debug("No changes to commit")
+    except Exception as e:
+        logger.error(f"Error committing changes: {e}")
+
+    try:
+        current_branch = await git_manager.current_branch()
+        commits = await git_manager.list_commits(branch_name=current_branch)
+        logger.debug(f"Commits retrieved successfully: {commits}")
+    except Exception as e:
+        logger.debug(f"Error fetching commits: {e}")
+
+    try:
+        commit_hash = commits[-1].get("hash")
+        await git_manager.checkout_commit(commit_hash)
+        logger.debug(f"Checkout commit successfully: {commit_hash}")
+    except Exception as e:
+        logger.debug(f"Error checking out commit: {e}")
 
     return state
