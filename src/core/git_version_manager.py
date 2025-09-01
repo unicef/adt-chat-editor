@@ -46,23 +46,28 @@ class AsyncGitVersionManager:
         token = GITHUB_TOKEN
         if not token:
             raise RuntimeError("Missing GITHUB_TOKEN in environment")
-    
+
         remote_url = await self._run_git("remote", "get-url", "origin")
-    
-        # Always re-derive the correct URL using the *new* token
-        if "github.com" in remote_url:
-            if "@" in remote_url:
-                # Strip the old auth
-                remote_url = remote_url.split("@github.com/")[-1]
-            elif remote_url.startswith("https://github.com/"):
-                remote_url = remote_url.split("https://github.com/")[-1]
-            elif remote_url.startswith("git@github.com:"):
-                remote_url = remote_url.split("git@github.com:")[-1]
-            else:
-                raise RuntimeError(f"Unrecognized remote format: {remote_url}")
-    
-            https_url = f"https://{token}:x-oauth-basic@github.com/{remote_url.rstrip('.git')}.git"
-            await self._run_git("remote", "set-url", "origin", https_url)
+
+        # Normalize to path "org/repo"
+        path: str
+        if remote_url.startswith("git@github.com:"):
+            # SSH format: git@github.com:org/repo.git
+            path = remote_url[len("git@github.com:"):]
+        elif remote_url.startswith("https://github.com/"):
+            # HTTPS without auth: https://github.com/org/repo.git
+            path = remote_url[len("https://github.com/"):]
+        elif "@github.com/" in remote_url:
+            # HTTPS with embedded auth: https://token@github.com/org/repo.git
+            path = remote_url.split("@github.com/")[-1]
+        else:
+            raise RuntimeError(f"Unrecognized remote format: {remote_url}")
+
+        if path.endswith(".git"):
+            path = path[:-4]
+
+        https_url = f"https://{token}:x-oauth-basic@github.com/{path}.git"
+        await self._run_git("remote", "set-url", "origin", https_url)
 
     async def _initialise_working_branch(self):
         """Mirrors the old FastAPI‐router startup logic:
