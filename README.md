@@ -198,3 +198,40 @@ First, you need to install Docker
    ```bash
    make stop
    ```
+
+## 🧪 Running Tests
+
+You can run the test suite with pytest. The Makefile provides convenient targets that also install test dependencies when needed.
+
+Quick start:
+
+```bash
+make test
+```
+
+If pytest is not installed locally, you can first install the test dependencies:
+
+```bash
+make install-test-deps
+make test
+```
+
+Alternative ways to run tests:
+
+- Using Poetry:
+
+  ```bash
+  poetry install --with test
+  poetry run pytest -q
+  ```
+
+- Using pip (editable install with test extras):
+
+  ```bash
+  pip install -e .[test]
+  pytest -q
+  ```
+
+Notes:
+- Tests target deterministic utilities and core routing logic. Non-deterministic, agentic flows are tested via mocking the LLM layer and file loading.
+- Tests do not rely on the `data/` directory or external services.
