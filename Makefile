@@ -260,7 +260,18 @@ initialize:
 		curl -s -X POST http://localhost:8000/setup/initialize; \
 	fi; \
 	echo "\n✅ App initialized successfully."; \
-	echo "🟢 App is running at: http://localhost:8000/"
+	echo "🟢 App is running at: http://localhost:8000/"; \
+	if command -v python3 >/dev/null 2>&1; then \
+		python3 -c "import webbrowser; webbrowser.open('http://localhost:8000/')" || true; \
+	elif command -v python >/dev/null 2>&1; then \
+		python -c "import webbrowser; webbrowser.open('http://localhost:8000/')" || true; \
+	elif command -v open >/dev/null 2>&1; then \
+		open http://localhost:8000/ || true; \
+	elif command -v xdg-open >/dev/null 2>&1; then \
+		xdg-open http://localhost:8000/ || true; \
+	else \
+		echo "Please open http://localhost:8000/ in your browser"; \
+	fi
 
 # Convenience targets for different modes
 run: reviewer
