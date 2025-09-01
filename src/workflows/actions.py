@@ -6,7 +6,6 @@ from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
-from src.core.git_version_manager import AsyncGitVersionManager
 from src.llm.llm_call import async_model_call
 from src.llm.llm_client import llm_client
 from src.prompts import (
@@ -14,7 +13,6 @@ from src.prompts import (
     ORCHESTRATOR_SYSTEM_PROMPT,
 )
 from src.settings import (
-    BASE_BRANCH_NAME,
     OUTPUT_DIR,
     custom_logger,
 )
@@ -34,6 +32,7 @@ from src.utils import (
 )
 from src.workflows.agents import AVAILABLE_AGENTS
 from src.workflows.state import ADTState
+from src.core.git_manager_provider import get_git_manager  # reuse lazy git manager
 
 # Initialize logger
 logger = custom_logger("Main Workflow Actions")
@@ -45,12 +44,8 @@ orchestrator_planning_parser = PydanticOutputParser(
 )
 
 
-# Git manager instance
-git_manager = AsyncGitVersionManager(
-    repo_path=OUTPUT_DIR,
-    base_branch_name=BASE_BRANCH_NAME,
-    init_working_branch=False,
-)
+# Note: Git operations are handled elsewhere (publish routes). Avoid creating
+# a Git manager here to prevent event-loop issues during import in tests.
 
 
 # Actions
@@ -449,10 +444,14 @@ async def finalize_task_execution(state: ADTState, config: RunnableConfig) -> AD
     state.plan_shown_to_user = False
     state.status = WorkflowStatus.SUCCESS
 
+    git_manager = get_git_manager()
+    if git_manager is None:
+        logger.debug("Git manager unavailable; skipping commit and checkout steps")
+        return state
+
     try:
         message = "New Change Saved"
         committed = await git_manager.commit_changes(message=message)
-
         if committed:
             logger.debug(f"Committed changes with message: {message}")
         else:
@@ -460,6 +459,7 @@ async def finalize_task_execution(state: ADTState, config: RunnableConfig) -> AD
     except Exception as e:
         logger.error(f"Error committing changes: {e}")
 
+    commits = []
     try:
         current_branch = await git_manager.current_branch()
         commits = await git_manager.list_commits(branch_name=current_branch)
@@ -468,9 +468,10 @@ async def finalize_task_execution(state: ADTState, config: RunnableConfig) -> AD
         logger.debug(f"Error fetching commits: {e}")
 
     try:
-        commit_hash = commits[-1].get("hash")
-        await git_manager.checkout_commit(commit_hash)
-        logger.debug(f"Checkout commit successfully: {commit_hash}")
+        if commits:
+            commit_hash = commits[-1].get("hash")
+            await git_manager.checkout_commit(commit_hash)
+            logger.debug(f"Checkout commit successfully: {commit_hash}")
     except Exception as e:
         logger.debug(f"Error checking out commit: {e}")
 
