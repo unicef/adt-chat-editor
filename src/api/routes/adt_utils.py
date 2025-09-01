@@ -2,7 +2,7 @@ import subprocess
 import os
 from enum import Enum
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 from src.settings import custom_logger, ADT_UTILS_DIR, OUTPUT_DIR  # Added OUTPUT_DIR import
 from src.structs import RunAllRequest, RunAllResponse
@@ -24,15 +24,17 @@ class RunScriptRequest(BaseModel):
     end: Optional[int] = Field(None, description="End value (only for restructure_text)", ge=0)
     verbose: bool = Field(True, description="Enable verbose output")
 
-    class Config:
-        json_schema_extra = {
+    # Pydantic v2 model config
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "script_type": "restructure_text",
                 "start": 10,
                 "end": 15,
-                "verbose": True
+                "verbose": True,
             }
         }
+    )
 
 @router.post("/run-script")
 async def run_script(request: RunScriptRequest):

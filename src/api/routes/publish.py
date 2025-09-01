@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Body
 
@@ -12,11 +12,26 @@ logger = custom_logger("Publish API Router")
 # Create router
 router = APIRouter(prefix="/publish", tags=["Publish"])
 
-# Git manager instance
-git_manager = AsyncGitVersionManager(
-    repo_path=OUTPUT_DIR,
-    base_branch_name=BASE_BRANCH_NAME
-)
+_git_manager: Optional[AsyncGitVersionManager] = None
+
+
+def get_git_manager() -> Optional[AsyncGitVersionManager]:
+    """Lazily create the Git manager within an event loop context.
+
+    Returns None if initialisation fails (e.g., not a git repo), so that
+    endpoints can gracefully degrade in dev/test environments.
+    """
+    global _git_manager
+    if _git_manager is None:
+        try:
+            _git_manager = AsyncGitVersionManager(
+                repo_path=OUTPUT_DIR,
+                base_branch_name=BASE_BRANCH_NAME,
+            )
+        except Exception as _e:  # pragma: no cover - env dependent
+            logger.debug(f"Git manager unavailable: {_e}")
+            _git_manager = None
+    return _git_manager
 
 
 # Save user changes (commit)
@@ -25,6 +40,12 @@ async def commit_changes(request: PublishRequest):
     """Commit changes without pushing."""
     logger.debug(f"Committing changes: request={request}")
     try:
+        git_manager = get_git_manager()
+        if git_manager is None:
+            return PublishResponse(
+                status="not-committed",
+                metadata=PublishMetadata(id=request.book_information.id, title="", changes=[]),
+            )
         message = request.message
         committed = await git_manager.commit_changes(message=message)
 
@@ -50,6 +71,9 @@ async def commit_changes(request: PublishRequest):
 @router.get("/commits", response_model=List[Dict[str, str]])
 async def list_branch_commits():
     try:
+        git_manager = get_git_manager()
+        if git_manager is None:
+            return []
         current_branch = await git_manager.current_branch()
         commits = await git_manager.list_commits(branch_name=current_branch)
         return commits
@@ -63,6 +87,9 @@ async def list_branch_commits():
 async def checkout_commit(commit: Dict[str, str] = Body(...)):
     commit_hash = commit.get("hash")
     try:
+        git_manager = get_git_manager()
+        if git_manager is None:
+            return {"status": "error", "detail": "git manager unavailable"}
         await git_manager.checkout_commit(commit_hash)
         return {"status": "ok", "commit": commit_hash}
     except Exception as e:
@@ -78,6 +105,12 @@ async def publish_changes(request: PublishRequest):
     message = request.message or f"Commit for {book_information.id}"
 
     try:
+        git_manager = get_git_manager()
+        if git_manager is None:
+            return PublishResponse(
+                status="not-published",
+                metadata=PublishMetadata(id=book_information.id, title=message, changes=[]),
+            )
         current_branch = await git_manager.current_branch()
         logger.debug(f"Current working branch: {current_branch}")
 
