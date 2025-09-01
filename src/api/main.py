@@ -2,6 +2,7 @@ import os
 import shutil
 
 import uvicorn
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
@@ -11,6 +12,7 @@ from starlette.staticfiles import StaticFiles
 
 from src.api.routes import router
 from src.settings import custom_logger, STATE_CHECKPOINTS_DIR
+from src.settings import OUTPUT_DIR, BASE_BRANCH_NAME
 
 # Create the logger
 logger = custom_logger(__name__)
@@ -32,11 +34,35 @@ class NoCacheStaticFiles(StaticFiles):
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     logger.info("Creating FastAPI app")
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        # Startup: initialize Git working branch if repo is present
+        try:
+            from src.core.git_version_manager import AsyncGitVersionManager
+
+            git_dir = os.path.join(OUTPUT_DIR, ".git")
+            if os.path.isdir(git_dir):
+                AsyncGitVersionManager(
+                    repo_path=OUTPUT_DIR,
+                    base_branch_name=BASE_BRANCH_NAME,
+                )
+                logger.info("Git manager initialization scheduled on startup")
+            else:
+                logger.debug(
+                    f"Skipping Git manager initialization: no git repo at {OUTPUT_DIR}"
+                )
+        except Exception as e:  # pragma: no cover - environment dependent
+            logger.debug(f"Git manager initialization skipped: {e}")
+
+        yield
+
     app = FastAPI(
         title="ADT Chat Editor",
         description="API for the ADT Chat Editor service",
         version="0.0.1",
         docs_url="/docs",
+        lifespan=lifespan,
     )
 
     # Configure CORS
