@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Define default values
 INPUT_DIR = "data/input"
@@ -36,7 +36,10 @@ class Settings(BaseSettings):
     ADTS: str | None = None
     ACTIVE_ADT: str | None = None
 
-    class Config:
-        env_file = ".env"
+    # Pydantic v2 settings configuration
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore",  # Ignore extra env vars present in .env or environment
+    )
 
 settings = Settings()

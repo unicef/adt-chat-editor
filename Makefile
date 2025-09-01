@@ -16,7 +16,7 @@ ENV_FILE=.env
 REQUIRED_VARS=OPENAI_API_KEY OPENAI_MODEL GITHUB_TOKEN ADTS
 
 # Define all available targets (commands that can be run with 'make')
-.PHONY: check docker-up initialize run stop clone-repos select-adt reviewer creator
+.PHONY: check docker-up initialize run stop clone-repos select-adt reviewer creator test install-test-deps
 
 # Reviewer mode - works with multiple repositories from ADT_REPOS
 reviewer: check clone-repos clone-utils select-adt ensure-data-dirs docker-up initialize
@@ -276,4 +276,31 @@ stop:
 	else \
 		echo "❌ Failed to stop Docker containers"; \
 		exit 1; \
+	fi
+
+# Install test dependencies (pytest, pytest-asyncio)
+install-test-deps:
+	@echo "🧪 Installing test dependencies..."
+	@if command -v poetry >/dev/null 2>&1; then \
+		if poetry install --with test; then \
+			echo "✅ Installed test deps via Poetry"; \
+		else \
+			echo "⚠️ Poetry install failed. Falling back to pip..."; \
+			python -m pip install -q pytest pytest-asyncio; \
+			echo "✅ Installed test deps via pip"; \
+		fi; \
+	else \
+		python -m pip install -q pytest pytest-asyncio; \
+		echo "✅ Installed test deps via pip"; \
+	fi
+
+# Run unit tests with pytest
+test:
+	@echo "🧪 Running unit tests..."
+	@if python -m pytest --version >/dev/null 2>&1; then \
+		python -m pytest -q; \
+	else \
+		echo "📦 Installing test dependencies..."; \
+		python -m pip install -q pytest pytest-asyncio; \
+		python -m pytest -q; \
 	fi

@@ -15,6 +15,9 @@ class LLMClientSingleton:
         return cls._instance
 
 
-llm_client = LLMClientSingleton.get_client()
-
-logger.info(f"LLM client initialized: {llm_client}")
+try:
+    llm_client = LLMClientSingleton.get_client()
+    logger.info(f"LLM client initialized: {llm_client}")
+except Exception as e:  # pragma: no cover - environment dependent
+    logger.warning(f"LLM client unavailable during import: {e}")
+    llm_client = None
