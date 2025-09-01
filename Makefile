@@ -315,3 +315,15 @@ test:
 		python -m pip install -q pytest pytest-asyncio; \
 		python -m pytest -q; \
 	fi
+
+# Run unit tests with verbose output (test names and details)
+.PHONY: test-verbose
+test-verbose:
+	@echo "🧪 Running unit tests (verbose)..."
+	@if python -m pytest --version >/dev/null 2>&1; then \
+		python -m pytest -v; \
+	else \
+		echo "📦 Installing test dependencies..."; \
+		python -m pip install -q pytest pytest-asyncio; \
+		python -m pytest -v; \
+	fi

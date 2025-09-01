@@ -216,6 +216,12 @@ make install-test-deps
 make test
 ```
 
+Verbose output (test names and details):
+
+  ```bash
+  make test-verbose
+  ```
+
 Alternative ways to run tests:
 
 - Using Poetry:
