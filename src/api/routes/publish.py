@@ -1,9 +1,9 @@
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from fastapi import APIRouter, Body
 
-from src.core.git_version_manager import AsyncGitVersionManager
-from src.settings import BASE_BRANCH_NAME, OUTPUT_DIR, custom_logger
+from src.core.git_manager_provider import get_git_manager
+from src.settings import custom_logger
 from src.structs import PublishMetadata, PublishRequest, PublishResponse
 
 # Create logger
@@ -12,26 +12,7 @@ logger = custom_logger("Publish API Router")
 # Create router
 router = APIRouter(prefix="/publish", tags=["Publish"])
 
-_git_manager: Optional[AsyncGitVersionManager] = None
-
-
-def get_git_manager() -> Optional[AsyncGitVersionManager]:
-    """Lazily create the Git manager within an event loop context.
-
-    Returns None if initialisation fails (e.g., not a git repo), so that
-    endpoints can gracefully degrade in dev/test environments.
-    """
-    global _git_manager
-    if _git_manager is None:
-        try:
-            _git_manager = AsyncGitVersionManager(
-                repo_path=OUTPUT_DIR,
-                base_branch_name=BASE_BRANCH_NAME,
-            )
-        except Exception as _e:  # pragma: no cover - env dependent
-            logger.debug(f"Git manager unavailable: {_e}")
-            _git_manager = None
-    return _git_manager
+# Git manager accessor is provided by core.git_manager_provider
 
 
 # Save user changes (commit)
