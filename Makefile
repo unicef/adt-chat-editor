@@ -164,11 +164,16 @@ select-adt:
 	echo "🔗 Setting up $$adt..."; \
 	rm -rf data/input data/output; \
 	mkdir -p data; \
-	echo "📋 Creating symbolic link for data/input..."; \
-	(cd data && ln -sfn "$$adt" input); \
+	echo "📋 Creating hard copy for data/input (original ADT)..."; \
+	(\
+		cd data && \
+		rm -rf input && \
+		mkdir -p input && \
+		cp -R "$$adt"/. input/ \
+	); \
 	echo "📋 Creating symbolic link for data/output..."; \
 	(cd data && ln -sfn "$$adt" output); \
-	echo "✅ Successfully set up ADT: $$adt (linked to input and output)"
+	echo "✅ Successfully set up ADT: $$adt (input copied, output linked)"
 
 # Ensure data directories exist before starting Docker
 ensure-data-dirs:

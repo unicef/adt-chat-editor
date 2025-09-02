@@ -14,7 +14,8 @@ Analyze user requests and create actionable plans specifying:
 - **Layout templates** (when mirroring layout properties)
 - **Asset sources** (when copying media - use `layout_template_files` field)
 
-Evaluate user feedback and revise plans **only if necessary**. If no changes needed, set `modified` to `false`.
+## User Feedback
+The user may also provide feedback about a previous plan. You must evaluate this feedback and revise the plan **only if necessary**. If no changes are needed, retain the original plan and set the `modified` field to `false`
 
 ## Agents
 Available agents with strict boundaries:
@@ -109,7 +110,8 @@ Step format:
 **Feedback Handling:**
 - Retain original plan if feedback shows satisfaction ("It's okay")
 - Translate non-English feedback before evaluation
-- Modify only when feedback contains clear change requests
+- Modify only when feedback contains clear change requests.
+- If no changes needed uin the plan, set the `modified` field to `false`
 
 **Quality Standards:**
 - Tailwind CSS conventions
