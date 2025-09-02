@@ -134,6 +134,13 @@ async def publish_changes(request: PublishRequest):
             else:
                 logger.debug(f"PR already exists for branch '{current_branch}'")
 
+            # Create an empty baseline commit so future edits aren't treated as the first commit
+            try:
+                await git_manager.first_commit("First commit")
+                logger.debug("Created baseline empty commit after publish")
+            except Exception as e:
+                logger.debug(f"Unable to create baseline empty commit: {e}")
+
             return PublishResponse(
                 status="published",
                 metadata=PublishMetadata(id=book_information.id, title=message, changes=[]),
@@ -156,6 +163,13 @@ async def publish_changes(request: PublishRequest):
                 logger.debug(f"Created new PR: {pr_url}")                
             else:
                 logger.debug(f"PR already exists for branch '{current_branch}'")
+
+            # Create an empty baseline commit so future edits aren't treated as the first commit
+            try:
+                await git_manager.first_commit("First commit")
+                logger.debug("Created baseline empty commit after publish")
+            except Exception as e:
+                logger.debug(f"Unable to create baseline empty commit: {e}")
 
             return PublishResponse(
                 status="published",
