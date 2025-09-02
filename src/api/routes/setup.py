@@ -1,3 +1,5 @@
+"""Setup endpoints to initialize languages, Tailwind, and caches."""
+
 import os
 import subprocess
 from typing import Dict
@@ -5,11 +7,10 @@ from typing import Dict
 from fastapi import APIRouter, HTTPException
 
 from src.utils.initialization import (
-    initialize_tailwind,
     initialize_languages,
+    initialize_tailwind,
     initialize_translated_html_content,
 )
-
 
 # Setup router
 router = APIRouter(prefix="/setup", tags=["setup"])

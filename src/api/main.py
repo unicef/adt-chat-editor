@@ -1,9 +1,11 @@
+"""FastAPI application factory and setup."""
+
 import os
 import shutil
+from contextlib import asynccontextmanager
 
 import uvicorn
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi_pagination import add_pagination
@@ -11,8 +13,12 @@ from starlette.responses import FileResponse
 from starlette.staticfiles import StaticFiles
 
 from src.api.routes import router
-from src.settings import custom_logger, STATE_CHECKPOINTS_DIR
-from src.settings import OUTPUT_DIR, BASE_BRANCH_NAME
+from src.settings import (
+    BASE_BRANCH_NAME,
+    OUTPUT_DIR,
+    STATE_CHECKPOINTS_DIR,
+    custom_logger,
+)
 
 # Create the logger
 logger = custom_logger(__name__)
@@ -20,7 +26,10 @@ logger = custom_logger(__name__)
 
 # NoCache STATICFIELD
 class NoCacheStaticFiles(StaticFiles):
+    """StaticFiles with headers set to disable caching."""
+
     async def get_response(self, path, scope):
+        """Return a response with cache-busting headers."""
         response: FileResponse = await super().get_response(path, scope)
         response.headers["Cache-Control"] = (
             "no-store, no-cache, must-revalidate, max-age=0"
@@ -43,10 +52,15 @@ def create_app() -> FastAPI:
 
             git_dir = os.path.join(OUTPUT_DIR, ".git")
             if os.path.isdir(git_dir):
-                AsyncGitVersionManager(
+                manager = await AsyncGitVersionManager.create(
                     repo_path=OUTPUT_DIR,
                     base_branch_name=BASE_BRANCH_NAME,
+                    init_working_branch=True,
                 )
+                # Share the initialized manager with the rest of the app
+                from src.core.git_manager_provider import set_git_manager
+
+                set_git_manager(manager)
                 logger.info("Git manager initialization scheduled on startup")
             else:
                 logger.debug(

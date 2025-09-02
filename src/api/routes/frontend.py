@@ -1,3 +1,5 @@
+"""Frontend static file serving endpoints."""
+
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException

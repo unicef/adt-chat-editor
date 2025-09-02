@@ -1,3 +1,5 @@
+"""Prompt templates for Layout Mirroring Agent."""
+
 LAYOUT_MIRRORING_SYSTEM_PROMPT = """
 ## Role
 You are a layout mirroring agent. Your job is to replicate the layout and styling of one or more base HTML templates onto target HTML files.
@@ -31,3 +33,5 @@ Apply these layout changes:
 
 Return only the updated HTML. Do not include explanations or extra text.
 """
+"""Prompt templates for Layout Mirroring Agent."""
+"""Prompt templates for Layout Mirroring Agent."""

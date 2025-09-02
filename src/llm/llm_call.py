@@ -1,3 +1,5 @@
+"""LLM client invocation utilities."""
+
 from typing import Any, cast
 
 from langchain.chat_models.base import BaseChatModel
@@ -10,8 +12,7 @@ async def async_model_call(
     config: RunnableConfig,
     formatted_prompt: Any,
 ) -> AIMessage:
-    """
-    Make a client call to the LLM.
+    """Call the LLM client and return an AIMessage response.
 
     Args:
         llm_client: The LLM client to use.
@@ -22,5 +23,4 @@ async def async_model_call(
         The LLM response as an AIMessage.
     """
     response = cast(AIMessage, await llm_client.ainvoke(formatted_prompt, config))
-
     return response
