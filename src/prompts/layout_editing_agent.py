@@ -1,3 +1,5 @@
+"""Prompt templates for Layout Edit Agent."""
+
 LAYOUT_EDIT_SYSTEM_PROMPT = """
 ## Role
 You are a layout editor responsible for adjusting the visual presentation and structure of full HTML documents
@@ -46,3 +48,5 @@ Instructions to apply (in the same language as the translations):
 
 Return only the modified HTML. Do not include comments, explanations, or formatting
 """
+"""Prompt templates for Layout Edit Agent."""
+"""Prompt templates for Layout Edit Agent."""

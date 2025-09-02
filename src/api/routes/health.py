@@ -1,7 +1,8 @@
+"""Simple healthcheck endpoint."""
+
 from fastapi import APIRouter
 
 from src.settings import custom_logger
-
 
 # Create logger
 logger = custom_logger("Health API Router")

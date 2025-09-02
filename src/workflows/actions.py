@@ -1,3 +1,5 @@
+"""Main workflow actions for planning, showing, and executing steps."""
+
 import textwrap
 from typing import Any
 
@@ -6,6 +8,7 @@ from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
+from src.core.git_manager_provider import get_git_manager  # reuse lazy git manager
 from src.llm.llm_call import async_model_call
 from src.llm.llm_client import llm_client
 from src.prompts import (
@@ -32,7 +35,6 @@ from src.utils import (
 )
 from src.workflows.agents import AVAILABLE_AGENTS
 from src.workflows.state import ADTState
-from src.core.git_manager_provider import get_git_manager  # reuse lazy git manager
 
 # Initialize logger
 logger = custom_logger("Main Workflow Actions")
@@ -46,6 +48,34 @@ orchestrator_planning_parser = PydanticOutputParser(
 
 # Note: Git operations are handled elsewhere (publish routes). Avoid creating
 # a Git manager here to prevent event-loop issues during import in tests.
+
+
+async def _build_html_context(language: str, current_pages: list[str]) -> tuple[dict[str, str], bool, dict[str, str]]:
+    """Build context from translated HTML contents.
+
+    Returns a tuple (available_html_files, is_current_page, html_page_map).
+    """
+    available_html_files_raw = await load_translated_html_contents(language=language)
+    if current_pages:
+        pages_full_paths = [f"{OUTPUT_DIR}/{p}" for p in current_pages]
+        available_html_files = {
+            path: " ".join(val for item in contents for val in item.values())
+            for entry in available_html_files_raw
+            for path, contents in entry.items()
+            if path in pages_full_paths
+        }
+        is_current_page = True
+    else:
+        available_html_files = {
+            path: " ".join(val for item in contents for val in item.values())
+            for entry in available_html_files_raw
+            for path, contents in entry.items()
+        }
+        is_current_page = False
+
+    html_files = list(available_html_files.keys())
+    html_page_map = await parse_html_pages(html_files)
+    return available_html_files, is_current_page, html_page_map
 
 
 # Actions
@@ -96,32 +126,12 @@ async def plan_steps(state: ADTState, config: RunnableConfig) -> ADTState:
         if step.status == StepStatus.SUCCESS
     )
 
-    # Load translated HTML contents
-    available_html_files = await load_translated_html_contents(language=state.language)
-    if state.current_pages:
-        logger.info("Filtering selected page")
-        current_pages = [
-            f"{OUTPUT_DIR}/{current_page}" for current_page in state.current_pages
-        ]
-        available_html_files = {
-            path: " ".join(val for item in content_list for val in item.values())
-            for entry in available_html_files
-            for path, content_list in entry.items()
-            if path in current_pages
-        }
-        is_current_page = True
-        logger.info(f"The selected page is: {available_html_files.keys()}")
-    else:
-        available_html_files = {
-            path: " ".join(val for item in content_list for val in item.values())
-            for entry in available_html_files
-            for path, content_list in entry.items()
-        }
-        is_current_page = False
-
-    # Get all relevant HTML files map to pages
-    html_files = list(available_html_files.keys())
-    html_page_map = await parse_html_pages(html_files)
+    # Load translated HTML contents and build context
+    available_html_files, is_current_page, html_page_map = await _build_html_context(
+        state.language, state.current_pages
+    )
+    if is_current_page:
+        logger.info(f"The selected page is: {list(available_html_files.keys())}")
 
     # Format messages
     messages = ChatPromptTemplate(
@@ -295,32 +305,12 @@ async def handle_plan_response(state: ADTState, config: RunnableConfig) -> ADTSt
         if step.status == StepStatus.SUCCESS
     )
 
-    # Load translated HTML contents
-    available_html_files = await load_translated_html_contents(language=state.language)
-    if state.current_pages:
-        logger.info("Filtering selected page")
-        current_pages = [
-            f"{OUTPUT_DIR}/{current_page}" for current_page in state.current_pages
-        ]
-        available_html_files = {
-            path: " ".join(val for item in content_list for val in item.values())
-            for entry in available_html_files
-            for path, content_list in entry.items()
-            if path in current_pages
-        }
-        is_current_page = True
-        logger.info(f"The selected page is: {available_html_files.keys()}")
-    else:
-        available_html_files = {
-            path: " ".join(val for item in content_list for val in item.values())
-            for entry in available_html_files
-            for path, content_list in entry.items()
-        }
-        is_current_page = False
-
-    # Get all relevant HTML files map to pages
-    html_files = list(available_html_files.keys())
-    html_page_map = await parse_html_pages(html_files)
+    # Load translated HTML contents and build context
+    available_html_files, is_current_page, html_page_map = await _build_html_context(
+        state.language, state.current_pages
+    )
+    if is_current_page:
+        logger.info(f"The selected page is: {list(available_html_files.keys())}")
 
     # Format messages
     messages = ChatPromptTemplate(
@@ -444,7 +434,7 @@ async def finalize_task_execution(state: ADTState, config: RunnableConfig) -> AD
     state.plan_shown_to_user = False
     state.status = WorkflowStatus.SUCCESS
 
-    git_manager = get_git_manager()
+    git_manager = await get_git_manager()
     if git_manager is None:
         logger.debug("Git manager unavailable; skipping commit and checkout steps")
         return state

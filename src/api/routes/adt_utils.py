@@ -1,10 +1,14 @@
-import subprocess
+"""Endpoints to run ADT utility scripts from the backend."""
+
 import os
+import subprocess
 from enum import Enum
-from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
-from src.settings import custom_logger, ADT_UTILS_DIR, OUTPUT_DIR  # Added OUTPUT_DIR import
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, ConfigDict, Field
+
+from src.settings import ADT_UTILS_DIR, OUTPUT_DIR, custom_logger
 from src.structs import RunAllRequest, RunAllResponse
 
 # Create logger
@@ -14,11 +18,13 @@ logger = custom_logger("ADT Utils API Router")
 router = APIRouter(prefix="/adt-utils", tags=["ADT Utils"])
 
 class ScriptType(str, Enum):
+    """Supported script identifiers for adt-utils."""
     VALIDATE_ADT = "validate_adt"
     FIX_MISSING_DATA = "fix_missing_data_ids"
     RESTRUCTURE_TEXT = "restructure_text"
 
 class RunScriptRequest(BaseModel):
+    """Request model to execute a script with optional parameters."""
     script_type: ScriptType = Field(..., description="Type of script to run")
     start: Optional[int] = Field(None, description="Start value (only for restructure_text)", ge=0)
     end: Optional[int] = Field(None, description="End value (only for restructure_text)", ge=0)

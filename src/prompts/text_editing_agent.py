@@ -1,3 +1,5 @@
+"""Prompt templates for Text Editing Agent."""
+
 TEXT_EDIT_SYSTEM_PROMPT = """
 ## Role
 You are a text editor that modifies text content within web files while preserving HTML structure.
@@ -61,3 +63,5 @@ Target languages:
 ## Begin
 Now, interpret the instruction based on the translated strings, locate the matching original elements, and return only the JSON object with the updated `text_edits` list as specified in the system prompt.
 """
+"""Prompt templates for Text Editing Agent."""
+"""Prompt templates for Text Editing Agent."""

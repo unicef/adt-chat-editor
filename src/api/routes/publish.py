@@ -1,3 +1,5 @@
+"""Endpoints to commit, push and publish changes via Git/GitHub."""
+
 from typing import Dict, List
 
 from fastapi import APIRouter, Body
@@ -21,7 +23,7 @@ async def commit_changes(request: PublishRequest):
     """Commit changes without pushing."""
     logger.debug(f"Committing changes: request={request}")
     try:
-        git_manager = get_git_manager()
+        git_manager = await get_git_manager()
         if git_manager is None:
             return PublishResponse(
                 status="not-committed",
@@ -51,8 +53,9 @@ async def commit_changes(request: PublishRequest):
 # List recent system commits on current branch
 @router.get("/commits", response_model=List[Dict[str, str]])
 async def list_branch_commits():
+    """List recent commits authored by the bot since last published tag."""
     try:
-        git_manager = get_git_manager()
+        git_manager = await get_git_manager()
         if git_manager is None:
             return []
         current_branch = await git_manager.current_branch()
@@ -66,9 +69,10 @@ async def list_branch_commits():
 # Checkout a specific commit
 @router.post("/checkout-commit")
 async def checkout_commit(commit: Dict[str, str] = Body(...)):
+    """Checkout a specific commit hash in detached HEAD mode."""
     commit_hash = commit.get("hash")
     try:
-        git_manager = get_git_manager()
+        git_manager = await get_git_manager()
         if git_manager is None:
             return {"status": "error", "detail": "git manager unavailable"}
         await git_manager.checkout_commit(commit_hash)
@@ -80,13 +84,14 @@ async def checkout_commit(commit: Dict[str, str] = Body(...)):
 
 @router.post("", response_model=PublishResponse)
 async def publish_changes(request: PublishRequest):
+    """Commit changes if any, push branch, tag last published, and open PR."""
     logger.debug(f"Received publish request: {request}")
 
     book_information = request.book_information
     message = request.message or f"Commit for {book_information.id}"
 
     try:
-        git_manager = get_git_manager()
+        git_manager = await get_git_manager()
         if git_manager is None:
             return PublishResponse(
                 status="not-published",
@@ -99,7 +104,15 @@ async def publish_changes(request: PublishRequest):
         current_commit = await git_manager.commit_changes(message=message)
 
         if current_branch == "HEAD":
-            current_branch = git_manager.true_branch_name
+            # Use the working-branch determined at startup
+            current_branch = getattr(git_manager, "true_branch_name", None)
+            if not current_branch:
+                # If not available, cannot safely push; ask user to retry
+                logger.debug("true_branch_name unavailable while in detached HEAD")
+                return PublishResponse(
+                    status="error",
+                    metadata=PublishMetadata(id=book_information.id, title=message, changes=[]),
+                )
         
         if current_commit:
             logger.debug(f"Committed changes with message: {message}")

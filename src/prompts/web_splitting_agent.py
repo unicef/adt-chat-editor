@@ -1,3 +1,5 @@
+"""Prompt templates for Web Split Agent."""
+
 WEB_SPLIT_SYSTEM_PROMPT = """
 ## Role
 You are a splitting agent that divides a single HTML file into multiple standalone HTML files based on user instructions.
@@ -64,3 +66,5 @@ Return a JSON object with the following format:
     ]
 }}
 """
+"""Prompt templates for Web Split Agent."""
+"""Prompt templates for Web Split Agent."""

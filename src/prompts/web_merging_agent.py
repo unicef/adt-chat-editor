@@ -1,3 +1,5 @@
+"""Prompt templates for Web Merge Agent."""
+
 WEB_MERGE_SYSTEM_PROMPT = """
 ## Role
 You are a merging agent that combines multiple HTML files into a single, unified, well-structured HTML page.
@@ -44,3 +46,5 @@ Instructions (in the same language as the translations):
 
 Return only the final merged HTML as a raw string.
 """
+"""Prompt templates for Web Merge Agent."""
+"""Prompt templates for Web Merge Agent."""
