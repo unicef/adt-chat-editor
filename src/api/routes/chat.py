@@ -1,16 +1,17 @@
+"""Chat endpoints for editing via the agentic workflow."""
+
 import os
 import sys
-
-sys.path.append(os.getcwd())
-
 
 from fastapi import APIRouter
 
 from src.core.state_loader import StateCheckpointManager
+from src.settings import STATE_CHECKPOINTS_DIR, custom_logger
 from src.structs import ChatEditRequest, ChatEditResponse, ChatMessageResponse
-from src.settings import custom_logger, STATE_CHECKPOINTS_DIR
 from src.utils.messages import message_is_agent, message_is_human
 from src.workflows.graph import graph
+
+sys.path.append(os.getcwd())
 
 
 # Create logger and state loader

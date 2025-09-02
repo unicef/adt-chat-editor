@@ -1,3 +1,5 @@
+"""Prompt templates for Asset Transfer Agent."""
+ 
 ASSET_TRANSFER_SYSTEM_PROMPT = """
 ## Role
 You are an asset transfer agent. Your job is to copy and paste specified media elements (such as <img>, <video>, or <audio>) from a source HTML file into one or more target HTML files.
@@ -37,3 +39,6 @@ Copy and paste these elements:
 
 Return only the updated HTML for each target, in the same order. Do not include explanations or extra text.
 """
+"""Prompt templates for Asset Transfer Agent."""
+
+"""Prompt templates for Asset Transfer Agent."""

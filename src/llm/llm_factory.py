@@ -1,3 +1,5 @@
+"""Factory that creates LLM client instances based on environment variables."""
+
 import os
 
 from langchain_groq import ChatGroq
@@ -5,7 +7,6 @@ from langchain_openai import ChatOpenAI
 
 from src.settings import custom_logger
 from src.structs.llm_clients import LLMClient
-
 
 LLM_CLIENTS_REQ_CONFIG = {
     LLMClient.GROQ: {
@@ -20,8 +21,10 @@ LLM_CLIENTS_REQ_CONFIG = {
 
 
 class LLMClientFactory:
+    """Create configured LLM client instances."""
 
     def __init__(self, client: LLMClient):
+        """Initialize factory with desired client backend."""
         self.logger = custom_logger(__name__)
         self.client = client
         self.config = self._get_config()
@@ -55,7 +58,6 @@ class LLMClientFactory:
 
     def get_client(self) -> ChatGroq | ChatOpenAI:
         """Get the LLM client."""
-
         if self.client == LLMClient.GROQ:
             return ChatGroq(**self.config)
         elif self.client == LLMClient.OPENAI:
