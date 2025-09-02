@@ -1,12 +1,14 @@
+"""Aggregate and expose API routers."""
+
 from fastapi import APIRouter
 
+from src.api.routes.adt_utils import router as adt_utils_router
 from src.api.routes.chat import router as chat_router
-from src.api.routes.health import router as health_router
 from src.api.routes.frontend import router as frontend_router
+from src.api.routes.health import router as health_router
 from src.api.routes.publish import router as publish_router
 from src.api.routes.setup import router as setup_router
 from src.api.routes.terminal import router as terminal_router
-from src.api.routes.adt_utils import router as adt_utils_router
 
 # Create the main router
 router = APIRouter()

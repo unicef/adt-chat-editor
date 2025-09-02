@@ -1,7 +1,11 @@
-from fastapi import APIRouter, HTTPException
+"""Endpoints to execute limited shell commands within the backend container."""
+
 from typing import List
+
+from fastapi import APIRouter, HTTPException
+
 from src.settings import custom_logger
-from src.structs.terminal import ExecuteCommandRequest, CommandResponse, CommandHistory
+from src.structs.terminal import CommandHistory, CommandResponse, ExecuteCommandRequest
 from src.utils.terminal_service import TerminalService
 
 # Initialize logger
@@ -15,7 +19,7 @@ _terminal_service = TerminalService()
 
 @router.post("/execute", response_model=CommandResponse)
 async def execute_command(request: ExecuteCommandRequest):
-    """Execute a command in the backend container"""
+    """Execute a command in the backend container."""
     try:
         return _terminal_service.execute_command(request)
     except ValueError as e:
@@ -27,7 +31,7 @@ async def execute_command(request: ExecuteCommandRequest):
 
 @router.get("/history", response_model=List[CommandHistory])
 async def get_command_history():
-    """Get command execution history"""
+    """Get command execution history."""
     try:
         return _terminal_service.get_history()
     except Exception as e:
@@ -36,7 +40,7 @@ async def get_command_history():
 
 @router.delete("/history")
 async def clear_command_history():
-    """Clear command execution history"""
+    """Clear command execution history."""
     try:
         _terminal_service.clear_history()
         return {"message": "History cleared successfully"}

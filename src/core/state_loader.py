@@ -1,41 +1,43 @@
-from ast import literal_eval
+"""State checkpoint load/save utilities.
+
+This module handles persistence of the agentic workflow state across requests.
+"""
+
 import json
 import os
+from ast import literal_eval
 
 from langchain_core.messages import (
-    HumanMessage,
     AIMessage,
-    SystemMessage,
-    BaseMessage,
     AnyMessage,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
 )
 
-from src.settings import custom_logger, STATE_CHECKPOINTS_DIR
+from src.settings import STATE_CHECKPOINTS_DIR, custom_logger
 from src.structs import (
     ChatEditRequest,
-    TranslatedHTMLStatus,
     TailwindStatus,
-    WorkflowStatus,
+    TranslatedHTMLStatus,
     UserLanguage,
+    WorkflowStatus,
 )
 from src.workflows.state import ADTState
 
 
 class StateCheckpointManager:
-    """
-    Class to load and save the state checkpoint for a given session ID.
-    """
+    """Load and save state checkpoints for a given session ID."""
 
     def __init__(self):
+        """Initialize the checkpoint manager and ensure storage directory exists."""
         self.logger = custom_logger(self.__class__.__name__)
-        # Ensure state checkpoints directory exists
         os.makedirs(STATE_CHECKPOINTS_DIR, exist_ok=True)
 
     def create_new_state_checkpoint(
         self, request: ChatEditRequest, path: str
     ) -> ADTState:
-        """
-        Function to create a new state checkpoint for a given session ID.
+        """Create a new state checkpoint for a given session ID.
 
         Args:
             request: The request object containing the session ID and user message.
@@ -66,8 +68,7 @@ class StateCheckpointManager:
         return state_checkpoint
 
     def load_state_checkpoint(self, request: ChatEditRequest, path: str) -> ADTState:
-        """
-        Function to load the state checkpoint for a given session ID.
+        """Load the state checkpoint for a given session ID.
 
         Args:
             request: The request object containing the session ID and user message.
@@ -77,19 +78,24 @@ class StateCheckpointManager:
             The state checkpoint for the given session ID.
         """
         try:
-            with open(path, "r") as f:
+            with open(path, encoding="utf-8") as f:
                 try:
-                    json_string = f.read()
-                    json_string = json_string.replace("null", "None")
-                    json_string = json_string.replace("false", "False")
-                    json_string = json_string.replace("true", "True")
-                    state_dict = json.loads(json_string)
-                    state_dict = literal_eval(state_dict)
+                    raw = json.load(f)
+                    # Backward compatibility: older versions stored a JSON string in JSON.
+                    if isinstance(raw, str):
+                        try:
+                            state_dict = json.loads(raw)
+                        except json.JSONDecodeError:
+                            # Last resort: evaluate Python-literal-like strings
+                            state_dict = literal_eval(raw)
+                    else:
+                        state_dict = raw
+
                     self.logger.debug(f"Loaded state dict: {state_dict}")
 
                     # Update messages and required fields
                     state_dict["messages"] = self._deserialize_messages(
-                        state_dict["messages"]
+                        state_dict.get("messages", [])
                     ) + [HumanMessage(content=request.user_message)]
 
                     state_dict["user_query"] = request.user_message
@@ -111,10 +117,7 @@ class StateCheckpointManager:
                     return state_checkpoint
                 except json.JSONDecodeError as e:
                     self.logger.error(f"Error decoding JSON from {path}: {e}")
-                    # If file is corrupted, create a new checkpoint
-                    raise json.JSONDecodeError(
-                        f"Error decoding JSON from {path}: {e}", json_string, 0
-                    )
+                    raise
         except FileNotFoundError:
             self.logger.info(f"No checkpoint found for session {request.session_id}")
             raise FileNotFoundError(
@@ -125,8 +128,7 @@ class StateCheckpointManager:
             raise Exception(f"Unexpected error loading checkpoint: {e}")
 
     def save_state_checkpoint(self, request: ChatEditRequest, output: dict):
-        """
-        Function to save the state checkpoint for a given session ID.
+        """Save the state checkpoint for a given session ID.
 
         Args:
             request: The request object containing the session ID and user message.
@@ -137,21 +139,23 @@ class StateCheckpointManager:
         output: ADTState = ADTState(**output)
         self.logger.debug(f"Output: {output}")
 
-        # Convert to dictionary instead of JSON string
-        state_dict = output.model_dump_json(serialize_as_any=True)
-        self.logger.debug(f"State dict: {state_dict}")
+        # Convert to dictionary (not nested JSON string)
+        state_dict = output.model_dump(mode="json", serialize_as_any=True)
+        # Ensure messages are stored in a simple JSON-serializable format
+        state_dict["messages"] = self._serialize_messages(list(output.messages))
+        self.logger.debug(f"State dict keys: {list(state_dict.keys())}")
 
         # Save state checkpoint
         checkpoint_path = os.path.join(
             os.getcwd(),
             STATE_CHECKPOINTS_DIR,
             request.session_id,
-            f"checkpoint.json",
+            "checkpoint.json",
         )
         self.logger.debug(f"Saving checkpoint to: {checkpoint_path}")
         try:
-            with open(checkpoint_path, "w") as f:
-                json.dump(state_dict, f)
+            with open(checkpoint_path, "w", encoding="utf-8") as f:
+                json.dump(state_dict, f, ensure_ascii=False)
             self.logger.debug(f"Saved checkpoint to: {checkpoint_path}")
         except Exception as e:
             self.logger.error(f"Error saving checkpoint to {checkpoint_path}: {e}")
@@ -159,8 +163,7 @@ class StateCheckpointManager:
 
     @staticmethod
     def _serialize_messages(messages: list[BaseMessage]) -> list[dict]:
-        """
-        Convert LangChain messages to a simple JSON format.
+        """Convert LangChain messages to a simple JSON format.
 
         Args:
             messages: The messages to serialize.
@@ -182,8 +185,7 @@ class StateCheckpointManager:
 
     @staticmethod
     def _deserialize_messages(messages_data: list[dict]) -> list[AnyMessage]:
-        """
-        Convert JSON format back to LangChain messages.
+        """Convert JSON format back to LangChain messages.
 
         Args:
             messages_data: The messages data to deserialize.

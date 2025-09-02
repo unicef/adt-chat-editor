@@ -1,18 +1,20 @@
+"""Asynchronous file and HTML utilities for ADT processing."""
+
 import asyncio
 import json
 import os
 import re
 import shutil
 from pathlib import Path
-from typing import Dict, List, Optional, Union, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import aiofiles
 from bs4 import BeautifulSoup, Tag
 
 from src.settings import (
+    HTML_CONTENTS_DIR,
     OUTPUT_DIR,
     TRANSLATIONS_DIR,
-    HTML_CONTENTS_DIR,
     custom_logger,
 )
 
@@ -21,7 +23,8 @@ logger = custom_logger("Sub-agents Workflow Routes")
 
 
 def to_single_line(text: str) -> str:
-    return ' '.join(text.strip().split())
+    """Collapse whitespace to a single space and trim ends."""
+    return " ".join(text.strip().split())
 
 
 # Define util functions
@@ -78,6 +81,7 @@ async def write_html_file(file_path: str, content: str) -> None:
 
 
 async def read_translation_file(translation_file_path: str) -> dict:
+    """Read and parse a translation JSON file asynchronously."""
     async with aiofiles.open(translation_file_path, "r", encoding="utf-8") as file:
         contents = await file.read()
         translation_data = json.loads(contents)
@@ -86,7 +90,7 @@ async def read_translation_file(translation_file_path: str) -> dict:
 
 async def extract_html_content_async(
     html: str, translations_dict: Dict[str, str], clean_whitespace: bool = True
-) -> str:
+) -> List[Dict[str, str]]:
     """Extract translated textual content from HTML using data-id, data-aria-id, and placeholder attributes.
 
     Args:
@@ -95,7 +99,7 @@ async def extract_html_content_async(
         clean_whitespace (bool): Whether to clean excess whitespace.
 
     Returns:
-        str: Translated text content.
+        List[Dict[str, str]]: A list of {data-id: translated_text} mappings found in the HTML.
     """
 
     def sync_extract(html_content: str, translations: Dict[str, str]) -> str:
@@ -242,7 +246,9 @@ async def get_language_from_translation_files() -> List[str]:
 async def delete_html_files_async(
     file_paths: List[str], output_dir: str
 ) -> Dict[str, List[str]]:
-    """Async function to safely move HTML files to a 'deleted_html' directory.
+    """Move HTML files to a 'deleted_html' directory safely (async).
+
+    Creates the directory if it doesn't exist.
     Creates the directory if it doesn't exist.
 
     Args:
@@ -308,7 +314,7 @@ async def delete_html_files_async(
 async def find_and_duplicate_nav_line(
     nav_content: str, original_href: str, new_href: str
 ) -> str:
-    """Finds the nav line with the original href and creates a duplicate with the new href.
+    """Find the nav line with the original href and create a duplicate with a new href.
 
     Args:
         nav_content: The full nav HTML content as string
@@ -330,7 +336,7 @@ async def find_and_duplicate_nav_line(
 
 
 async def write_nav_line(nav_content: str, nav_line: str) -> str:
-    """Inserts a new navigation line just before the closing </nav> tag.
+    """Insert a new navigation line just before the closing </nav> tag.
 
     Args:
         nav_content: The full content of the nav HTML as a string
@@ -358,7 +364,7 @@ async def write_nav_line(nav_content: str, nav_line: str) -> str:
 
 
 async def remove_nav_line_by_href(nav_content: str, href_to_remove: str) -> str:
-    """Removes a navigation line that contains the specified href value.
+    """Remove a navigation line that contains the specified href value.
 
     Args:
         nav_content: The full nav HTML content as string
@@ -390,6 +396,10 @@ async def remove_nav_line_by_href(nav_content: str, href_to_remove: str) -> str:
 
 
 async def install_tailwind():
+    """Install Tailwind CSS dependencies under OUTPUT_DIR.
+
+    Returns True on success, False otherwise.
+    """
     logger.info("Installing Tailwind resources")
 
     cleanup_cmd = "rm -rf node_modules package-lock.json && npm set registry https://registry.npmmirror.com"
@@ -431,6 +441,7 @@ async def install_tailwind():
 
 
 async def update_tailwind(output_dir: str, input_css_path: str, output_css_path: str):
+    """Build Tailwind CSS from input to output path inside output_dir."""
     logger.info("Updating Tailwind css file")
 
     # Prepare the command
@@ -461,6 +472,10 @@ async def update_tailwind(output_dir: str, input_css_path: str, output_css_path:
 
 
 async def extract_and_save_html_contents(language: str) -> str:
+    """Extract translated text from all HTML files and save to a JSON cache.
+
+    Returns True on success, False otherwise.
+    """
     translation_file_path = os.path.join(
         OUTPUT_DIR,
         TRANSLATIONS_DIR,
@@ -511,6 +526,7 @@ async def extract_and_save_html_contents(language: str) -> str:
 
 
 async def load_translated_html_contents(language: str):
+    """Load previously extracted translated HTML contents for a language."""
     load_path = os.path.join(
         HTML_CONTENTS_DIR,
         f"translation_{language}.json",
@@ -526,6 +542,7 @@ async def load_translated_html_contents(language: str):
 
 
 async def parse_html_pages(htmls):
+    """Map HTML paths to human-readable page numbers from filenames."""
     result = {}
 
     for path in htmls:
