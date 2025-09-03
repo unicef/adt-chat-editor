@@ -1,9 +1,11 @@
 import json
+
 import pytest
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 
-from src.workflows.actions import plan_steps, handle_plan_response
+from src.workflows import actions as actions_mod
+from src.workflows.actions import handle_plan_response, plan_steps
 from src.workflows.state import ADTState
 
 
@@ -24,7 +26,6 @@ def orchestrator_response(steps, modified=False, irrelevant=False, forbidden=Fal
 @pytest.mark.asyncio
 async def test_plan_steps_happy_path(monkeypatch):
     # Prepare state to bypass initialization side effects
-    from langchain_core.messages import HumanMessage
 
     state = ADTState(
         messages=[HumanMessage(content="please plan")],
@@ -36,7 +37,6 @@ async def test_plan_steps_happy_path(monkeypatch):
     state.translated_html_status = state.translated_html_status.INSTALLED
 
     # Mock files loading
-    from src.workflows import actions as actions_mod
 
     async def fake_load_translated_html_contents(language: str):
         return [{"/tmp/a.html": [{"k": "v"}]}]
@@ -67,7 +67,6 @@ async def test_plan_steps_happy_path(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_handle_plan_response_modified(monkeypatch):
-    from langchain_core.messages import HumanMessage
 
     state = ADTState(
         messages=[HumanMessage(content="feedback: modify plan")],
@@ -81,7 +80,6 @@ async def test_handle_plan_response_modified(monkeypatch):
     state.translated_html_status = state.translated_html_status.INSTALLED
 
     # Fake files
-    from src.workflows import actions as actions_mod
 
     async def fake_load_translated_html_contents(language: str):
         return [{"/tmp/a.html": [{"k": "v"}]}]
