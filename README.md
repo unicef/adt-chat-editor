@@ -175,7 +175,6 @@ First, you need to install Docker
    Then edit `.env` and provide the necessary values:
    - `LANGSMITH_API_KEY`, `OPENAI_API_KEY`, etc.
    - List of ADT repositories under `ADTS`
-   - Choose the default `ACTIVE_ADT` (name of one repo)
 
 3. **Start the system**
    ```bash
@@ -188,13 +187,7 @@ First, you need to install Docker
    - Create symlinks from `data/input` and `data/output` to the chosen ADT's folders
    - Start the backend and initialize the app
 
-4. **Switch to another ADT**  
-   To change which ADT is active and relink `data/input`/`data/output`, run:
-   ```bash
-   make set-active-adt
-   ```
-
-5. **Stop the system**
+4. **Stop the system**
    ```bash
    make stop
    ```
@@ -220,22 +213,6 @@ Verbose output (test names and details):
 
   ```bash
   make test-verbose
-  ```
-
-Alternative ways to run tests:
-
-- Using Poetry:
-
-  ```bash
-  poetry install --with test
-  poetry run pytest -q
-  ```
-
-- Using pip (editable install with test extras):
-
-  ```bash
-  pip install -e .[test]
-  pytest -q
   ```
 
 Notes:
