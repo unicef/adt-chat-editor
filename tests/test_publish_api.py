@@ -1,6 +1,9 @@
 import pytest
 from fastapi.testclient import TestClient
 
+import src.api.routes.publish as publish_mod
+from src.api.main import create_app
+
 
 class FakeGitManager:
     def __init__(self):
@@ -33,13 +36,10 @@ class FakeGitManager:
 
 @pytest.fixture
 def client(monkeypatch):
-    from src.api.main import create_app
-
     # Patch provider to return our fake manager
     async def fake_get_git_manager():
         return FakeGitManager()
 
-    import src.api.routes.publish as publish_mod
     publish_mod.get_git_manager = fake_get_git_manager
 
     app = create_app()

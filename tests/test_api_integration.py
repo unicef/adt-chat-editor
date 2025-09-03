@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, HumanMessage
 
+import src.api.routes.chat as chat_route
 from src.api.main import create_app
 from src.structs.status import WorkflowStatus
 
@@ -22,7 +23,6 @@ class FakeGraph:
 @pytest.fixture
 def client(monkeypatch):
     # Patch the graph used by the chat router before app creates routes
-    import src.api.routes.chat as chat_route
     chat_route.graph = FakeGraph()
     app = create_app()
     return TestClient(app)
