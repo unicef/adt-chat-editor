@@ -88,52 +88,58 @@ async def read_translation_file(translation_file_path: str) -> dict:
     return translation_data
 
 
+def extract_translated_mappings_sync(
+    html_content: str, translations: Dict[str, str]
+) -> List[Dict[str, str]]:
+    """Extract translated text content from HTML using a synchronous helper.
+
+    Scans for elements with data-id, data-aria-id and data-placeholder-id
+    attributes and collects the corresponding translated text from the
+    provided translations mapping.
+
+    Returns a list of {id: translated_text} mappings in the order found.
+    """
+    full_content: List[Dict[str, str]] = []
+
+    soup = BeautifulSoup(html_content, "html.parser")
+
+    for element in soup(["script", "style", "noscript", "iframe"]):
+        element.decompose()
+
+    for tag in soup.find_all(attrs={"data-id": True}):
+        key = tag["data-id"]
+        if key in translations:
+            full_content.append({key: translations[key]})
+
+    for tag in soup.find_all(attrs={"data-aria-id": True}):
+        key = tag["data-aria-id"]
+        if key in translations:
+            full_content.append({key: translations[key]})
+
+    for tag in soup.find_all(attrs={"data-placeholder-id": True}):
+        key = tag["data-placeholder-id"]
+        if key in translations:
+            full_content.append({key: translations[key]})
+
+    return full_content
+
+
 async def extract_html_content_async(
     html: str, translations_dict: Dict[str, str], clean_whitespace: bool = True
 ) -> List[Dict[str, str]]:
-    """Extract translated textual content from HTML using data-id, data-aria-id, and placeholder attributes.
+    """Extract translated textual content from HTML using data-* attributes.
 
     Args:
         html (str): HTML string to parse.
         translations_dict (Dict[str, str]): Dictionary of translations (keys are attribute values).
-        clean_whitespace (bool): Whether to clean excess whitespace.
+        clean_whitespace (bool): Whether to clean excess whitespace. (unused)
 
     Returns:
         List[Dict[str, str]]: A list of {data-id: translated_text} mappings found in the HTML.
     """
-
-    def sync_extract(html_content: str, translations: Dict[str, str]) -> str:
-        full_content = []
-
-        soup = BeautifulSoup(html_content, "html.parser")
-
-        # Remove unwanted elements
-        for element in soup(["script", "style", "noscript", "iframe"]):
-            element.decompose()
-
-        # Replace text for tags with data-id or data-aria-id
-        for tag in soup.find_all(attrs={"data-id": True}):
-            key = tag["data-id"]
-            if key in translations:
-                content = {key: translations[key]}
-                full_content.append(content)
-
-        for tag in soup.find_all(attrs={"data-aria-id": True}):
-            key = tag["data-aria-id"]
-            if key in translations:
-                content = {key: translations[key]}
-                full_content.append(content)
-
-        # Replace placeholder attributes
-        for tag in soup.find_all(attrs={"data-placeholder-id": True}):
-            key = tag["data-placeholder-id"]
-            if key in translations:
-                content = {key: translations[key]}
-                full_content.append(content)
-
-        return full_content
-
-    return await asyncio.to_thread(sync_extract, html, translations_dict)
+    return await asyncio.to_thread(
+        extract_translated_mappings_sync, html, translations_dict
+    )
 
 
 async def extract_layout_properties_async(

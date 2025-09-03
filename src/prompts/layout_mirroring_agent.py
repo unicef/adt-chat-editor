@@ -33,5 +33,3 @@ Apply these layout changes:
 
 Return only the updated HTML. Do not include explanations or extra text.
 """
-"""Prompt templates for Layout Mirroring Agent."""
-"""Prompt templates for Layout Mirroring Agent."""
