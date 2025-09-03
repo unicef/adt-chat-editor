@@ -18,6 +18,10 @@ REQUIRED_VARS=OPENAI_API_KEY OPENAI_MODEL GITHUB_TOKEN ADTS
 # Define all available targets (commands that can be run with 'make')
 .PHONY: check docker-up initialize run stop clone-repos select-adt reviewer creator test install-test-deps
 
+# Determine docker compose command for better cross-platform support
+# Prefer docker-compose if available, otherwise use 'docker compose'
+DOCKER_COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then echo docker-compose; else echo docker compose; fi)
+
 # Reviewer mode - works with multiple repositories from ADT_REPOS
 reviewer: check clone-repos clone-utils select-adt ensure-data-dirs docker-up initialize
 
@@ -171,9 +175,15 @@ select-adt:
 		mkdir -p input && \
 		cp -R "$$adt"/. input/ \
 	); \
-	echo "📋 Creating symbolic link for data/output..."; \
-	(cd data && ln -sfn "$$adt" output); \
-	echo "✅ Successfully set up ADT: $$adt (input copied, output linked)"
+	if [ "$$(uname -s)" = "Linux" ] || [ "$$(uname -s)" = "Darwin" ]; then \
+		echo "📋 Creating symbolic link for data/output..."; \
+		(cd data && ln -sfn "$$adt" output); \
+		echo "✅ Successfully set up ADT: $$adt (input copied, output linked)"; \
+	else \
+		echo "📋 Creating copy for data/output (symlinks not supported)..."; \
+		cp -R "data/$$adt" data/output; \
+		echo "✅ Successfully set up ADT: $$adt (input copied, output copied)"; \
+	fi
 
 # Ensure data directories exist before starting Docker
 ensure-data-dirs:
@@ -227,7 +237,7 @@ docker-up:
 	@echo "🐳 Starting Docker containers..."
 	@echo "📋 Loading environment variables..."
 	@set -a; . ./$(ENV_FILE); set +a; \
-	if docker-compose up --build -d; then \
+	if $(DOCKER_COMPOSE) up --build -d; then \
 		echo "✅ Docker containers started successfully"; \
 	else \
 		echo "❌ Failed to start Docker containers"; \
@@ -239,18 +249,18 @@ initialize:
 	@echo "🚀 Initializing app..."
 	@echo "⏳ Waiting for FastAPI to be ready (max 30s)..."
 	@echo "📋 Checking Docker container status..."
-	@docker-compose ps
+	@$(DOCKER_COMPOSE) ps
 	@echo "📋 Checking container logs..."
-	@docker-compose logs --tail=20
+	@$(DOCKER_COMPOSE) logs --tail=20
 	@start=$$(date +%s); \
 	while ! curl -s http://localhost:8000/docs > /dev/null; do \
 		now=$$(date +%s); \
 		if [ $$((now - start)) -gt 30 ]; then \
 			echo "❌ Timeout waiting for FastAPI to become available."; \
 			echo "📋 Final container status:"; \
-			docker-compose ps; \
+			$(DOCKER_COMPOSE) ps; \
 			echo "📋 Final container logs:"; \
-			docker-compose logs --tail=50; \
+			$(DOCKER_COMPOSE) logs --tail=50; \
 			exit 1; \
 		fi; \
 		echo "⏳ Still waiting... ($$((now - start))s elapsed)"; \
@@ -287,7 +297,7 @@ run-creator: creator
 # Stop and remove Docker containers
 stop:
 	@echo "🛑 Stopping Docker containers..."
-	if docker-compose down; then \
+	if $(DOCKER_COMPOSE) down; then \
 		echo "✅ Docker containers stopped successfully"; \
 	else \
 		echo "❌ Failed to stop Docker containers"; \
