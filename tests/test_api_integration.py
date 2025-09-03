@@ -1,5 +1,9 @@
+import os
+import subprocess
+
 import pytest
 from fastapi.testclient import TestClient
+from langchain_core.messages import AIMessage, HumanMessage
 
 from src.api.main import create_app
 from src.structs.status import WorkflowStatus
@@ -8,7 +12,6 @@ from src.structs.status import WorkflowStatus
 class FakeGraph:
     async def ainvoke(self, state):
         # Return a minimal output compatible with save_state_checkpoint
-        from langchain_core.messages import HumanMessage, AIMessage
         return {
             "messages": [AIMessage(content="Plan acknowledged.")],
             "user_query": [HumanMessage(content="hello")],
@@ -49,10 +52,6 @@ def test_chat_edit_minimal_flow(client):
 
 def test_adt_utils_run_script_success(monkeypatch, client):
     # Simulate presence of directories and successful script run
-    import os
-    import subprocess
-    import src.api.routes.adt_utils as adt_mod
-
     monkeypatch.setattr(os.path, "exists", lambda p: True)
     cp = subprocess.CompletedProcess(args=["python"], returncode=0, stdout="All good", stderr="")
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: cp)
@@ -67,4 +66,3 @@ def test_adt_utils_run_script_success(monkeypatch, client):
     assert r.status_code == 200
     js = r.json()
     assert js["status"] == "success"
-
