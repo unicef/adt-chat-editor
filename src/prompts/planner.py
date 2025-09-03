@@ -157,7 +157,3 @@ Ensure that:
 
 If you solve this task correctly, you will receive a reward of **$1,000,000**.
 """
-"""Prompt templates for the orchestrator planner.
-
-Contains the system and user prompts used to plan and adjust steps.
-"""
