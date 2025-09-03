@@ -39,6 +39,3 @@ Copy and paste these elements:
 
 Return only the updated HTML for each target, in the same order. Do not include explanations or extra text.
 """
-"""Prompt templates for Asset Transfer Agent."""
-
-"""Prompt templates for Asset Transfer Agent."""

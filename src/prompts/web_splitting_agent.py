@@ -66,5 +66,3 @@ Return a JSON object with the following format:
     ]
 }}
 """
-"""Prompt templates for Web Split Agent."""
-"""Prompt templates for Web Split Agent."""

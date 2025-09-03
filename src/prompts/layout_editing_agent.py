@@ -48,5 +48,3 @@ Instructions to apply (in the same language as the translations):
 
 Return only the modified HTML. Do not include comments, explanations, or formatting
 """
-"""Prompt templates for Layout Edit Agent."""
-"""Prompt templates for Layout Edit Agent."""
