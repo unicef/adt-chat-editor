@@ -8,7 +8,7 @@ from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
-from src.core.git_manager_provider import get_git_manager  # reuse lazy git manager
+from src.core.git_manager_provider import get_git_manager
 from src.llm.llm_call import async_model_call
 from src.llm.llm_client import llm_client
 from src.prompts import (

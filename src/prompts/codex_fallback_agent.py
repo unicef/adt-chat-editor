@@ -39,5 +39,3 @@ Text content is **separated from HTML** and localized via JSON files, supporting
 Important:  
 If you forget to add the '<li>' in the nav file or misalign the 'page-section-id' with the HTML filename, navigation and linking will break.
 """
-"""Prompt templates for Codex Fallback Agent."""
-"""Prompt templates for Codex Fallback Agent."""
