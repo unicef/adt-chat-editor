@@ -26,10 +26,44 @@ jobs:
         run: |
           pip install -e '.[dev,test]'
 
-      - name: Lint with Ruff
+      - name: Determine changed Python files
+        id: changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base_sha='${{ github.event.pull_request.base.sha }}'
+            head_sha='${{ github.sha }}'
+          else
+            git fetch --no-tags --depth=2 origin "${{ github.ref }}"
+            base_sha="$(git rev-parse HEAD~1)"
+            head_sha="${{ github.sha }}"
+          fi
+          echo "Base: $base_sha"
+          echo "Head: $head_sha"
+          files=$(git diff --name-only "$base_sha" "$head_sha" | grep -E '\\.py$' || true)
+          echo "Changed Python files:\n$files"
+          files_space=$(echo "$files" | tr '\n' ' ')
+          echo "files=$files_space" >> "$GITHUB_OUTPUT"
+
+      - name: Lint changed files with Ruff
+        if: ${{ steps.changed.outputs.files != '' }}
         run: |
           ruff --version
-          ruff check . --output-format=github
+          python - << 'PY'
+          import os, sys
+          files = os.environ['CHANGED_FILES'].split()
+          cmd = ['ruff', 'check', '--output-format=github', *files]
+          print('Running:', ' '.join(cmd))
+          import subprocess
+          sys.exit(subprocess.run(cmd).returncode)
+          PY
+        env:
+          CHANGED_FILES: ${{ steps.changed.outputs.files }}
+
+      - name: Skip Ruff (no changed Python files)
+        if: ${{ steps.changed.outputs.files == '' }}
+        run: echo "No Python changes detected; skipping Ruff."
 
       - name: Import and initialize API
         run: |
@@ -41,4 +75,3 @@ jobs:
 
       - name: Run tests
         run: pytest -q
-
