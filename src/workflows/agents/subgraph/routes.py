@@ -1,3 +1,5 @@
+"""Routing helpers for the agents subgraph."""
+
 from typing import Literal
 
 from src.settings import custom_logger
@@ -18,12 +20,11 @@ def route_to_agent(
     "web_split_agent",
     "web_delete_agent",
     "asset_transfer_agent",
-    "codex_fallback_agent"
+    "codex_fallback_agent",
     "finalize_task",
     "__end__",
 ]:
-    """Route to the appropriate agent based on the current step.
-    """
+    """Route to the appropriate agent based on the current step."""
     current_step: PlanningStep = state.steps[state.current_step_index]
     agent_name = current_step.agent.lstrip("- ").strip()
 
