@@ -105,13 +105,17 @@ def create_app() -> FastAPI:
 
     # Mount input and output folders
     logger.info("Mounting input folder with directory")
+    input_dir = os.path.join("data", "input")
+    os.makedirs(input_dir, exist_ok=True)
     app.mount(
-        "/input", NoCacheStaticFiles(directory="data/input", html=True), name="input"
+        "/input", NoCacheStaticFiles(directory=input_dir, html=True), name="input"
     )
 
     logger.info("Mounting output folders with directory")
+    output_dir = os.path.join("data", "output")
+    os.makedirs(output_dir, exist_ok=True)
     app.mount(
-        "/output", NoCacheStaticFiles(directory="data/output", html=True), name="output"
+        "/output", NoCacheStaticFiles(directory=output_dir, html=True), name="output"
     )
 
     # Add a custom 404 handler
