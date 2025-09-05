@@ -299,7 +299,7 @@ run-creator: creator
 # Stop and remove Docker containers
 stop:
 	@echo "🛑 Stopping Docker containers..."
-	if $(DOCKER_COMPOSE) down; then \
+	@if $(DOCKER_COMPOSE) down; then \
 		echo "✅ Docker containers stopped successfully"; \
 	else \
 		echo "❌ Failed to stop Docker containers"; \
