@@ -187,6 +187,12 @@ First, you need to install Docker
    - Create symlinks from `data/input` and `data/output` to the chosen ADT's folders
    - Start the backend and initialize the app
 
+   Tip (Windows/CI): On some systems with slower disk I/O (e.g., Windows host volumes or CI runners), the FastAPI startup can take longer. You can increase the wait time by setting an environment variable before running the command:
+
+   ```bash
+   STARTUP_TIMEOUT=180 make run
+   ```
+
 4. **Stop the system**
    ```bash
    make stop
