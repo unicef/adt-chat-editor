@@ -278,16 +278,22 @@ initialize:
 	fi; \
 	echo "\n✅ App initialized successfully."; \
 	echo "🟢 App is running at: http://localhost:8000/"; \
-	if command -v python3 >/dev/null 2>&1; then \
-		python3 -c "import webbrowser; webbrowser.open('http://localhost:8000/')" || true; \
-	elif command -v python >/dev/null 2>&1; then \
-		python -c "import webbrowser; webbrowser.open('http://localhost:8000/')" || true; \
-	elif command -v open >/dev/null 2>&1; then \
-		open http://localhost:8000/ || true; \
-	elif command -v xdg-open >/dev/null 2>&1; then \
-		xdg-open http://localhost:8000/ || true; \
+	if [ "$${OS:-}" = "Windows_NT" ] || uname -s | grep -qiE 'mingw|msys|cygwin'; then \
+		explorer.exe "http://localhost:8000/" >/dev/null 2>&1 || \
+		cmd.exe /c start "" "http://localhost:8000/" >/dev/null 2>&1 || \
+		powershell.exe -NoProfile -Command "Start-Process 'http://localhost:8000/'" >/dev/null 2>&1 || true; \
 	else \
-		echo "Please open http://localhost:8000/ in your browser"; \
+		if command -v python3 >/dev/null 2>&1; then \
+			python3 -c "import webbrowser; webbrowser.open('http://localhost:8000/')" || true; \
+		elif command -v python >/dev/null 2>&1; then \
+			python -c "import webbrowser; webbrowser.open('http://localhost:8000/')" || true; \
+		elif command -v open >/dev/null 2>&1; then \
+			open http://localhost:8000/ || true; \
+		elif command -v xdg-open >/dev/null 2>&1; then \
+			xdg-open http://localhost:8000/ || true; \
+		else \
+			echo "Please open http://localhost:8000/ in your browser"; \
+		fi; \
 	fi
 
 # Convenience targets for different modes
