@@ -247,20 +247,22 @@ docker-up:
 # Initialize the application after containers are running
 initialize:
 	@echo "🚀 Initializing app..."
-	@echo "⏳ Waiting for FastAPI to be ready (max 30s)..."
+	@STARTUP_TIMEOUT=$${STARTUP_TIMEOUT:-120}; \
+	echo "⏳ Waiting for FastAPI to be ready (max $$STARTUP_TIMEOUT s)...";
 	@echo "📋 Checking Docker container status..."
 	@$(DOCKER_COMPOSE) ps
 	@echo "📋 Checking container logs..."
 	@$(DOCKER_COMPOSE) logs --tail=20
 	@start=$$(date +%s); \
+	STARTUP_TIMEOUT=$${STARTUP_TIMEOUT:-120}; \
 	while ! curl -s http://localhost:8000/docs > /dev/null; do \
 		now=$$(date +%s); \
-		if [ $$((now - start)) -gt 30 ]; then \
+		if [ $$((now - start)) -gt $$STARTUP_TIMEOUT ]; then \
 			echo "❌ Timeout waiting for FastAPI to become available."; \
 			echo "📋 Final container status:"; \
 			$(DOCKER_COMPOSE) ps; \
 			echo "📋 Final container logs:"; \
-			$(DOCKER_COMPOSE) logs --tail=50; \
+			$(DOCKER_COMPOSE) logs --tail=100; \
 			exit 1; \
 		fi; \
 		echo "⏳ Still waiting... ($$((now - start))s elapsed)"; \
