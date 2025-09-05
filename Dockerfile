@@ -49,4 +49,4 @@ COPY frontend/ frontend/
 
 # Expose port and run FastAPI
 EXPOSE 8000
-CMD ["uvicorn", "src.api.main:create_app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "src.api.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
