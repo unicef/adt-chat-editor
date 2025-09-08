@@ -163,22 +163,15 @@ First, you need to install Docker
      - Or via Homebrew (GNU make as gmake):
        ```bash
        brew install make
-       # You can run gmake instead of make, or alias it:
-       alias make=gmake
        ```
    - Linux
      - Debian/Ubuntu:
        ```bash
        sudo apt-get update && sudo apt-get install -y make
-       # or: sudo apt-get install -y build-essential
        ```
      - Fedora:
        ```bash
        sudo dnf install -y make
-       ```
-     - Arch:
-       ```bash
-       sudo pacman -S --needed make base-devel
        ```
    - Windows
      - Using Chocolatey (PowerShell as Administrator):
@@ -188,10 +181,6 @@ First, you need to install Docker
      - Or using Scoop (PowerShell):
        ```powershell
        scoop install make
-       ```
-     - Or via MSYS2 (MSYS2 shell):
-       ```bash
-       pacman -S --needed make
        ```
      Ensure the installation directory is on your PATH and that the terminal you use to run the following commands can execute `make`.
 
