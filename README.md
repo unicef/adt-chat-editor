@@ -152,31 +152,57 @@ First, you need to install Docker
 
 1. **Install Docker**  
    If you don’t have Docker installed, follow the official instructions:  
-   👉 [https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
-
-2. **Set up your environment variables**  
-   Copy the example environment file and fill in the required credentials:
-   ```bash
-   cp .env.example .env
-   ```
-   Edit .env and provide the necessary values (e.g., API keys, GitHub token, etc.).
-
-### 🚀 Running the System in One Step
-
-1. **Install Docker**  
-   If you don’t have Docker installed, follow the official instructions:  
    https://docs.docker.com/engine/install/
 
-2. **Set up your environment variables**  
+2. **Install make (required by the commands below)**
+   - macOS
+     - Recommended: install Xcode Command Line Tools (includes make):
+       ```bash
+       xcode-select --install
+       ```
+     - Or via Homebrew (GNU make as gmake):
+       ```bash
+       brew install make
+       # You can run gmake instead of make, or alias it:
+       alias make=gmake
+       ```
+   - Linux
+     - Debian/Ubuntu:
+       ```bash
+       sudo apt-get update && sudo apt-get install -y make
+       # or: sudo apt-get install -y build-essential
+       ```
+     - Fedora:
+       ```bash
+       sudo dnf install -y make
+       ```
+     - Arch:
+       ```bash
+       sudo pacman -S --needed make base-devel
+       ```
+   - Windows
+     - Using Chocolatey (PowerShell as Administrator):
+       ```powershell
+       choco install make
+       ```
+     - Or using Scoop (PowerShell):
+       ```powershell
+       scoop install make
+       ```
+     - Or via MSYS2 (MSYS2 shell):
+       ```bash
+       pacman -S --needed make
+       ```
+     Ensure the installation directory is on your PATH and that the terminal you use to run the following commands can execute `make`.
+
+3. **Set up your environment variables**  
    Copy the example environment file and fill in the required credentials and ADT URLs:
    ```bash
    cp .env.example .env
    ```
-   Then edit `.env` and provide the necessary values:
-   - `LANGSMITH_API_KEY`, `OPENAI_API_KEY`, etc.
-   - List of ADT repositories under `ADTS`
+   Then edit `.env` and provide the necessary values
 
-3. **Start the system**
+4. **Start the system**
    ```bash
    make run
    ```
@@ -193,7 +219,7 @@ First, you need to install Docker
    STARTUP_TIMEOUT=180 make run
    ```
 
-4. **Stop the system**
+5. **Stop the system**
    ```bash
    make stop
    ```
