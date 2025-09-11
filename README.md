@@ -184,12 +184,15 @@ First, you need to install Docker
        ```
      Ensure the installation directory is on your PATH and that the terminal you use to run the following commands can execute `make`.
 
-3. **Set up your environment variables**  
-   Copy the example environment file and fill in the required credentials and ADT URLs:
-   ```bash
-   cp .env.example .env
-   ```
-   Then edit `.env` and provide the necessary values
+3. **Set up your environment variables**
+   - If .env is missing or incomplete, the following command will guide you through an interactive setup based on .env.example.
+   - Required values in any mode:
+     - OPENAI_API_KEY
+     - OPENAI_MODEL
+     - ADT_UTILS_REPO (defaults to git@github.com:unicef/adt-utils.git)
+   - Optional values (only needed for reviewer mode / GitHub repos):
+     - ADTS (space-separated list of ADT repo URLs)
+     - GITHUB_TOKEN (if your repos require authentication)
 
 4. **Start the system**
    ```bash
@@ -199,8 +202,12 @@ First, you need to install Docker
    - Check your environment
    - Clone all ADT repos (if not already cloned)
    - Prompt you to select the active ADT
-   - Create symlinks from `data/input` and `data/output` to the chosen ADT's folders
+   - Create a copy of the selected ADT in `data/input` and a symlink from `data/output` to the ADT repo (on macOS/Linux). On Windows, both will be copied.
    - Start the backend and initialize the app
+
+   If ADTS is not configured, you will be prompted to either:
+   - Enter a local ADT folder path (Creator mode), or
+   - Configure ADTS (GitHub repo URLs) right away and continue in Reviewer mode.
 
    Tip (Windows/CI): On some systems with slower disk I/O (e.g., Windows host volumes or CI runners), the FastAPI startup can take longer. You can increase the wait time by setting an environment variable before running the command:
 
@@ -212,6 +219,45 @@ First, you need to install Docker
    ```bash
    make stop
    ```
+
+### Modes and commands
+
+Creator mode (local folder without Git)
+- Use a local ADT folder that is not a Git repository.
+- Run either:
+  - Prompted path (no argument):
+    ```bash
+    make run-creator
+    ```
+    You will be asked for the absolute path to your ADT folder.
+  - Provide the path upfront:
+    ```bash
+    make run-creator REPO_PATH=/absolute/path/to/your/adt-folder
+    ```
+  This will prepare data/input and data/output and start the system.
+
+Reviewer mode (GitHub repos)
+- Requires ADTS to be set (space-separated list of repo URLs). GITHUB_TOKEN is needed only if the repos require authentication.
+- Run either:
+  ```bash
+  make reviewer
+  # or
+  make run-reviewer
+  ```
+- make run will automatically use Reviewer mode if ADTS is configured; otherwise it will offer to configure ADTS or run Creator mode.
+
+Set or update ADTS later
+- You can set or update the ADTS variable at any time via an interactive prompt:
+  ```bash
+  make set-adts
+  ```
+  Enter a space-separated list of Git repo URLs (SSH or HTTPS). Leave empty to clear.
+
+Re-run full environment configuration
+- To re-run the full interactive .env configuration (e.g., to change OPENAI_MODEL or ADT_UTILS_REPO):
+  ```bash
+  make configure-env
+  ```
 
 ## 🧪 Running Tests
 
