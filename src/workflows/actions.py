@@ -1,5 +1,7 @@
 """Main workflow actions for planning, showing, and executing steps."""
 
+import os
+import subprocess
 import textwrap
 from typing import Any
 
@@ -50,7 +52,9 @@ orchestrator_planning_parser = PydanticOutputParser(
 # a Git manager here to prevent event-loop issues during import in tests.
 
 
-async def _build_html_context(language: str, current_pages: list[str]) -> tuple[dict[str, str], bool, dict[str, str]]:
+async def _build_html_context(
+    language: str, current_pages: list[str]
+) -> tuple[dict[str, str], bool, dict[str, str]]:
     """Build context from translated HTML contents.
 
     Returns a tuple (available_html_files, is_current_page, html_page_map).
@@ -430,6 +434,15 @@ async def finalize_task_execution(state: ADTState, config: RunnableConfig) -> AD
     """
     logger.info("Finalizing task execution")
 
+    # Format HTML files with prettier
+    html_files = []
+    for step in state.steps:
+        html_files.extend(step.html_files)
+    html_files = list(set(html_files))
+
+    if html_files:
+        await _format_html_files(html_files)
+
     # Save the state
     state.plan_shown_to_user = False
     state.status = WorkflowStatus.SUCCESS
@@ -466,3 +479,49 @@ async def finalize_task_execution(state: ADTState, config: RunnableConfig) -> AD
         logger.debug(f"Error checking out commit: {e}")
 
     return state
+
+
+async def _format_html_files(html_files: list[str], all_files: bool = False) -> None:
+    """Format HTML files in OUTPUT_DIR using prettier."""
+    try:
+        if not os.path.exists(OUTPUT_DIR):
+            logger.debug(
+                f"Output directory {OUTPUT_DIR} does not exist, skipping formatting"
+            )
+            return
+
+        if all_files:
+            html_files = [
+                os.path.join(OUTPUT_DIR, f)
+                for f in os.listdir(OUTPUT_DIR)
+                if f.endswith(".html")
+            ]
+
+        if not html_files:
+            logger.debug(f"No HTML files found in {OUTPUT_DIR}")
+            return
+
+        for html_file in html_files:
+            try:
+                result = subprocess.run(
+                    ["npx", "prettier", "--write", html_file],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                if result.returncode == 0:
+                    logger.debug(f"Successfully formatted {html_file}")
+                else:
+                    logger.warning(f"Prettier failed for {html_file}: {result.stderr}")
+            except subprocess.TimeoutExpired:
+                logger.warning(f"Prettier timeout for {html_file}")
+            except FileNotFoundError:
+                logger.warning(
+                    "Prettier not found. Install with: npm install -g prettier"
+                )
+                break
+            except Exception as e:
+                logger.warning(f"Error formatting {html_file}: {e}")
+
+    except Exception as e:
+        logger.error(f"Error in _format_html_files: {e}")
