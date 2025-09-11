@@ -2,15 +2,35 @@
 
 import os
 import subprocess
+import sys
 from copy import deepcopy
 from enum import Enum
+from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.adt_utils.script_registry import PRODUCTION_SCRIPTS
-from src.adt_utils.structs.script import (
+# Add data/adt-utils/src to Python path for imports
+# Try different possible paths for local dev vs Docker
+possible_paths = [
+    Path(__file__).parent.parent.parent / "data" / "adt-utils" / "src",  # Local dev
+    Path("/app/data/adt-utils/src"),  # Docker container
+    Path(__file__).resolve().parent.parent.parent / "data" / "adt-utils" / "src",  # Absolute path
+]
+
+adt_utils_src = None
+for path in possible_paths:
+    if path.exists():
+        adt_utils_src = str(path)
+        sys.path.insert(0, adt_utils_src)
+        break
+
+if adt_utils_src is None:
+    raise ImportError("Could not find data/adt-utils/src directory")
+
+from script_registry import PRODUCTION_SCRIPTS
+from structs.script import (
     Script,
     ScriptCategory,
     ScriptArgument,
