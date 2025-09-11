@@ -2,6 +2,8 @@
 # This Makefile automates the setup and deployment of the ADT Chat Editor application
 # It handles environment validation, repository cloning, Docker container management, and app initialization
 #
+SHELL := /bin/bash
+
 # MODES:
 # - Reviewer mode: Works with multiple repositories from ADT_REPOS environment variable
 #   Usage: make reviewer or make run-reviewer
@@ -12,31 +14,28 @@
 
 # Environment configuration
 ENV_FILE=.env
-# List of required environment variables that must be set in .env file
-REQUIRED_VARS=OPENAI_API_KEY OPENAI_MODEL GITHUB_TOKEN ADTS
+# List of required environment variables
+# Global minimal requirement: OPENAI_API_KEY
+# Reviewer mode additionally requires: ADTS
+GLOBAL_REQUIRED_VARS=OPENAI_API_KEY OPENAI_MODEL ADT_UTILS_REPO
+REVIEWER_REQUIRED_VARS=ADTS
 
 # Define all available targets (commands that can be run with 'make')
-.PHONY: check docker-up initialize run stop clone-repos select-adt reviewer creator test install-test-deps
+.PHONY: check ensure-env configure-env check-reviewer check-creator docker-up initialize run stop clone-repos select-adt reviewer creator test install-test-deps
 
 # Determine docker compose command for better cross-platform support
 # Prefer docker-compose if available, otherwise use 'docker compose'
 DOCKER_COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then echo docker-compose; else echo docker compose; fi)
 
-# Reviewer mode - works with multiple repositories from ADT_REPOS
-reviewer: check clone-repos clone-utils select-adt ensure-data-dirs docker-up initialize
+# Reviewer mode - works with multiple repositories from ADTS
+reviewer: check-reviewer clone-repos clone-utils select-adt ensure-data-dirs docker-up initialize
 
-# Creator mode - works with a single local repository
-creator: check clone-utils setup-creator ensure-data-dirs docker-up initialize
+# Creator mode - works with a single local repository (can be non-git)
+creator: check-creator clone-utils setup-creator ensure-data-dirs docker-up initialize
 
-# Validate all prerequisites before proceeding
+# Validate basic prerequisites (Docker) and ensure minimal env setup
 check:
 	@echo "🔍 Checking prerequisites..."
-	@if [ -x "$$(command -v git)" ]; then \
-		echo "✅ Git is installed: $$(git --version)"; \
-	else \
-		echo "❌ Git is not installed. Please install Git first."; \
-		exit 1; \
-	fi
 	@if [ -x "$$(command -v docker)" ]; then \
 		echo "✅ Docker is installed: $$(docker --version)"; \
 	else \
@@ -49,21 +48,45 @@ check:
 		echo "❌ Docker daemon is not running. Please start Docker Desktop."; \
 		exit 1; \
 	fi
-	@if [ -f $(ENV_FILE) ]; then \
-		echo "✅ $(ENV_FILE) file exists"; \
+	@$(MAKE) --no-print-directory ensure-env
+	@echo "✅ Basic checks passed."
+
+# Ensure .env exists and prompt for required values if missing
+ensure-env:
+	@if [ ! -f $(ENV_FILE) ]; then \
+		echo "📝 $(ENV_FILE) not found. Launching interactive configuration..."; \
+		$(MAKE) --no-print-directory configure-env; \
 	else \
-		echo "❌ $(ENV_FILE) file not found. Please create it or copy from .env.example."; \
-		exit 1; \
+		echo "📄 Found $(ENV_FILE). Validating minimal configuration..."; \
+		set -a; . ./$(ENV_FILE); set +a; \
+		for var in $(GLOBAL_REQUIRED_VARS); do \
+			if [ -z "$${!var}" ]; then \
+				echo "⚠️  Missing '$$var'. Launching interactive configuration..."; \
+				$(MAKE) --no-print-directory configure-env; \
+				break; \
+			fi; \
+		done; \
 	fi
-	@set -a; . ./$(ENV_FILE); \
-	for var in $(REQUIRED_VARS); do \
+
+# Interactive configuration based on .env.example
+configure-env:
+	@bash scripts/configure_env.sh .env.example $(ENV_FILE)
+
+# Reviewer-specific checks
+check-reviewer: check
+	@set -a; . ./$(ENV_FILE); set +a; \
+	for var in $(REVIEWER_REQUIRED_VARS); do \
 		if [ -z "$${!var}" ]; then \
-			echo "❌ Environment variable '$$var' is missing or empty in $(ENV_FILE)"; \
+			echo "❌ Reviewer mode requires '$$var' to be set in $(ENV_FILE)."; \
+			echo "   Tip: run 'make configure-env' to set ADTS interactively, or run Creator mode with 'make run-creator REPO_PATH=/path/to/adt'"; \
 			exit 1; \
 		fi; \
 	done; \
-	echo "✅ All required environment variables are set correctly"
-	@echo "✅ All checks passed."
+	echo "✅ Reviewer-specific checks passed."
+
+# Creator-specific checks
+check-creator: check
+	@echo "✅ Creator-specific checks passed."
 
 # Clone ADT (Accessible Digital Textbook) repositories from the URLs specified in ADT_REPOS
 clone-repos:
@@ -153,10 +176,10 @@ select-adt:
 	@echo "📂 Available ADTs:"; \
 	echo "📋 Checking data directory contents..."; \
 	ls -la data/ 2>/dev/null || echo "📋 Data directory is empty or doesn't exist"; \
-	if [ ! -d "data" ] || [ -z "$$(ls -A data 2>/dev/null)" ]; then \
-		echo "❌ No repositories found in data directory. Please check your ADT_REPOS environment variable."; \
-		exit 1; \
-	fi; \
+		if [ ! -d "data" ] || [ -z "$$(ls -A data 2>/dev/null)" ]; then \
+			echo "❌ No repositories found in data directory. Please check your ADTS environment variable."; \
+			exit 1; \
+		fi; \
 	echo "📋 Filtering out input/output/utils directories..."; \
 	ls -1 data | grep -v "^input$$" | grep -v "^output$$" | grep -v "^adt-utils$$" | nl; \
 	read -p "Select ADT number: " choice; \
@@ -202,34 +225,42 @@ ensure-data-dirs:
 # Usage: make creator REPO_PATH=/path/to/your/repository
 setup-creator:
 	@echo "🎨 Setting up Creator mode..."
-	@if [ -z "$(REPO_PATH)" ]; then \
-		echo "❌ REPO_PATH argument is required. Usage: make creator REPO_PATH=/path/to/your/repository"; \
+	@repo_path_init="$(REPO_PATH)"; \
+	if [ -z "$$repo_path_init" ]; then \
+		echo "ℹ️  REPO_PATH not provided."; \
+		read -p "→ Enter absolute path to your local ADT folder: " repo_path; \
+	else \
+		repo_path=$$(eval echo "$(REPO_PATH)"); \
+	fi; \
+	if [ -z "$$repo_path" ]; then \
+		echo "❌ REPO_PATH argument is required. Usage: make run-creator REPO_PATH=/path/to/your/repository"; \
 		exit 1; \
 	fi; \
-	repo_path=$$(eval echo "$(REPO_PATH)"); \
 	if [ ! -d "$$repo_path" ]; then \
 		echo "❌ Directory does not exist: $$repo_path"; \
 		exit 1; \
 	fi; \
-	if [ ! -d "$$repo_path/.git" ]; then \
-		echo "❌ Directory is not a git repository: $$repo_path"; \
-		exit 1; \
-	fi; \
+	repo_abs=$$(cd "$$repo_path" && pwd); \
 	echo "📋 Setting up creator mode directories..."; \
 	rm -rf data/input data/output; \
 	mkdir -p data; \
 	echo "📋 Copying files to data/input..."; \
-	cp -r "$$repo_path" data/input; \
+	cp -r "$$repo_abs" data/input; \
 	echo "📋 Creating output directory..."; \
 	if [ "$$(uname -s)" = "Linux" ] || [ "$$(uname -s)" = "Darwin" ]; then \
 		ln -sfn "/app/external_repo" data/output; \
 		echo "📋 Created symlink for data/output"; \
 	else \
-		cp -r "$$repo_path" data/output; \
+		cp -r "$$repo_abs" data/output; \
 		echo "📋 Copied files to data/output (symlink not supported)"; \
 	fi; \
 	echo "📋 Setting EXTERNAL_REPO_PATH environment variable..."; \
-	echo "EXTERNAL_REPO_PATH=$$repo_path" >> .env; \
+	if grep -qE '^EXTERNAL_REPO_PATH=' .env; then \
+		sed -i.bak -e 's|^EXTERNAL_REPO_PATH=.*$$|EXTERNAL_REPO_PATH='"$$repo_abs"'|' .env; \
+		rm -f .env.bak; \
+	else \
+		echo "EXTERNAL_REPO_PATH=$$repo_abs" >> .env; \
+	fi; \
 	echo "✅ Successfully set up creator mode: files copied to data/input and output"
 
 # Start Docker containers using docker-compose
@@ -297,19 +328,71 @@ initialize:
 	fi
 
 # Convenience targets for different modes
-run: reviewer
+run:
+	@# Wrapper that decides reviewer vs creator based on ADTS presence
+	@$(MAKE) --no-print-directory ensure-env
+	@set -a; . ./$(ENV_FILE); set +a; \
+	if [ -n "$$ADTS" ]; then \
+		$(MAKE) --no-print-directory reviewer; \
+	else \
+		echo "ℹ️  ADTS is not set in $(ENV_FILE)."; \
+		echo "   Choose an option:"; \
+		echo "   [1] Run Creator mode with a local ADT folder (no Git required)"; \
+		echo "   [2] Configure ADTS (set Git repo URLs now)"; \
+		read -p "→ Enter 1 or 2 (or press Enter to cancel): " opt; \
+		case "$$opt" in \
+			1) read -p "→ Enter absolute path to your local ADT folder: " rp; \
+			   if [ -n "$$rp" ]; then \
+			       $(MAKE) --no-print-directory run-creator REPO_PATH="$$rp"; \
+			   else \
+			       echo "Aborted. No path provided."; exit 1; \
+			   fi ;; \
+			2) $(MAKE) --no-print-directory set-adts; \
+			   set -a; . ./$(ENV_FILE); set +a; \
+			   if [ -n "$$ADTS" ]; then \
+			       $(MAKE) --no-print-directory reviewer; \
+			   else \
+			       echo "ADTS still not set. Aborting."; exit 1; \
+			   fi ;; \
+			*) echo "Aborted. Please set ADTS in $(ENV_FILE) or run Creator mode."; exit 1 ;; \
+		esac; \
+	fi
 run-reviewer: reviewer
 run-creator: creator
 # Usage: make run-creator REPO_PATH=/path/to/your/repository
 
+# Prompt-only helper to set or update ADTS (space-separated Git repo URLs)
+.PHONY: set-adts
+set-adts:
+	@echo "📝 Configure ADTS (space-separated list of Git repo URLs; SSH or HTTPS)"; \
+	current=$$(grep -E '^ADTS=' $(ENV_FILE) 2>/dev/null | sed 's/^ADTS=//'); \
+	[ -n "$$current" ] && echo "Current ADTS: $$current" || true; \
+	read -p "→ Enter ADTS (leave empty to clear): " new_adts; \
+	if grep -qE '^ADTS=' $(ENV_FILE) 2>/dev/null; then \
+		awk -v v="$$new_adts" 'BEGIN{updated=0} { if ($$0 ~ /^ADTS=/) { print "ADTS="v; updated=1 } else { print } } END{ if (!updated) print "ADTS="v }' $(ENV_FILE) > $(ENV_FILE).tmp && mv $(ENV_FILE).tmp $(ENV_FILE); \
+	else \
+		echo "ADTS=$$new_adts" >> $(ENV_FILE); \
+	fi; \
+	if [ -n "$$new_adts" ]; then \
+		echo "✅ ADTS updated."; \
+	else \
+		echo "✅ ADTS cleared."; \
+	fi
+
 # Stop and remove Docker containers
 stop:
 	@echo "🛑 Stopping Docker containers..."
-	@if $(DOCKER_COMPOSE) down; then \
-		echo "✅ Docker containers stopped successfully"; \
+	@if [ -f $(ENV_FILE) ]; then \
+		if $(DOCKER_COMPOSE) down; then \
+			echo "✅ Docker containers stopped successfully"; \
+		else \
+			echo "❌ Failed to stop Docker containers"; \
+			exit 1; \
+		fi; \
 	else \
-		echo "❌ Failed to stop Docker containers"; \
-		exit 1; \
+		echo "ℹ️  $(ENV_FILE) not found. Attempting to stop containers without env file..."; \
+		$(DOCKER_COMPOSE) -f docker-compose.yml down >/dev/null 2>&1 || true; \
+		echo "✅ Stop attempted. If containers were running, they should now be stopped."; \
 	fi
 
 # Install test dependencies (pytest, pytest-asyncio)
