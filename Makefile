@@ -15,9 +15,9 @@ SHELL := /bin/bash
 # Environment configuration
 ENV_FILE=.env
 # List of required environment variables
-# Global minimal requirement: OPENAI_API_KEY
+# Global minimal requirements: OPENAI_API_KEY, OPENAI_MODEL
 # Reviewer mode additionally requires: ADTS
-GLOBAL_REQUIRED_VARS=OPENAI_API_KEY OPENAI_MODEL ADT_UTILS_REPO
+GLOBAL_REQUIRED_VARS=OPENAI_API_KEY OPENAI_MODEL
 REVIEWER_REQUIRED_VARS=ADTS
 
 # Define all available targets (commands that can be run with 'make')
@@ -28,10 +28,10 @@ REVIEWER_REQUIRED_VARS=ADTS
 DOCKER_COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then echo docker-compose; else echo docker compose; fi)
 
 # Reviewer mode - works with multiple repositories from ADTS
-reviewer: check-reviewer clone-repos clone-utils select-adt ensure-data-dirs docker-up initialize
+reviewer: check-reviewer stop clone-repos clone-utils select-adt ensure-data-dirs docker-up initialize
 
 # Creator mode - works with a single local repository (can be non-git)
-creator: check-creator clone-utils setup-creator ensure-data-dirs docker-up initialize
+creator: check-creator stop clone-utils setup-creator ensure-data-dirs docker-up initialize
 
 # Validate basic prerequisites (Docker) and ensure minimal env setup
 check:
@@ -70,7 +70,15 @@ ensure-env:
 
 # Interactive configuration based on .env.example
 configure-env:
-	@bash scripts/configure_env.sh .env.example $(ENV_FILE)
+	@if [ "$$OS" = "Windows_NT" ] || uname -s | grep -qiE 'mingw|msys|cygwin'; then \
+		cmd.exe /c "scripts\\configure_env.bat .env.example $(ENV_FILE)"; \
+	else \
+		if [ ! -x scripts/configure_env.sh ]; then \
+			echo "🔧 Setting execute permission on configure_env.sh..."; \
+			chmod +x scripts/configure_env.sh; \
+		fi; \
+		bash scripts/configure_env.sh .env.example $(ENV_FILE); \
+	fi
 
 # Reviewer-specific checks
 check-reviewer: check
@@ -255,12 +263,9 @@ setup-creator:
 		echo "📋 Copied files to data/output (symlink not supported)"; \
 	fi; \
 	echo "📋 Setting EXTERNAL_REPO_PATH environment variable..."; \
-	if grep -qE '^EXTERNAL_REPO_PATH=' .env; then \
-		sed -i.bak -e 's|^EXTERNAL_REPO_PATH=.*$$|EXTERNAL_REPO_PATH='"$$repo_abs"'|' .env; \
-		rm -f .env.bak; \
-	else \
-		echo "EXTERNAL_REPO_PATH=$$repo_abs" >> .env; \
-	fi; \
+	sed -i.bak '/^EXTERNAL_REPO_PATH=/d' .env; \
+	echo "EXTERNAL_REPO_PATH=$$repo_abs" >> .env; \
+	rm -f .env.bak; \
 	echo "✅ Successfully set up creator mode: files copied to data/input and output"
 
 # Start Docker containers using docker-compose
