@@ -39,40 +39,47 @@ Text content is **separated from HTML** and localized via JSON files, supporting
 ## New Page Creation
   - When creating a new page, always create a new HTML file and make sure it appears in the navigation.
   - Follow the format of the existing pages to understand the common patterns.
-  - All pages must contains the following divs (you can look at the existing pages to see how to do it):
-    - <div id="interface-container"></div>
-    - <div id="nav-container"></div>
-  - Make sure the activities are labeled as activities in the nav.html file.
   - Use tailwind classes to style the page.
   - Please follow the numeration without repeating any number.
 
 Take into account this example format:
 ```html
-<html lang="es">
-  <head>
+<!DOCTYPE html>
+<html lang="language">  <!-- language is the language of the page, it must be a valid HTML language code -->
+<head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1" name="viewport" />
-    <title></title>
-    <link href="./content/tailwind_output.css" rel="stylesheet" />
+    <title>webpage.title</title>  <!-- webpage.title is the title of the page -->
+    <meta name="title-id" content="section.section_id" />  <!-- section.section_id is the section id of the page -->
+    <meta name="page-section-id" content="webpage_number" />  <!-- webpage_number is the number of the page -->
+    <link href="./content/tailwind_output.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/js/all.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <meta content="x_y" name="page-section-id" /> <!-- x_y is the page section id, it must match the filename. Example: 9_1 for the file 9_1_adt.html -->
-  </head>
-
-  <body class="bg-white p-5 font-sans text-lg">
-    <div id="interface-container"></div>
-    <div id="nav-container"></div>
-    <div class="flex justify-center items-center min-h-screen">
-      <div
-        class="container mx-auto max-w-5xl bg-white rounded-lg lg:px-24 md:px-12 sm:px-6 pt-12 pb-12"
-      >
-        ... <!-- The content of the page -->
-      </div>
-    </div>
+</head>
+<body class="bg-blue-100 min-h-screen flex items-center justify-center">
+    content  <!-- content is the content of the page, it must be a valid HTML content -->
+    <div class="relative z-50" id="interface-container"></div>
+    <div class="relative z-50" id="nav-container"></div>
     <script src="./assets/modules/state.js" type="module"></script>
     <script src="./assets/base.js" type="module"></script>
-  </body>
+</body>
 </html>
+```
+
+## Revision
+Make sure you follow the template provided, strictly.
+
+E.g.
+these lines:
+```html
+<script src="./assets/modules/state.js" type="module"></script>
+<script src="./assets/base.js" type="module"></script>
+```
+should be as they are. The following example DOES NOT work:
+
+```html
+<script src="./assets/base.js"></script>
+<script src="./assets/activity.js"></script>
 ```
 
 Important:  
