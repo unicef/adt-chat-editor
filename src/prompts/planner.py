@@ -107,6 +107,7 @@ Step format:
 - Each `<li>` = one page, and order defines navigation
 - Inside each new HTML file, include a `<meta>` tag whose `page-section-id` matches the filename. Example for `30_0_adt.html`: <meta content="30_0" name="page-section-id"/>
 - Each new HTML file must be named: **`<section>_<subsection>_adt.html`** (e.g., `30_0_adt.html`)
+- Please, when planning which pages to create, take into account the existing pages. No new pages should replace the ID of an existing page, and be sure that you follow the ordering of the existing pages.
 
 **Feedback Handling:**
 - Retain original plan if feedback shows satisfaction ("It's okay")
