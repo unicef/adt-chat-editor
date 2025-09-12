@@ -133,9 +133,10 @@ while IFS= read -r line; do
       echo "  ✅ Added: $adt_input"
     done
     
-    # Join array into space-separated string
+    # Join array into space-separated string and quote it
     value=$(printf "%s " "${adts_array[@]}")
     value=${value% }  # Remove trailing space
+    value="\"$value\""  # Quote the entire value
     
     # Update or append the key in .env
     if grep -qE "^${key}=" "$ENV_FILE"; then
@@ -177,8 +178,8 @@ while IFS= read -r line; do
       input=""
     fi
 
-    # Required key enforcement (for mandatory keys) - ADT_UTILS_REPO removed
-    if [[ "$key" == "OPENAI_API_KEY" || "$key" == "OPENAI_MODEL" ]]; then
+    # Required key enforcement (for mandatory keys) - only OPENAI_API_KEY is truly required
+    if [[ "$key" == "OPENAI_API_KEY" ]]; then
       while [[ -z "$input" && -z "$current" ]]; do
         printf -- "  (Required) Enter value for %s: " "$key"
         if ! read -r input < "$TTY_IN"; then
@@ -187,12 +188,13 @@ while IFS= read -r line; do
       done
     fi
 
-    value=${input:-$show}
-    
-    # Skip validation if value is empty (for optional fields)
-    if [[ -z "$value" ]]; then
+    # If input is empty, use the default value (for fields with defaults) or empty (for truly optional fields)
+    if [[ -z "$input" ]]; then
+      value="$show"  # Use the default/current value
       break
     fi
+    
+    value="$input"
     
     # Validate the input value
     if validate_env_value "$key" "$value"; then

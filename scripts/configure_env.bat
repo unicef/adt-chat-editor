@@ -103,7 +103,12 @@ if "%key%"=="ADTS" (
     goto :adt_input_loop
     
     :adt_done
-    set "value=!adts_list!"
+    :: Quote the entire value like the shell script does
+    if not "!adts_list!"=="" (
+        set "value="!adts_list!""
+    ) else (
+        set "value=!adts_list!"
+    )
     call :update_env_file "%key%" "!value!"
     
     :: Count final ADTs for confirmation
@@ -139,34 +144,32 @@ if "%key%"=="GITHUB_TOKEN" (
     )
 )
 
+:: Interactive input loop with validation
 :input_loop
 set /p "input=- Enter value for %key% [!show!]: "
 
-:: Required key enforcement
+:: Required key enforcement (for mandatory keys) - only OPENAI_API_KEY is truly required
 if "%key%"=="OPENAI_API_KEY" (
+    :required_input_loop
     if "!input!"=="" if "!current_value!"=="" (
         set /p "input=  (Required) Enter value for %key%: "
-    )
-)
-if "%key%"=="OPENAI_MODEL" (
-    if "!input!"=="" if "!current_value!"=="" (
-        set /p "input=  (Required) Enter value for %key%: "
+        if "!input!"=="" goto :required_input_loop
     )
 )
 
+:: If input is empty, use the default value (for fields with defaults) or empty (for truly optional fields)
 if "!input!"=="" (
     set "value=!show!"
-) else (
-    set "value=!input!"
+    goto :update_value
 )
 
-:: Skip validation if value is empty
-if "!value!"=="" goto :update_value
+set "value=!input!"
 
 :: Validate the input value
 call :validate_env_value "%key%" "!value!"
 if errorlevel 1 (
     echo   Please enter a valid value.
+    :: Reset show to avoid confusion in the next prompt
     set "show="
     goto :input_loop
 )
