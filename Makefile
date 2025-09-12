@@ -264,6 +264,7 @@ setup-creator:
 	fi; \
 	echo "📋 Setting EXTERNAL_REPO_PATH environment variable..."; \
 	sed -i.bak '/^EXTERNAL_REPO_PATH=/d' .env; \
+	echo "" >> .env; \
 	echo "EXTERNAL_REPO_PATH=$$repo_abs" >> .env; \
 	rm -f .env.bak; \
 	echo "✅ Successfully set up creator mode: files copied to data/input and output"
