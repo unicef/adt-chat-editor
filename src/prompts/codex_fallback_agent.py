@@ -43,6 +43,36 @@ Text content is **separated from HTML** and localized via JSON files, supporting
     - <div id="interface-container"></div>
     - <div id="nav-container"></div>
   - Make sure the activities are labeled as activities in the nav.html file.
+  - Use tailwind classes to style the page.
+
+Take into account this example format:
+```html
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <title></title>
+    <link href="./content/tailwind_output.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/js/all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <meta content="x_y" name="page-section-id" /> <!-- x_y is the page section id, it must match the filename. Example: 9_1 for the file 9_1_adt.html -->
+  </head>
+
+  <body class="bg-white p-5 font-sans text-lg">
+    <div id="interface-container"></div>
+    <div id="nav-container"></div>
+    <div class="flex justify-center items-center min-h-screen">
+      <div
+        class="container mx-auto max-w-5xl bg-white rounded-lg lg:px-24 md:px-12 sm:px-6 pt-12 pb-12"
+      >
+        ... <!-- The content of the page -->
+      </div>
+    </div>
+    <script src="./assets/modules/state.js" type="module"></script>
+    <script src="./assets/base.js" type="module"></script>
+  </body>
+</html>
+```
 
 Important:  
 If you forget to add the '<li>' in the nav file or misalign the 'page-section-id' with the HTML filename, navigation and linking will break.
