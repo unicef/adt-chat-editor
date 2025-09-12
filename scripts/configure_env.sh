@@ -17,11 +17,29 @@ fi
 echo "🔧 Configuring environment variables from $EXAMPLE_FILE"
 echo "(Press Enter to accept the shown value. Leave blank to clear optional values.)"
 
-# Determine TTY for interactive input
-TTY_IN="/dev/tty"
-if [[ ! -r "$TTY_IN" ]]; then
-  TTY_IN="/dev/stdin"
-fi
+# Function to read input safely across different environments
+safe_read() {
+  local input_var="$1"
+  local prompt="$2"
+  
+  if [[ -n "$prompt" ]]; then
+    printf "%s" "$prompt"
+  fi
+  
+  # Try multiple methods for reading input
+  if [[ -t 0 ]] && command -v read >/dev/null; then
+    # Standard interactive terminal
+    read -r "$input_var"
+  elif [[ -r "/dev/tty" ]]; then
+    # Try TTY directly
+    read -r "$input_var" < /dev/tty
+  else
+    # WSL fallback - use exec to redirect stdin temporarily
+    exec 3<&0 < /dev/tty 2>/dev/null || exec 3<&0
+    read -r "$input_var" <&3 2>/dev/null || read -r "$input_var"
+    exec 0<&3 3<&-
+  fi
+}
 
 # Validation functions
 validate_openai_key() {
@@ -117,11 +135,7 @@ while IFS= read -r line; do
     
     while true; do
       ((adt_count++))
-      printf -- "- Enter ADT #%d URL (or press Enter to finish): " "$adt_count"
-      
-      if ! read -r adt_input < "$TTY_IN"; then
-        adt_input=""
-      fi
+      safe_read adt_input "$(printf -- "- Enter ADT #%d URL (or press Enter to finish): " "$adt_count")"
       
       # If empty input, we're done
       if [[ -z "$adt_input" ]]; then
@@ -171,20 +185,13 @@ while IFS= read -r line; do
 
   # Interactive input loop with validation
   while true; do
-    # Prompt
-    printf -- "- Enter value for %s [%s]: " "$key" "$show"
-    # Read from TTY to avoid consuming the .env.example stream
-    if ! read -r input < "$TTY_IN"; then
-      input=""
-    fi
+    # Prompt and read input
+    safe_read input "$(printf -- "- Enter value for %s [%s]: " "$key" "$show")"
 
     # Required key enforcement (for mandatory keys) - only OPENAI_API_KEY is truly required
     if [[ "$key" == "OPENAI_API_KEY" ]]; then
       while [[ -z "$input" && -z "$current" ]]; do
-        printf -- "  (Required) Enter value for %s: " "$key"
-        if ! read -r input < "$TTY_IN"; then
-          input=""
-        fi
+        safe_read input "$(printf -- "  (Required) Enter value for %s: " "$key")"
       done
     fi
 
