@@ -26,30 +26,10 @@ safe_read() {
     printf "%s" "$prompt"
   fi
   
-  # WSL-specific handling first
-  if grep -qEi "(microsoft|wsl)" /proc/version 2>/dev/null; then
-    # WSL environment - use direct TTY reading
-    if [[ -c "/dev/tty" ]]; then
-      read -r "$input_var" < /dev/tty 2>/dev/null || {
-        # Fallback for WSL if TTY fails
-        echo -n "" > /tmp/input_read.tmp
-        timeout 30s bash -c "read -r input && echo \"\$input\" > /tmp/input_read.tmp" < /dev/tty 2>/dev/null || true
-        local temp_input=$(cat /tmp/input_read.tmp 2>/dev/null || echo "")
-        rm -f /tmp/input_read.tmp
-        printf -v "$input_var" "%s" "$temp_input"
-      }
-    else
-      # Last resort - try regular read
-      read -r "$input_var" 2>/dev/null || printf -v "$input_var" ""
-    fi
-  elif [[ -t 0 ]] && command -v read >/dev/null; then
-    # Standard interactive terminal
-    read -r "$input_var"
-  elif [[ -r "/dev/tty" ]]; then
-    # Try TTY directly
-    read -r "$input_var" < /dev/tty
+  # Simple approach: always try to read from /dev/tty first, then stdin
+  if [[ -c "/dev/tty" ]]; then
+    read -r "$input_var" < /dev/tty 2>/dev/null || read -r "$input_var" 2>/dev/null || printf -v "$input_var" ""
   else
-    # Generic fallback
     read -r "$input_var" 2>/dev/null || printf -v "$input_var" ""
   fi
 }
@@ -144,11 +124,39 @@ while IFS= read -r line; do
     fi
     
     echo "Add new ADTs (or press Enter to keep current list):"
+    
+    # Show OS detection for debugging
+    if grep -qEi "(microsoft|wsl)" /proc/version 2>/dev/null || [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
+      echo "🔍 Detected: WSL environment"
+    else
+      echo "🔍 Detected: Non-WSL environment ($(uname -s))"
+    fi
+    
     adt_count=${#adts_array[@]}
     
     while true; do
       ((adt_count++))
-      safe_read adt_input "$(printf -- "- Enter ADT #%d URL (or press Enter to finish): " "$adt_count")"
+      printf -- "- Enter ADT #%d URL (or press Enter to finish): " "$adt_count"
+      
+      # WSL-specific input handling - force waiting for user input
+      if grep -qEi "(microsoft|wsl)" /proc/version 2>/dev/null || [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
+        # WSL environment - use exec to ensure proper stdin handling
+        exec 3<&0
+        if [[ -c "/dev/tty" ]]; then
+          exec < /dev/tty
+          read -r adt_input || adt_input=""
+          exec 0<&3 3<&-
+        else
+          read -r adt_input || adt_input=""
+        fi
+      else
+        # Non-WSL environment
+        if [[ -c "/dev/tty" ]]; then
+          read -r adt_input < /dev/tty 2>/dev/null || adt_input=""
+        else
+          read -r adt_input 2>/dev/null || adt_input=""
+        fi
+      fi
       
       # If empty input, we're done
       if [[ -z "$adt_input" ]]; then
