@@ -11,31 +11,52 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-# Add data/adt-utils/src to Python path for imports
-# Try different possible paths for local dev vs Docker
-possible_paths = [
-    Path(__file__).parent.parent.parent / "data" / "adt-utils" / "src",  # Local dev
-    Path("/app/data/adt-utils/src"),  # Docker container
-    Path(__file__).resolve().parent.parent.parent / "data" / "adt-utils" / "src",  # Absolute path
-]
+# Cache for ADT utils imports
+_adt_utils_imports = None
 
-adt_utils_src = None
-for path in possible_paths:
-    if path.exists():
-        adt_utils_src = str(path)
-        sys.path.insert(0, adt_utils_src)
-        break
+def _get_adt_utils():
+    """Lazily load ADT utils imports."""
+    global _adt_utils_imports
+    
+    if _adt_utils_imports is not None:
+        return _adt_utils_imports
+    
+    # Add data/adt-utils/src to Python path for imports
+    # Try different possible paths for local dev vs Docker
+    possible_paths = [
+        Path(__file__).parent.parent.parent / "data" / "adt-utils" / "src",  # Local dev
+        Path("/app/data/adt-utils/src"),  # Docker container
+        Path(__file__).resolve().parent.parent.parent / "data" / "adt-utils" / "src",  # Absolute path
+    ]
 
-if adt_utils_src is None:
-    raise ImportError("Could not find data/adt-utils/src directory")
+    adt_utils_src = None
+    for path in possible_paths:
+        if path.exists():
+            adt_utils_src = str(path)
+            if adt_utils_src not in sys.path:
+                sys.path.insert(0, adt_utils_src)
+            break
 
-from script_registry import PRODUCTION_SCRIPTS
-from structs.script import (
-    Script,
-    ScriptCategory,
-    ScriptArgument,
-    ScriptExample,
-)
+    if adt_utils_src is None:
+        raise ImportError("Could not find data/adt-utils/src directory")
+
+    from script_registry import PRODUCTION_SCRIPTS
+    from structs.script import (
+        Script,
+        ScriptCategory,
+        ScriptArgument,
+        ScriptExample,
+    )
+    
+    _adt_utils_imports = {
+        'PRODUCTION_SCRIPTS': PRODUCTION_SCRIPTS,
+        'Script': Script,
+        'ScriptCategory': ScriptCategory,
+        'ScriptArgument': ScriptArgument,
+        'ScriptExample': ScriptExample,
+    }
+    
+    return _adt_utils_imports
 from src.settings import ADT_UTILS_DIR, OUTPUT_DIR, custom_logger
 from src.structs import RunAllRequest, RunAllResponse
 
@@ -76,8 +97,9 @@ async def run_script(request: RunScriptRequest):
     """Endpoint to run any of the three available scripts with specified parameters."""
     try:
         # Find the script to run
+        adt_utils = _get_adt_utils()
         script_to_run = None
-        for script in PRODUCTION_SCRIPTS:
+        for script in adt_utils['PRODUCTION_SCRIPTS']:
             if script.id == request.script_id:
                 script_to_run = script.model_copy(deep=True)
                 break
@@ -197,6 +219,7 @@ async def run_script(request: RunScriptRequest):
 @router.get("/scripts/info")
 async def get_scripts_info():
     """Endpoint to get information about available scripts and their parameters."""
+    adt_utils = _get_adt_utils()
     return {
         "available_scripts": [
             {
@@ -205,7 +228,7 @@ async def get_scripts_info():
                 "parameters": [arg.name for arg in script.arguments],
                 "example": {"script_id": script.id, "verbose": True},
             }
-            for script in PRODUCTION_SCRIPTS
+            for script in adt_utils['PRODUCTION_SCRIPTS']
         ]
     }
 
