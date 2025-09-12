@@ -128,9 +128,22 @@ while IFS= read -r line; do
     # Show OS detection for debugging
     if grep -qEi "(microsoft|wsl)" /proc/version 2>/dev/null || [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
       echo "🔍 Detected: WSL environment"
+      is_wsl=true
     else
       echo "🔍 Detected: Non-WSL environment ($(uname -s))"
+      is_wsl=false
     fi
+    
+    # Debug information
+    echo "📊 Debug info:"
+    echo "  - stdin is terminal: $([ -t 0 ] && echo 'yes' || echo 'no')"
+    echo "  - /dev/tty exists: $([ -c '/dev/tty' ] && echo 'yes' || echo 'no')"
+    echo "  - /dev/tty readable: $([ -r '/dev/tty' ] && echo 'yes' || echo 'no')"
+    echo "  - TERM: ${TERM:-unset}"
+    echo "  - SHELL: ${SHELL:-unset}"
+    echo "  - Current process tree:"
+    ps -o pid,ppid,comm -p $$ -p $PPID 2>/dev/null || echo "    ps command failed"
+    echo
     
     adt_count=${#adts_array[@]}
     
@@ -138,24 +151,50 @@ while IFS= read -r line; do
       ((adt_count++))
       printf -- "- Enter ADT #%d URL (or press Enter to finish): " "$adt_count"
       
+      # Debug before reading
+      echo -n " [DEBUG: about to read, TTY available: $([ -c '/dev/tty' ] && echo 'yes' || echo 'no')] "
+      
       # Input handling with TTY fallback for Makefile execution
       adt_input=""
-      # Always use TTY when available since we're called from Makefile
+      read_success=false
+      
+      # Try different methods and log what works
       if [[ -c "/dev/tty" ]]; then
-        read -r adt_input < /dev/tty 2>/dev/null || adt_input=""
+        echo "[DEBUG: Trying /dev/tty read...]"
+        if read -r adt_input < /dev/tty 2>/dev/null; then
+          read_success=true
+          echo "[DEBUG: /dev/tty read succeeded, got: '${adt_input}']"
+        else
+          echo "[DEBUG: /dev/tty read failed]"
+          adt_input=""
+        fi
       else
-        # Fallback: try stdin but don't fail on error
-        { read -r adt_input || adt_input=""; } 2>/dev/null
+        echo "[DEBUG: /dev/tty not available]"
       fi
+      
+      if [[ "$read_success" == false ]]; then
+        echo "[DEBUG: Trying stdin fallback...]"
+        if { read -r adt_input || adt_input=""; } 2>/dev/null; then
+          echo "[DEBUG: stdin read completed, got: '${adt_input}']"
+        else
+          echo "[DEBUG: stdin read failed]"
+          adt_input=""
+        fi
+      fi
+      
+      echo "[DEBUG: Final adt_input value: '${adt_input}']"
+      echo "[DEBUG: Empty check: $([ -z "$adt_input" ] && echo 'empty' || echo 'not empty')]"
       
       # If empty input, we're done
       if [[ -z "$adt_input" ]]; then
+        echo "[DEBUG: Breaking loop due to empty input]"
         break
       fi
       
       # Add to array
       adts_array+=("$adt_input")
       echo "  ✅ Added: $adt_input"
+      echo "[DEBUG: Array now has ${#adts_array[@]} items]"
     done
     
     # Join array into space-separated string and quote it
