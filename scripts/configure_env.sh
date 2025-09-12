@@ -138,24 +138,14 @@ while IFS= read -r line; do
       ((adt_count++))
       printf -- "- Enter ADT #%d URL (or press Enter to finish): " "$adt_count"
       
-      # WSL-specific input handling - force waiting for user input
-      if grep -qEi "(microsoft|wsl)" /proc/version 2>/dev/null || [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
-        # WSL environment - use exec to ensure proper stdin handling
-        exec 3<&0
-        if [[ -c "/dev/tty" ]]; then
-          exec < /dev/tty
-          read -r adt_input || adt_input=""
-          exec 0<&3 3<&-
-        else
-          read -r adt_input || adt_input=""
-        fi
+      # Input handling with TTY fallback for Makefile execution
+      adt_input=""
+      # Always use TTY when available since we're called from Makefile
+      if [[ -c "/dev/tty" ]]; then
+        read -r adt_input < /dev/tty 2>/dev/null || adt_input=""
       else
-        # Non-WSL environment
-        if [[ -c "/dev/tty" ]]; then
-          read -r adt_input < /dev/tty 2>/dev/null || adt_input=""
-        else
-          read -r adt_input 2>/dev/null || adt_input=""
-        fi
+        # Fallback: try stdin but don't fail on error
+        { read -r adt_input || adt_input=""; } 2>/dev/null
       fi
       
       # If empty input, we're done
