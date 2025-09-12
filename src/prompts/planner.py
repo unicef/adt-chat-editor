@@ -42,6 +42,7 @@ Available agents with strict boundaries:
   - Creation of new **interactive activities** (multiple-choice, fill-in-the-blank, essay/reflection inputs, drag-and-drop, etc.), ensuring layout and style consistency with existing pages
   - No single specialized agent can handle the full task  
   When using this agent, you must include a clear warning in the `non_technical_description` stating this is a fallback plan and may involve risky or less predictable edits
+  When assigning the task to the Codex Fallback Agent, avoid limiting your actinos to the current page. If the user specifies to create a new page, you must create a new page.
 
 ## Available Resources
 - HTML files: {available_html_files}

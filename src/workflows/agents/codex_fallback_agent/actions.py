@@ -1,4 +1,5 @@
 import os
+import shlex
 import subprocess
 from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
@@ -8,12 +9,9 @@ from src.settings import (
     TAILWIND_CSS_IN_DIR,
     TAILWIND_CSS_OUT_DIR,
     custom_logger,
-    settings
+    settings,
 )
-from src.structs import (
-    StepStatus, 
-    TranslatedHTMLStatus
-)
+from src.structs import StepStatus, TranslatedHTMLStatus
 from src.utils import (
     get_message,
     to_single_line,
@@ -32,24 +30,30 @@ async def fallback_agent(state: ADTState, config: RunnableConfig) -> ADTState:
     # command flags & contents
     working_dir = OUTPUT_DIR
     context = to_single_line(CODEX_FALLBACK_SYSTEM_PROMPT)
-    user_prompt = to_single_line(
-        current_step.step
-    ).replace("\"", "'").replace(OUTPUT_DIR + "/", "")
-    
-    codex_cmd = (
-        f'codex "{context}" '
-        f'exec -m {settings.OPENAI_MODEL} '
-        f'--dangerously-bypass-approvals-and-sandbox '
-        f'--skip-git-repo-check '
-        f'"{user_prompt}"'
+    user_prompt = (
+        to_single_line(current_step.step)
+        .replace('"', "'")
+        .replace(OUTPUT_DIR + "/", "")
     )
 
-    logger.info(f"Codex command: {codex_cmd}")
+    # Use list of arguments instead of shell string to avoid escaping issues
+    codex_args = [
+        "codex",
+        context,
+        "exec",
+        "-m",
+        "o3",
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--skip-git-repo-check",
+        user_prompt,
+    ]
+
+    logger.info(f"Codex command: {' '.join(shlex.quote(arg) for arg in codex_args)}")
 
     try:
         codex_result = subprocess.run(
-            codex_cmd,
-            shell=True,
+            codex_args,
+            shell=False,  # Changed from shell=True to avoid shell escaping issues
             capture_output=True,
             text=True,
             cwd=working_dir,
@@ -81,9 +85,7 @@ async def fallback_agent(state: ADTState, config: RunnableConfig) -> ADTState:
     # Add message
     state.add_message(SystemMessage(content=message))
     state.add_message(
-        AIMessage(
-            content=get_message(state.user_language.value, "final_response")
-        )
+        AIMessage(content=get_message(state.user_language.value, "final_response"))
     )
 
     # Set translated_html_status to not installed
