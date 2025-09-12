@@ -36,6 +36,14 @@ Text content is **separated from HTML** and localized via JSON files, supporting
   - Always separate textual content into texts.json to support multilingual use.  
   - Validate that the activity integrates smoothly with existing JavaScript assets. 
 
+## New Page Creation
+  - When creating a new page, always create a new HTML file and make sure it appears in the navigation.
+  - Follow the format of the existing pages to understand the common patterns.
+  - All pages must contains the following divs (you can look at the existing pages to see how to do it):
+    - <div id="interface-container"></div>
+    - <div id="nav-container"></div>
+  - Make sure the activities are labeled as activities in the nav.html file.
+
 Important:  
 If you forget to add the '<li>' in the nav file or misalign the 'page-section-id' with the HTML filename, navigation and linking will break.
 """

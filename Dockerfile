@@ -33,6 +33,11 @@ RUN apt-get update && \
 # Working directory
 WORKDIR /app
 
+# Configure Git to trust mounted directories (fixes WSL ownership issues)
+RUN git config --global --add safe.directory '*' && \
+    git config --global --add safe.directory /app/data && \
+    git config --global --add safe.directory /app/external_repo
+
 # Configure poetry
 RUN poetry config virtualenvs.create false
 
