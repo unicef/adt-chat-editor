@@ -51,21 +51,27 @@ check:
 	@$(MAKE) --no-print-directory ensure-env
 	@echo "✅ Basic checks passed."
 
-# Ensure .env exists and prompt for required values if missing
+# Ensure .env exists and has required variables
 ensure-env:
 	@if [ ! -f $(ENV_FILE) ]; then \
 		echo "📝 $(ENV_FILE) not found. Launching interactive configuration..."; \
 		$(MAKE) --no-print-directory configure-env; \
 	else \
-		echo "📄 Found $(ENV_FILE). Validating minimal configuration..."; \
+		echo "📄 Found $(ENV_FILE). Checking required variables..."; \
 		set -a; . ./$(ENV_FILE); set +a; \
+		missing_vars=""; \
 		for var in $(GLOBAL_REQUIRED_VARS); do \
-			if [ -z "$${!var}" ]; then \
-				echo "⚠️  Missing '$$var'. Launching interactive configuration..."; \
-				$(MAKE) --no-print-directory configure-env; \
-				break; \
+			if [ -z "$${!var}" ] || [ "$${!var}" = "your-openai-key-here" ] || [ "$${!var}" = "your-github-token-here" ]; then \
+				missing_vars="$$missing_vars $$var"; \
 			fi; \
 		done; \
+		if [ -n "$$missing_vars" ]; then \
+			echo "⚠️  Missing or placeholder values for:$$missing_vars"; \
+			echo "   Launching interactive configuration..."; \
+			$(MAKE) --no-print-directory configure-env; \
+		else \
+			echo "✅ Required variables are configured."; \
+		fi; \
 	fi
 
 # Interactive configuration based on .env.example
