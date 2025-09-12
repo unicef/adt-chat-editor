@@ -44,6 +44,7 @@ Text content is **separated from HTML** and localized via JSON files, supporting
     - <div id="nav-container"></div>
   - Make sure the activities are labeled as activities in the nav.html file.
   - Use tailwind classes to style the page.
+  - Please follow the numeration without repeating any number.
 
 Take into account this example format:
 ```html
