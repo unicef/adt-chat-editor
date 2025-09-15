@@ -56,11 +56,38 @@ def test_adt_utils_run_script_success(monkeypatch, client):
     cp = subprocess.CompletedProcess(args=["python"], returncode=0, stdout="All good", stderr="")
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: cp)
 
+    # Patch ADT utils discovery to avoid filesystem dependency
+    import src.api.routes.adt_utils as adt_utils_route
+
+    class FakeArg:
+        def __init__(self, name, type, default):
+            self.name = name
+            self.type = type
+            self.default = default
+
+    class FakeScript:
+        def __init__(self):
+            self.id = "validate_adt"
+            self.path = "validate_adt.py"
+            self.arguments = [
+                FakeArg("target_dir", "str", None),
+                FakeArg("verbose", "bool", False),
+            ]
+
+        def model_copy(self, deep=False):
+            from copy import deepcopy
+
+            return deepcopy(self)
+
+    monkeypatch.setattr(
+        adt_utils_route, "_get_adt_utils", lambda: {"PRODUCTION_SCRIPTS": [FakeScript()]}
+    )
+
     r = client.post(
         "/adt-utils/run-script",
         json={
-            "script_type": "validate_adt",
-            "verbose": True
+            "script_id": "validate_adt",
+            "verbose": True,
         },
     )
     assert r.status_code == 200
