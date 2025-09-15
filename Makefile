@@ -76,15 +76,11 @@ ensure-env:
 
 # Interactive configuration based on .env.example
 configure-env:
-	@if [ "$$OS" = "Windows_NT" ] || uname -s | grep -qiE 'mingw|msys|cygwin'; then \
-		cmd.exe /c "scripts\\configure_env.bat .env.example $(ENV_FILE)"; \
-	else \
-		if [ ! -x scripts/configure_env.sh ]; then \
-			echo "🔧 Setting execute permission on configure_env.sh..."; \
-			chmod +x scripts/configure_env.sh; \
-		fi; \
-		bash scripts/configure_env.sh .env.example $(ENV_FILE); \
-	fi
+	@if [ ! -x scripts/configure_env.sh ]; then \
+		echo "🔧 Setting execute permission on configure_env.sh..."; \
+		chmod +x scripts/configure_env.sh; \
+	fi; \
+	bash scripts/configure_env.sh .env.example $(ENV_FILE);
 
 # Reviewer-specific checks
 check-reviewer: check
@@ -109,15 +105,16 @@ clone-repos:
 	@mkdir -p data
 	@set -a; . ./$(ENV_FILE); set +a; \
 	for repo_url in $$ADTS; do \
-		repo_name=$$(basename $$repo_url .git); \
+		https_url=$$(echo "$$repo_url" | sed -E 's#git@([^:]+):([^/]+)/([^\.]+)\.git#https://\1/\2/\3.git#'); \
+		repo_name=$$(basename $$https_url .git); \
 		echo "📋 Processing repository: $$repo_name"; \
 		repo_dir="data/$$repo_name"; \
 		echo "📋 Checking repository status: $$repo_dir"; \
 		if [ -d "$$repo_dir/.git" ]; then \
 			echo "📋 Repository already exists: $$repo_dir"; \
-			echo "📥 Pulling latest changes from $$repo_url..."; \
-			(cd "$$repo_dir" && rm -f .git/config.lock && git remote set-url origin "$$repo_url" && git pull origin main || git pull origin master || git pull || { \
-				echo "❌ Failed to pull latest changes from $$repo_url"; \
+			echo "📥 Pulling latest changes from $$https_url..."; \
+			(cd "$$repo_dir" && rm -f .git/config.lock && git remote set-url origin "$$https_url" && git pull origin main || git pull origin master || git pull || { \
+				echo "❌ Failed to pull latest changes from $$https_url"; \
 				exit 1; \
 			}); \
 			echo "✅ Successfully updated $$repo_name"; \
@@ -125,18 +122,18 @@ clone-repos:
 			echo "⚠️  Directory exists but is not a git repository: $$repo_dir"; \
 			echo "📋 Removing non-git directory and cloning fresh..."; \
 			rm -rf "$$repo_dir"; \
-			if git clone "$$repo_url" "$$repo_dir"; then \
+			if git clone "$$https_url" "$$repo_dir"; then \
 				echo "✅ Successfully cloned $$repo_name"; \
 			else \
-				echo "❌ Failed to clone repo $$repo_url into $$repo_dir"; \
+				echo "❌ Failed to clone repo $$https_url into $$repo_dir"; \
 				exit 1; \
 			fi; \
 		else \
-			echo "📥 Cloning $$repo_url into $$repo_dir..."; \
-			if git clone "$$repo_url" "$$repo_dir"; then \
+			echo "📥 Cloning $$https_url into $$repo_dir..."; \
+			if git clone "$$https_url" "$$repo_dir"; then \
 				echo "✅ Successfully cloned $$repo_name"; \
 			else \
-				echo "❌ Failed to clone repo $$repo_url into $$repo_dir"; \
+				echo "❌ Failed to clone repo $$https_url into $$repo_dir"; \
 				exit 1; \
 			fi; \
 		fi; \
@@ -151,7 +148,7 @@ clone-utils:
 		echo "ℹ️  ADT_UTILS_REPO not set in $(ENV_FILE). Skipping."; \
 		exit 0; \
 	fi; \
-	repo_url="$$ADT_UTILS_REPO"; \
+	repo_url=$$(echo "$$ADT_UTILS_REPO" | sed -E 's#git@([^:]+):([^/]+)/([^\.]+)\.git#https://\1/\2/\3.git#'); \
 	repo_name="adt-utils"; \
 	repo_dir="data/$$repo_name"; \
 	echo "📋 Processing repository: $$repo_name"; \
