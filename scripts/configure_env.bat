@@ -1,6 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
 
+:: Enable error handling - exit on any error
+if "%CONFIGURE_ENV_DEBUG%"=="1" echo on
+
 :: Default file arguments
 set "EXAMPLE_FILE=%~1"
 set "ENV_FILE=%~2"
@@ -16,6 +19,10 @@ if not exist "%EXAMPLE_FILE%" (
 :: Create .env if missing by copying the example
 if not exist "%ENV_FILE%" (
     copy "%EXAMPLE_FILE%" "%ENV_FILE%" >nul
+    if errorlevel 1 (
+        echo ❌ Failed to create %ENV_FILE% from %EXAMPLE_FILE% >&2
+        exit /b 1
+    )
 )
 
 echo 🔧 Configuring environment variables from %EXAMPLE_FILE%
@@ -65,23 +72,26 @@ if "%key%"=="ADT_UTILS_REPO" (
 if "%key%"=="ADTS" (
     echo 🔗 Setting up ADTS (Accessible Digital Textbooks)
     echo Enter ADT repository URLs one by one. Press Enter with empty input to finish.
-    echo.
     
-    :: Get current ADTS value
+    :: Get current ADTS value and clean it up (remove quotes if present)
     call :get_current_value "%key%" current_adts
+    set "current_adts=!current_adts:"=!"
+    
+    :: Initialize ADT array counter
+    set "adt_count=0"
     
     :: Show current ADTs if they exist
     if not "!current_adts!"=="" (
         echo Current ADTs:
-        set "adt_count=0"
         for %%A in (!current_adts!) do (
             set /a "adt_count+=1"
             echo   !adt_count!. %%A
         )
         echo.
-    ) else (
-        set "adt_count=0"
     )
+    
+    :: Show environment detection (like the shell script)
+    echo 🔍 Detected: Windows environment
     
     :: Collect new ADTs
     echo Add new ADTs (or press Enter to keep current list):
@@ -107,14 +117,14 @@ if "%key%"=="ADTS" (
     if not "!adts_list!"=="" (
         set "value="!adts_list!""
     ) else (
-        set "value=!adts_list!"
+        set "value="
     )
     call :update_env_file "%key%" "!value!"
     
     :: Count final ADTs for confirmation
     set "final_count=0"
-    if not "!value!"=="" (
-        for %%A in (!value!) do set /a "final_count+=1"
+    if not "!adts_list!"=="" (
+        for %%A in (!adts_list!) do set /a "final_count+=1"
         echo ✅ ADTS configured with !final_count! repositories
     ) else (
         echo ✅ ADTS left empty
@@ -200,6 +210,7 @@ goto :eof
 set "val_key=%~1"
 set "val_value=%~2"
 
+:: Validate OPENAI_API_KEY - must start with 'sk-'
 if "%val_key%"=="OPENAI_API_KEY" (
     if not "!val_value!"=="" (
         echo !val_value! | findstr /b /c:"sk-" >nul
@@ -210,6 +221,7 @@ if "%val_key%"=="OPENAI_API_KEY" (
     )
 )
 
+:: Validate GITHUB_TOKEN - must start with 'github_pat'
 if "%val_key%"=="GITHUB_TOKEN" (
     if not "!val_value!"=="" (
         echo !val_value! | findstr /b /c:"github_pat" >nul
@@ -220,6 +232,7 @@ if "%val_key%"=="GITHUB_TOKEN" (
     )
 )
 
+:: All validations passed
 exit /b 0
 
 :update_env_file
@@ -232,8 +245,12 @@ if errorlevel 1 (
     :: Key doesn't exist, append it
     echo.>> "%ENV_FILE%"
     echo %upd_key%=%upd_value%>> "%ENV_FILE%"
+    if errorlevel 1 (
+        echo ❌ Failed to append %upd_key% to %ENV_FILE% >&2
+        exit /b 1
+    )
 ) else (
-    :: Key exists, replace it
+    :: Key exists, replace it using a temporary file for safety
     set "temp_file=%TEMP%\env_temp_%RANDOM%.txt"
     (
         for /f "usebackq tokens=*" %%E in ("%ENV_FILE%") do (
@@ -246,6 +263,16 @@ if errorlevel 1 (
             )
         )
     ) > "!temp_file!"
+    if errorlevel 1 (
+        echo ❌ Failed to create temporary file for updating %ENV_FILE% >&2
+        del "!temp_file!" 2>nul
+        exit /b 1
+    )
     move "!temp_file!" "%ENV_FILE%" >nul
+    if errorlevel 1 (
+        echo ❌ Failed to update %ENV_FILE% >&2
+        del "!temp_file!" 2>nul
+        exit /b 1
+    )
 )
 goto :eof
