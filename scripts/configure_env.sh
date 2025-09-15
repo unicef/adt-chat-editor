@@ -148,11 +148,9 @@ while IFS= read -r line; do
     adt_count=${#adts_array[@]}
     echo "[DEBUG: Starting loop, adt_count=${adt_count}]"
     
-    # Disable exit on error temporarily for the input loop in WSL
-    if [[ "$is_wsl" == true ]]; then
-      echo "[DEBUG: WSL detected, disabling exit on error for input loop]"
-      set +e  # Disable exit on error
-    fi
+    # Disable exit on error temporarily for the input loop 
+    echo "[DEBUG: Disabling exit on error for input loop]"
+    set +e  # Disable exit on error
     
     while true; do
       ((adt_count++))
@@ -207,10 +205,8 @@ while IFS= read -r line; do
     done
     
     # Re-enable exit on error after the loop
-    if [[ "$is_wsl" == true ]]; then
-      echo "[DEBUG: Re-enabling exit on error]"
-      set -e
-    fi
+    echo "[DEBUG: Re-enabling exit on error]"
+    set -e
     
     # Join array into space-separated string and quote it
     value=$(printf "%s " "${adts_array[@]}")
