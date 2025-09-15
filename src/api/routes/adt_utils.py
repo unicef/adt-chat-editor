@@ -21,32 +21,59 @@ def _get_adt_utils():
     if _adt_utils_imports is not None:
         return _adt_utils_imports
     
-    # Add data/adt-utils/src to Python path for imports
-    # Try different possible paths for local dev vs Docker
+    # Add data/adt-utils to Python path for imports (not src subdirectory)
+    # This allows imports like 'from src.structs.script import ...'
     possible_paths = [
-        Path(__file__).parent.parent.parent / "data" / "adt-utils" / "src",  # Local dev
-        Path("/app/data/adt-utils/src"),  # Docker container
-        Path(__file__).resolve().parent.parent.parent / "data" / "adt-utils" / "src",  # Absolute path
+        Path(__file__).parent.parent.parent / "data" / "adt-utils",  # Local dev
+        Path("/app/data/adt-utils"),  # Docker container
+        Path(__file__).resolve().parent.parent.parent / "data" / "adt-utils",  # Absolute path
     ]
 
-    adt_utils_src = None
+    adt_utils_root = None
     for path in possible_paths:
-        if path.exists():
-            adt_utils_src = str(path)
-            if adt_utils_src not in sys.path:
-                sys.path.insert(0, adt_utils_src)
+        if path.exists() and (path / "src").exists():
+            adt_utils_root = str(path)
+            if adt_utils_root not in sys.path:
+                sys.path.insert(0, adt_utils_root)
             break
 
-    if adt_utils_src is None:
-        raise ImportError("Could not find data/adt-utils/src directory")
+    if adt_utils_root is None:
+        raise ImportError("Could not find data/adt-utils directory")
 
-    from script_registry import PRODUCTION_SCRIPTS
-    from structs.script import (
-        Script,
-        ScriptCategory,
-        ScriptArgument,
-        ScriptExample,
-    )
+    # Import the required modules using dynamic loading
+    import os
+    import importlib.util
+    
+    try:
+        # Method 1: Try direct import (should work if Python path is correct)
+        from src.script_registry import PRODUCTION_SCRIPTS
+        from src.structs.script import (
+            Script,
+            ScriptCategory,
+            ScriptArgument,
+            ScriptExample,
+        )
+    except ImportError:
+        # Method 2: Load modules dynamically in the correct dependency order
+        # First, load structs.script module
+        script_path = os.path.join(adt_utils_root, 'src', 'structs', 'script.py')
+        spec = importlib.util.spec_from_file_location("src.structs.script", script_path)
+        script_module = importlib.util.module_from_spec(spec)
+        sys.modules['src.structs.script'] = script_module
+        spec.loader.exec_module(script_module)
+        
+        Script = script_module.Script
+        ScriptCategory = script_module.ScriptCategory
+        ScriptArgument = script_module.ScriptArgument
+        ScriptExample = script_module.ScriptExample
+        
+        # Now load script_registry which depends on structs.script
+        script_registry_path = os.path.join(adt_utils_root, 'src', 'script_registry.py')
+        spec = importlib.util.spec_from_file_location("src.script_registry", script_registry_path)
+        script_registry_module = importlib.util.module_from_spec(spec)
+        sys.modules['src.script_registry'] = script_registry_module
+        spec.loader.exec_module(script_registry_module)
+        PRODUCTION_SCRIPTS = script_registry_module.PRODUCTION_SCRIPTS
     
     _adt_utils_imports = {
         'PRODUCTION_SCRIPTS': PRODUCTION_SCRIPTS,
