@@ -163,28 +163,30 @@ while IFS= read -r line; do
       
       # Input handling with TTY fallback for Makefile execution
       adt_input=""
-      read_success=false
       
-      # Try different methods and log what works
+      # Simple approach: try to read from tty directly, fallback to stdin
       if [[ -c "/dev/tty" ]]; then
         echo "[DEBUG: Trying /dev/tty read...]"
-        if read -r adt_input < /dev/tty 2>/dev/null; then
-          read_success=true
+        # Use a more direct approach - open /dev/tty as file descriptor 3
+        if exec 3< /dev/tty && read -r adt_input <&3 2>/dev/null; then
+          exec 3<&- # Close the file descriptor
           echo "[DEBUG: /dev/tty read succeeded, got: '${adt_input}']"
         else
-          echo "[DEBUG: /dev/tty read failed]"
-          adt_input=""
+          exec 3<&- 2>/dev/null || true # Close the file descriptor if it was opened
+          echo "[DEBUG: /dev/tty read failed, trying stdin...]"
+          if read -r adt_input < /dev/stdin 2>/dev/null; then
+            echo "[DEBUG: stdin read succeeded, got: '${adt_input}']"
+          else
+            echo "[DEBUG: stdin read failed, setting empty]"
+            adt_input=""
+          fi
         fi
       else
-        echo "[DEBUG: /dev/tty not available]"
-      fi
-      
-      if [[ "$read_success" == false ]]; then
-        echo "[DEBUG: Trying stdin fallback...]"
-        if { read -r adt_input || adt_input=""; } 2>/dev/null; then
-          echo "[DEBUG: stdin read completed, got: '${adt_input}']"
+        echo "[DEBUG: /dev/tty not available, trying stdin...]"
+        if read -r adt_input 2>/dev/null; then
+          echo "[DEBUG: stdin read succeeded, got: '${adt_input}']"
         else
-          echo "[DEBUG: stdin read failed]"
+          echo "[DEBUG: stdin read failed, setting empty]"
           adt_input=""
         fi
       fi
