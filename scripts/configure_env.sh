@@ -155,13 +155,13 @@ while IFS= read -r line; do
         else
           exec 3<&- 2>/dev/null || true # Close the file descriptor if it was opened
           if read -r adt_input < /dev/stdin 2>/dev/null; then
-          else
+            :          else
             adt_input=""
           fi
         fi
       else
         if read -r adt_input 2>/dev/null; then
-        else
+          :        else
           adt_input=""
         fi
       fi
