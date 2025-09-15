@@ -134,84 +134,55 @@ while IFS= read -r line; do
       is_wsl=false
     fi
     
-    # Debug information
-    echo "📊 Debug info:"
-    echo "  - stdin is terminal: $([ -t 0 ] && echo 'yes' || echo 'no')"
-    echo "  - /dev/tty exists: $([ -c '/dev/tty' ] && echo 'yes' || echo 'no')"
-    echo "  - /dev/tty readable: $([ -r '/dev/tty' ] && echo 'yes' || echo 'no')"
-    echo "  - TERM: ${TERM:-unset}"
-    echo "  - SHELL: ${SHELL:-unset}"
-    echo "  - Current process tree:"
-    ps -o pid,ppid,comm -p $$ -p $PPID 2>/dev/null || echo "    ps command failed"
-    echo
-    
+    # Starting loop
     adt_count=${#adts_array[@]}
-    echo "[DEBUG: Starting loop, adt_count=${adt_count}]"
     
     # Disable exit on error temporarily for the input loop 
-    echo "[DEBUG: Disabling exit on error for input loop]"
     set +e  # Disable exit on error
     
     while true; do
       ((adt_count++))
       printf -- "- Enter ADT #%d URL (or press Enter to finish): " "$adt_count"
       
-      # Debug before reading
-      echo -n " [DEBUG: about to read, TTY available: $([ -c '/dev/tty' ] && echo 'yes' || echo 'no')] "
-      
       # Input handling with TTY fallback for Makefile execution
       adt_input=""
       
       # Simple approach: try to read from tty directly, fallback to stdin
       if [[ -c "/dev/tty" ]]; then
-        echo "[DEBUG: Trying /dev/tty read...]"
         # Use a more direct approach - open /dev/tty as file descriptor 3
         if exec 3< /dev/tty && read -r adt_input <&3 2>/dev/null; then
           exec 3<&- # Close the file descriptor
-          echo "[DEBUG: /dev/tty read succeeded, got: '${adt_input}']"
         else
           exec 3<&- 2>/dev/null || true # Close the file descriptor if it was opened
-          echo "[DEBUG: /dev/tty read failed, trying stdin...]"
           if read -r adt_input < /dev/stdin 2>/dev/null; then
-            echo "[DEBUG: stdin read succeeded, got: '${adt_input}']"
           else
-            echo "[DEBUG: stdin read failed, setting empty]"
             adt_input=""
           fi
         fi
       else
-        echo "[DEBUG: /dev/tty not available, trying stdin...]"
         if read -r adt_input 2>/dev/null; then
-          echo "[DEBUG: stdin read succeeded, got: '${adt_input}']"
         else
-          echo "[DEBUG: stdin read failed, setting empty]"
           adt_input=""
         fi
       fi
       
-      echo "[DEBUG: Final adt_input value: '${adt_input}']"
-      echo "[DEBUG: Empty check: $([ -z "$adt_input" ] && echo 'empty' || echo 'not empty')]"
-      
       # If empty input, we're done
       if [[ -z "$adt_input" ]]; then
-        echo "[DEBUG: Breaking loop due to empty input]"
         break
       fi
       
       # Add to array
       adts_array+=("$adt_input")
       echo "  ✅ Added: $adt_input"
-      echo "[DEBUG: Array now has ${#adts_array[@]} items]"
     done
     
     # Re-enable exit on error after the loop
-    echo "[DEBUG: Re-enabling exit on error]"
     set -e
     
     # Join array into space-separated string and quote it
     value=$(printf "%s " "${adts_array[@]}")
-    value=${value% }  # Remove trailing space
-    value="\"$value\""  # Quote the entire value
+    value=${value% }
+    value="\"$value\""
     
     # Update or append the key in .env
     if grep -qE "^${key}=" "$ENV_FILE"; then
