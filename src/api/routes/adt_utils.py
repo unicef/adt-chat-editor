@@ -1,5 +1,6 @@
 """Endpoints to run ADT utility scripts from the backend."""
 
+import importlib.util
 import os
 import subprocess
 import sys
@@ -14,19 +15,22 @@ from pydantic import BaseModel, ConfigDict, Field
 # Cache for ADT utils imports
 _adt_utils_imports = None
 
+
 def _get_adt_utils():
     """Lazily load ADT utils imports."""
     global _adt_utils_imports
-    
+
     if _adt_utils_imports is not None:
         return _adt_utils_imports
-    
+
     # Add data/adt-utils to Python path for imports (not src subdirectory)
     # This allows imports like 'from src.structs.script import ...'
     possible_paths = [
         Path(__file__).parent.parent.parent / "data" / "adt-utils",  # Local dev
         Path("/app/data/adt-utils"),  # Docker container
-        Path(__file__).resolve().parent.parent.parent / "data" / "adt-utils",  # Absolute path
+        Path(__file__).resolve().parent.parent.parent
+        / "data"
+        / "adt-utils",  # Absolute path
     ]
 
     adt_utils_root = None
@@ -40,10 +44,6 @@ def _get_adt_utils():
     if adt_utils_root is None:
         raise ImportError("Could not find data/adt-utils directory")
 
-    # Import the required modules using dynamic loading
-    import os
-    import importlib.util
-    
     try:
         # Method 1: Try direct import (should work if Python path is correct)
         from src.script_registry import PRODUCTION_SCRIPTS
@@ -56,34 +56,38 @@ def _get_adt_utils():
     except ImportError:
         # Method 2: Load modules dynamically in the correct dependency order
         # First, load structs.script module
-        script_path = os.path.join(adt_utils_root, 'src', 'structs', 'script.py')
+        script_path = os.path.join(adt_utils_root, "src", "structs", "script.py")
         spec = importlib.util.spec_from_file_location("src.structs.script", script_path)
         script_module = importlib.util.module_from_spec(spec)
-        sys.modules['src.structs.script'] = script_module
+        sys.modules["src.structs.script"] = script_module
         spec.loader.exec_module(script_module)
-        
+
         Script = script_module.Script
         ScriptCategory = script_module.ScriptCategory
         ScriptArgument = script_module.ScriptArgument
         ScriptExample = script_module.ScriptExample
-        
+
         # Now load script_registry which depends on structs.script
-        script_registry_path = os.path.join(adt_utils_root, 'src', 'script_registry.py')
-        spec = importlib.util.spec_from_file_location("src.script_registry", script_registry_path)
+        script_registry_path = os.path.join(adt_utils_root, "src", "script_registry.py")
+        spec = importlib.util.spec_from_file_location(
+            "src.script_registry", script_registry_path
+        )
         script_registry_module = importlib.util.module_from_spec(spec)
-        sys.modules['src.script_registry'] = script_registry_module
+        sys.modules["src.script_registry"] = script_registry_module
         spec.loader.exec_module(script_registry_module)
         PRODUCTION_SCRIPTS = script_registry_module.PRODUCTION_SCRIPTS
-    
+
     _adt_utils_imports = {
-        'PRODUCTION_SCRIPTS': PRODUCTION_SCRIPTS,
-        'Script': Script,
-        'ScriptCategory': ScriptCategory,
-        'ScriptArgument': ScriptArgument,
-        'ScriptExample': ScriptExample,
+        "PRODUCTION_SCRIPTS": PRODUCTION_SCRIPTS,
+        "Script": Script,
+        "ScriptCategory": ScriptCategory,
+        "ScriptArgument": ScriptArgument,
+        "ScriptExample": ScriptExample,
     }
-    
+
     return _adt_utils_imports
+
+
 from src.settings import ADT_UTILS_DIR, OUTPUT_DIR, custom_logger
 from src.structs import RunAllRequest, RunAllResponse
 
@@ -126,7 +130,7 @@ async def run_script(request: RunScriptRequest):
         # Find the script to run
         adt_utils = _get_adt_utils()
         script_to_run = None
-        for script in adt_utils['PRODUCTION_SCRIPTS']:
+        for script in adt_utils["PRODUCTION_SCRIPTS"]:
             if script.id == request.script_id:
                 script_to_run = script.model_copy(deep=True)
                 break
@@ -255,7 +259,7 @@ async def get_scripts_info():
                 "parameters": [arg.name for arg in script.arguments],
                 "example": {"script_id": script.id, "verbose": True},
             }
-            for script in adt_utils['PRODUCTION_SCRIPTS']
+            for script in adt_utils["PRODUCTION_SCRIPTS"]
         ]
     }
 

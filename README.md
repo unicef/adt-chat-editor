@@ -61,6 +61,7 @@ LANGSMITH_API_KEY=dummy_key
 # OpenAI
 OPENAI_API_KEY=sk-proj-...
 OPENAI_MODEL=gpt-4.1
+OPENAI_CODEX_MODEL=o3
 
 # GitHUb Token
 GITHUB_TOKEN=github_pat_...
@@ -150,12 +151,11 @@ First, you need to install Docker
 
 ### 🚀 Running the System in One Step
 
-1. **Install Docker**  
-   If you don’t have Docker installed, follow the official instructions:  
-   https://docs.docker.com/engine/install/
-
+1. **Install Docker**If you don’t have Docker installed, follow the official instructions:https://docs.docker.com/engine/install/
 2. **Install make (required by the commands below)**
+
    - macOS
+
      - Recommended: install Xcode Command Line Tools (includes make):
        ```bash
        xcode-select --install
@@ -165,6 +165,7 @@ First, you need to install Docker
        brew install make
        ```
    - Linux
+
      - Debian/Ubuntu:
        ```bash
        sudo apt-get update && sudo apt-get install -y make
@@ -174,6 +175,7 @@ First, you need to install Docker
        sudo dnf install -y make
        ```
    - Windows
+
      - Using Chocolatey (PowerShell as Administrator):
        ```powershell
        choco install make
@@ -182,23 +184,27 @@ First, you need to install Docker
        ```powershell
        scoop install make
        ```
-     Ensure the installation directory is on your PATH and that the terminal you use to run the following commands can execute `make`.
 
+     Ensure the installation directory is on your PATH and that the terminal you use to run the following commands can execute `make`.
 3. **Set up your environment variables**
+
    - If .env is missing or incomplete, the following command will guide you through an interactive setup based on .env.example.
    - Required values in any mode:
      - OPENAI_API_KEY
      - OPENAI_MODEL
+     - OPENAI_CODEX_MODEL
      - ADT_UTILS_REPO (defaults to git@github.com:unicef/adt-utils.git)
    - Optional values (only needed for reviewer mode / GitHub repos):
      - ADTS (space-separated list of ADT repo URLs)
      - GITHUB_TOKEN (if your repos require authentication)
-
 4. **Start the system**
+
    ```bash
    make run
    ```
+
    This will:
+
    - Check your environment
    - Clone all ADT repos (if not already cloned)
    - Prompt you to select the active ADT
@@ -206,6 +212,7 @@ First, you need to install Docker
    - Start the backend and initialize the app
 
    If ADTS is not configured, you will be prompted to either:
+
    - Enter a local ADT folder path (Creator mode), or
    - Configure ADTS (GitHub repo URLs) right away and continue in Reviewer mode.
 
@@ -214,8 +221,8 @@ First, you need to install Docker
    ```bash
    STARTUP_TIMEOUT=180 make run
    ```
-
 5. **Stop the system**
+
    ```bash
    make stop
    ```
@@ -223,20 +230,24 @@ First, you need to install Docker
 ### Modes and commands
 
 Creator mode (local folder without Git)
+
 - Use a local ADT folder that is not a Git repository.
 - Run either:
   - Prompted path (no argument):
     ```bash
     make run-creator
     ```
+
     You will be asked for the absolute path to your ADT folder.
   - Provide the path upfront:
     ```bash
     make run-creator REPO_PATH=/absolute/path/to/your/adt-folder
     ```
+
   This will prepare data/input and data/output and start the system.
 
 Reviewer mode (GitHub repos)
+
 - Requires ADTS to be set (space-separated list of repo URLs). GITHUB_TOKEN is needed only if the repos require authentication.
 - Run either:
   ```bash
@@ -247,13 +258,16 @@ Reviewer mode (GitHub repos)
 - make run will automatically use Reviewer mode if ADTS is configured; otherwise it will offer to configure ADTS or run Creator mode.
 
 Set or update ADTS later
+
 - You can set or update the ADTS variable at any time via an interactive prompt:
   ```bash
   make set-adts
   ```
+
   Enter a space-separated list of Git repo URLs (SSH or HTTPS). Leave empty to clear.
 
 Re-run full environment configuration
+
 - To re-run the full interactive .env configuration (e.g., to change OPENAI_MODEL or ADT_UTILS_REPO):
   ```bash
   make configure-env
@@ -278,10 +292,11 @@ make test
 
 Verbose output (test names and details):
 
-  ```bash
+```bash
   make test-verbose
-  ```
+```
 
 Notes:
+
 - Tests target deterministic utilities and core routing logic. Non-deterministic, agentic flows are tested via mocking the LLM layer and file loading.
 - Tests do not rely on the `data/` directory or external services.

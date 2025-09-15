@@ -42,7 +42,7 @@ async def fallback_agent(state: ADTState, config: RunnableConfig) -> ADTState:
         context,
         "exec",
         "-m",
-        "o3",
+        settings.OPENAI_CODEX_MODEL,
         "--dangerously-bypass-approvals-and-sandbox",
         "--skip-git-repo-check",
         user_prompt,

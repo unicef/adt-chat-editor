@@ -79,7 +79,7 @@ class TerminalService:
         timestamp = datetime.datetime.now().isoformat()
         context = to_single_line(CODEX_FALLBACK_SYSTEM_PROMPT)
         
-        codex_cmd = f'codex "{context}" exec -m {settings.OPENAI_MODEL} --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check "{prompt}"'
+        codex_cmd = f'codex "{context}" exec -m {settings.OPENAI_CODEX_MODEL} --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check "{prompt}"'
 
         logger.info(f"Codex command: {codex_cmd}")
 
