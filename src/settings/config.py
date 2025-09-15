@@ -19,7 +19,7 @@ BASE_BRANCH_NAME = "adt_chat_editor/"
 class Settings(BaseSettings):
     INPUT_DIR: str = INPUT_DIR
     OUTPUT_DIR: str = OUTPUT_DIR
-    ADT_UTILS_DIR: str = ADT_UTILS_DIR    
+    ADT_UTILS_DIR: str = ADT_UTILS_DIR
     STATE_CHECKPOINTS_DIR: str = STATE_CHECKPOINTS_DIR
     HTML_CONTENTS_DIR: str = HTML_CONTENTS_DIR
     NAV_HTML_DIR: str = NAV_HTML_DIR
@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     LANGSMITH_API_KEY: str | None = None
     OPENAI_API_KEY: str | None = None
     OPENAI_MODEL: str = "gpt-4.1"  # default if not in .env
+    OPENAI_CODEX_MODEL: str = "o3"  # default if not in .env
     GITHUB_TOKEN: str | None = None
     ADTS: str | None = None
     ACTIVE_ADT: str | None = None
@@ -41,5 +42,6 @@ class Settings(BaseSettings):
         env_file=".env",
         extra="ignore",  # Ignore extra env vars present in .env or environment
     )
+
 
 settings = Settings()

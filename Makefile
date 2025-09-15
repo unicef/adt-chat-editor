@@ -17,7 +17,7 @@ ENV_FILE=.env
 # List of required environment variables
 # Global minimal requirements: OPENAI_API_KEY, OPENAI_MODEL
 # Reviewer mode additionally requires: ADTS
-GLOBAL_REQUIRED_VARS=OPENAI_API_KEY OPENAI_MODEL
+GLOBAL_REQUIRED_VARS=OPENAI_API_KEY OPENAI_MODEL OPENAI_CODEX_MODEL
 REVIEWER_REQUIRED_VARS=ADTS
 
 # Define all available targets (commands that can be run with 'make')
