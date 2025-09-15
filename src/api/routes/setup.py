@@ -35,7 +35,7 @@ async def install_npm_packages() -> Dict[str, str | list[str]]:
             translated_html_statuses.append(translated_html_status.value)
 
         # Format HTML files with prettier
-        await _format_html_files([], all_files=True)
+        # await _format_html_files([], all_files=True)
 
         return {
             "status": "Initialization successful!",
