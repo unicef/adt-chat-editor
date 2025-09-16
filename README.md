@@ -174,18 +174,36 @@ First, you need to install Docker
        ```bash
        sudo dnf install -y make
        ```
-   - Windows
+   - Windows (Git Bash required)
 
-     - Using Chocolatey (PowerShell as Administrator):
-       ```powershell
-       choco install make
-       ```
-     - Or using Scoop (PowerShell):
-       ```powershell
-       scoop install make
-       ```
+     Important: Use Git Bash, not PowerShell or the Windows Command Prompt. The Makefile relies on Bash features and common GNU tools that are available in Git Bash/MSYS2 environments.
 
-     Ensure the installation directory is on your PATH and that the terminal you use to run the following commands can execute `make`.
+     1) Ensure you are using Git Bash
+        - Open "Git Bash" from the Start Menu and run:
+          ```bash
+          uname -s
+          ```
+          It should show something like MINGW64_NT or MSYS.
+
+     2) Install make via MSYS2
+        - Download and install MSYS2 from https://www.msys2.org/
+        - Open the MSYS2 MSYS terminal and run:
+          ```bash
+          pacman -S make
+          ```
+        - Option A (recommended): Add C:\\msys64\\usr\\bin to your Windows PATH so Git Bash can find MSYS2's make
+        - Option B (alternative): Copy the make.exe from
+          `C:\\msys64\\usr\\bin\\make.exe` into Git's `usr/bin` directory, typically:
+          `C:\\Program Files\\Git\\usr\\bin\\make.exe`
+
+     3) Verify the correct make in Git Bash
+        - In Git Bash, check:
+          ```bash
+          which make
+          ```
+          It should point to `/usr/bin/make` (Git Bash/MSYS2), not to GnuWin32.
+
+     Note: Do not use a native Windows make (e.g., GnuWin32) for this project. It lacks the Bash semantics and tools used by the Makefile.
 3. **Set up your environment variables**
 
    - If .env is missing or incomplete, the following command will guide you through an interactive setup based on .env.example.
@@ -272,6 +290,20 @@ Re-run full environment configuration
   ```bash
   make configure-env
   ```
+
+### Windows-specific notes and troubleshooting
+
+- ADTS values must be full Git repository URLs (SSH or HTTPS), for example:
+  - SSH: `git@github.com:unicef/ADT-manual-autocuidados.git`
+  - HTTPS: `https://github.com/unicef/ADT-manual-autocuidados.git`
+- If a `git clone` appears to “hang” (e.g., stuck at a few percent), it is often waiting for authentication:
+  - Prefer SSH with an SSH key added to your GitHub account. Start an ssh-agent in Git Bash and add your key:
+    ```bash
+    eval "$(ssh-agent -s)"
+    ssh-add ~/.ssh/id_rsa   # or your key filename
+    ```
+  - Or use HTTPS URLs and ensure Git Credential Manager is available in Git Bash so it can prompt/store credentials.
+- On Windows, the Makefile avoids symlinks and copies files instead. This is expected and does not affect functionality.
 
 ## 🧪 Running Tests
 
