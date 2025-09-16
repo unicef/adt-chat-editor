@@ -7,7 +7,7 @@ import sys
 from copy import deepcopy
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
@@ -102,24 +102,8 @@ class RunScriptRequest(BaseModel):
     """Request model to execute a script with optional parameters."""
 
     script_id: str = Field(..., description="ID of the script to run")
-    start_page: Optional[int] = Field(
-        None, description="Start value (only for restructure_text)", ge=0
-    )
-    end_page: Optional[int] = Field(
-        None, description="End value (only for restructure_text)", ge=0
-    )
-    verbose: bool = Field(True, description="Enable verbose output")
-
-    # Pydantic v2 model config
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "script_type": "restructure_text",
-                "start_page": 10,
-                "end_page": 15,
-                "verbose": True,
-            }
-        }
+    arguments: Optional[dict[str, Any]] = Field(
+        None, description="Arguments to pass to the script"
     )
 
 
@@ -152,12 +136,8 @@ async def run_script(request: RunScriptRequest):
 
         # Gather the replaced values
         for arg in script_to_run.arguments:
-            if arg.name == "start_page" and request.start_page is not None:
-                arg.default = request.start_page
-            elif arg.name == "end_page" and request.end_page is not None:
-                arg.default = request.end_page
-            elif arg.name == "verbose" and request.verbose is not None:
-                arg.default = request.verbose
+            if arg.name in request.arguments:
+                arg.default = request.arguments.get(arg.name)
 
         # Absolute path to the output directory
         abs_output_dir = os.path.abspath(OUTPUT_DIR)
@@ -171,10 +151,6 @@ async def run_script(request: RunScriptRequest):
         # Add the script arguments to the command
         for arg in script_to_run.arguments:
             if arg.name == "target_dir":
-                continue
-            elif (arg.name == "start_page" or arg.name == "end_page") and (
-                arg.default in [None, -1]
-            ):
                 continue
             elif arg.default is None:
                 continue
@@ -256,8 +232,16 @@ async def get_scripts_info():
             {
                 "id": script.id,
                 "description": script.description,
-                "parameters": [arg.name for arg in script.arguments],
-                "example": {"script_id": script.id, "verbose": True},
+                "parameters": [
+                    {
+                        "name": arg.name,
+                        "description": arg.description,
+                        "type": arg.type,
+                        "default": arg.default,
+                    }
+                    for arg in script.arguments
+                    if (arg.name != "target_dir") and (arg.show_in_ui == True)
+                ],
             }
             for script in adt_utils["PRODUCTION_SCRIPTS"]
         ]
