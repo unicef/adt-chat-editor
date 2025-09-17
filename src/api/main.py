@@ -3,6 +3,7 @@
 import os
 import shutil
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
@@ -117,6 +118,34 @@ def create_app() -> FastAPI:
     app.mount(
         "/output", NoCacheStaticFiles(directory=output_dir, html=True), name="output"
     )
+
+    # Add SPA fallback route for client-side routing
+    @app.get("/{full_path:path}")
+    async def spa_fallback(request: Request, full_path: str):
+        """Serve the frontend's index.html for SPA client-side routing."""
+        # List of prefixes that should return 404 instead of SPA fallback
+        api_prefixes = [
+            "api/",
+            "docs",
+            "redoc",
+            "openapi.json",
+            "assets/",
+            "input/",
+            "output/",
+            "vite.svg",
+        ]
+
+        # Check if the path starts with any API or static file prefix
+        if any(full_path.startswith(prefix) for prefix in api_prefixes):
+            raise HTTPException(status_code=404, detail="Not found")
+
+        # Serve the React app for all other routes
+        index_file = Path("frontend/index.html")
+        if index_file.exists():
+            return FileResponse(index_file)
+
+        # Fallback if frontend index.html doesn't exist
+        raise HTTPException(status_code=404, detail="Frontend not found")
 
     # Add a custom 404 handler
     @app.exception_handler(404)
