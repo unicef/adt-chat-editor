@@ -46,21 +46,57 @@ def test_chat_edit_minimal_flow(client):
     r = client.post("/chat/edit", json=payload)
     assert r.status_code == 200
     data = r.json()
-    assert data["status"] in {"success", "in_progress", "waiting_for_user_input", "failure"}
+    assert data["status"] in {
+        "success",
+        "in_progress",
+        "waiting_for_user_input",
+        "failure",
+    }
     assert "messages" in data and isinstance(data["messages"], list)
 
 
 def test_adt_utils_run_script_success(monkeypatch, client):
     # Simulate presence of directories and successful script run
     monkeypatch.setattr(os.path, "exists", lambda p: True)
-    cp = subprocess.CompletedProcess(args=["python"], returncode=0, stdout="All good", stderr="")
+    cp = subprocess.CompletedProcess(
+        args=["python"], returncode=0, stdout="All good", stderr=""
+    )
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: cp)
+
+    # Patch ADT utils discovery to avoid filesystem dependency
+    import src.api.routes.adt_utils as adt_utils_route
+
+    class FakeArg:
+        def __init__(self, name, type, default):
+            self.name = name
+            self.type = type
+            self.default = default
+
+    class FakeScript:
+        def __init__(self):
+            self.id = "validate_adt"
+            self.path = "validate_adt.py"
+            self.arguments = [
+                FakeArg("target_dir", "str", None),
+                FakeArg("verbose", "bool", False),
+            ]
+
+        def model_copy(self, deep=False):
+            from copy import deepcopy
+
+            return deepcopy(self)
+
+    monkeypatch.setattr(
+        adt_utils_route,
+        "_get_adt_utils",
+        lambda: {"PRODUCTION_SCRIPTS": [FakeScript()]},
+    )
 
     r = client.post(
         "/adt-utils/run-script",
         json={
-            "script_type": "validate_adt",
-            "verbose": True
+            "script_id": "validate_adt",
+            "verbose": True,
         },
     )
     assert r.status_code == 200

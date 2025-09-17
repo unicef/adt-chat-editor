@@ -61,6 +61,7 @@ LANGSMITH_API_KEY=dummy_key
 # OpenAI
 OPENAI_API_KEY=sk-proj-...
 OPENAI_MODEL=gpt-4.1
+OPENAI_CODEX_MODEL=o3
 
 # GitHUb Token
 GITHUB_TOKEN=github_pat_...
@@ -150,12 +151,11 @@ First, you need to install Docker
 
 ### 🚀 Running the System in One Step
 
-1. **Install Docker**  
-   If you don’t have Docker installed, follow the official instructions:  
-   https://docs.docker.com/engine/install/
-
+1. **Install Docker**If you don’t have Docker installed, follow the official instructions:https://docs.docker.com/engine/install/
 2. **Install make (required by the commands below)**
+
    - macOS
+
      - Recommended: install Xcode Command Line Tools (includes make):
        ```bash
        xcode-select --install
@@ -173,45 +173,136 @@ First, you need to install Docker
        ```bash
        sudo dnf install -y make
        ```
-   - Windows
-     - Using Chocolatey (PowerShell as Administrator):
-       ```powershell
-       choco install make
-       ```
-     - Or using Scoop (PowerShell):
-       ```powershell
-       scoop install make
-       ```
-     Ensure the installation directory is on your PATH and that the terminal you use to run the following commands can execute `make`.
+   - Windows (Git Bash required)
 
-3. **Set up your environment variables**  
-   Copy the example environment file and fill in the required credentials and ADT URLs:
-   ```bash
-   cp .env.example .env
-   ```
-   Then edit `.env` and provide the necessary values
+     Important: Use Git Bash, not PowerShell or the Windows Command Prompt. The Makefile relies on Bash features and common GNU tools that are available in Git Bash/MSYS2 environments.
 
+     1) Ensure you are using Git Bash
+        - Open "Git Bash" from the Start Menu and run:
+          ```bash
+          uname -s
+          ```
+          It should show something like MINGW64_NT or MSYS.
+
+     2) Install make via MSYS2
+        - Download and install MSYS2 from https://www.msys2.org/
+        - Open the MSYS2 MSYS terminal and run:
+          ```bash
+          pacman -S make
+          ```
+        - Option A (recommended): Add C:\\msys64\\usr\\bin to your Windows PATH so Git Bash can find MSYS2's make
+        - Option B (alternative): Copy the make.exe from
+          `C:\\msys64\\usr\\bin\\make.exe` into Git's `usr/bin` directory, typically:
+          `C:\\Program Files\\Git\\usr\\bin\\make.exe`
+
+     3) Verify the correct make in Git Bash
+        - In Git Bash, check:
+          ```bash
+          which make
+          ```
+          It should point to `/usr/bin/make` (Git Bash/MSYS2), not to GnuWin32.
+
+     Note: Do not use a native Windows make (e.g., GnuWin32) for this project. It lacks the Bash semantics and tools used by the Makefile.
+3. **Set up your environment variables**
+
+   - If .env is missing or incomplete, the following command will guide you through an interactive setup based on .env.example.
+   - Required values in any mode:
+     - OPENAI_API_KEY
+     - OPENAI_MODEL
+     - OPENAI_CODEX_MODEL
+     - ADT_UTILS_REPO (defaults to git@github.com:unicef/adt-utils.git)
+   - Optional values (only needed for reviewer mode / GitHub repos):
+     - ADTS (space-separated list of ADT repo URLs)
+     - GITHUB_TOKEN (if your repos require authentication)
 4. **Start the system**
+
    ```bash
    make run
    ```
+
    This will:
+
    - Check your environment
    - Clone all ADT repos (if not already cloned)
    - Prompt you to select the active ADT
-   - Create symlinks from `data/input` and `data/output` to the chosen ADT's folders
+   - Create a copy of the selected ADT in `data/input` and a symlink from `data/output` to the ADT repo (on macOS/Linux). On Windows, both will be copied.
    - Start the backend and initialize the app
+
+   If ADTS is not configured, you will be prompted to either:
+
+   - Enter a local ADT folder path (Creator mode), or
+   - Configure ADTS (GitHub repo URLs) right away and continue in Reviewer mode.
 
    Tip (Windows/CI): On some systems with slower disk I/O (e.g., Windows host volumes or CI runners), the FastAPI startup can take longer. You can increase the wait time by setting an environment variable before running the command:
 
    ```bash
    STARTUP_TIMEOUT=180 make run
    ```
-
 5. **Stop the system**
+
    ```bash
    make stop
    ```
+
+### Modes and commands
+
+Creator mode (local folder without Git)
+
+- Use a local ADT folder that is not a Git repository.
+- Run either:
+  - Prompted path (no argument):
+    ```bash
+    make run-creator
+    ```
+
+    You will be asked for the absolute path to your ADT folder.
+  - Provide the path upfront:
+    ```bash
+    make run-creator REPO_PATH=/absolute/path/to/your/adt-folder
+    ```
+
+  This will prepare data/input and data/output and start the system.
+
+Reviewer mode (GitHub repos)
+
+- Requires ADTS to be set (space-separated list of repo URLs). GITHUB_TOKEN is needed only if the repos require authentication.
+- Run either:
+  ```bash
+  make reviewer
+  # or
+  make run-reviewer
+  ```
+- make run will automatically use Reviewer mode if ADTS is configured; otherwise it will offer to configure ADTS or run Creator mode.
+
+Set or update ADTS later
+
+- You can set or update the ADTS variable at any time via an interactive prompt:
+  ```bash
+  make set-adts
+  ```
+
+  Enter a space-separated list of Git repo URLs (SSH or HTTPS). Leave empty to clear.
+
+Re-run full environment configuration
+
+- To re-run the full interactive .env configuration (e.g., to change OPENAI_MODEL or ADT_UTILS_REPO):
+  ```bash
+  make configure-env
+  ```
+
+### Windows-specific notes and troubleshooting
+
+- ADTS values must be full Git repository URLs (SSH or HTTPS), for example:
+  - SSH: `git@github.com:unicef/ADT-manual-autocuidados.git`
+  - HTTPS: `https://github.com/unicef/ADT-manual-autocuidados.git`
+- If a `git clone` appears to “hang” (e.g., stuck at a few percent), it is often waiting for authentication:
+  - Prefer SSH with an SSH key added to your GitHub account. Start an ssh-agent in Git Bash and add your key:
+    ```bash
+    eval "$(ssh-agent -s)"
+    ssh-add ~/.ssh/id_rsa   # or your key filename
+    ```
+  - Or use HTTPS URLs and ensure Git Credential Manager is available in Git Bash so it can prompt/store credentials.
+- On Windows, the Makefile avoids symlinks and copies files instead. This is expected and does not affect functionality.
 
 ## 🧪 Running Tests
 
@@ -232,10 +323,11 @@ make test
 
 Verbose output (test names and details):
 
-  ```bash
+```bash
   make test-verbose
-  ```
+```
 
 Notes:
+
 - Tests target deterministic utilities and core routing logic. Non-deterministic, agentic flows are tested via mocking the LLM layer and file loading.
 - Tests do not rely on the `data/` directory or external services.

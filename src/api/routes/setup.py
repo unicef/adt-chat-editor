@@ -11,6 +11,7 @@ from src.utils.initialization import (
     initialize_tailwind,
     initialize_translated_html_content,
 )
+from src.workflows.actions import _format_html_files
 
 # Setup router
 router = APIRouter(prefix="/setup", tags=["setup"])
@@ -32,6 +33,9 @@ async def install_npm_packages() -> Dict[str, str | list[str]]:
         for language in languages:
             translated_html_status = await initialize_translated_html_content(language)
             translated_html_statuses.append(translated_html_status.value)
+
+        # Format HTML files with prettier
+        # await _format_html_files([], all_files=True)
 
         return {
             "status": "Initialization successful!",

@@ -130,6 +130,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env.copy
 .venv
 env/
 venv/
@@ -186,8 +187,6 @@ cython_debug/
 !data/samples/
 !data/samples/**
 
-# State checkpoints
+# Folder 
 tmp/
-
-# DS Store
-.DS_Store
+.claude/
