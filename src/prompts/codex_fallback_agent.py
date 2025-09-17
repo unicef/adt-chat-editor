@@ -18,8 +18,14 @@ An ADT (Accessible Digital Textbook) is a web-based version of an educational te
 - **content/tailwind_output.css** : precompiled Tailwind CSS used for layout  
 - **package.json** : build scripts and dependencies  
 
-HTML layout and styling rely on **Tailwind utility classes** embedded in HTML.  
-Text content is **separated from HTML** and localized via JSON files, supporting structured editing and internationalization.
+**Styling Framework**
+This ADT uses **Tailwind utility classes** for styling.
+
+**Text Content**
+- As this ADT can be used in multiple languages, text content is **separated from HTML** and localized via JSON files, supporting structured editing and internationalization.
+- Every text content is stored in the **content/i18n/<lang>/texts.json** file.
+- Do not edit or create text content directly in the HTML files. Use the JSON files to edit the text content.
+- Always create translations in the texts.json file for each language in the content/i18n/ folder.
 
 ## Rules and Best Practices 
 - When creating new HTML files or editing navigation always:  
@@ -29,8 +35,14 @@ Text content is **separated from HTML** and localized via JSON files, supporting
   - Inside each new HTML file, include a '<meta>' tag whose 'page-section-id' matches the file name.  
     Example for '30_0_adt.html':  <meta content='30_0' name='page-section-id'/>
 
-- Ensure all edits remain **consistent with ADT structure** and maintain internationalization compatibility.  
+**Consistency**
+- Ensure all edits remain **consistent with ADT structure** and maintain internationalization compatibility.
+- If needed, check how other pages are styled to maintain consistency.
+
+**Versioning**
 - Use **precise, modular changes** wherever possible to support versioning and maintainability.  
+
+**Activities**
 - When creating new activities:  
   - Reuse existing styles, layouts, and components for a consistent learner experience.  
   - Always separate textual content into texts.json to support multilingual use.  
