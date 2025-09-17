@@ -8,7 +8,7 @@ from src.settings import (
     TAILWIND_CSS_IN_DIR,
     TAILWIND_CSS_OUT_DIR,
     custom_logger,
-    settings
+    settings,
 )
 from src.structs.terminal import ExecuteCommandRequest, CommandResponse, CommandHistory
 from src.utils import to_single_line
@@ -21,8 +21,20 @@ class TerminalService:
     def __init__(self):
         self.command_history: List[CommandHistory] = []
         self.allowed_commands = [
-            "ls", "pwd", "cd", "mkdir", "rm", "echo", "touch",
-            "cat", "cp", "mv", "git", "python", "pip", "clear",
+            "ls",
+            "pwd",
+            "cd",
+            "mkdir",
+            "rm",
+            "echo",
+            "touch",
+            "cat",
+            "cp",
+            "mv",
+            "git",
+            "python",
+            "pip",
+            "clear",
         ]
 
     def is_command_allowed(self, command: str) -> bool:
@@ -36,7 +48,9 @@ class TerminalService:
             # Fallback to Codex
             return self._run_codex_instruction(request.command, OUTPUT_DIR)
 
-    def _run_shell_command(self, command: str, working_dir: Optional[str]) -> CommandResponse:
+    def _run_shell_command(
+        self, command: str, working_dir: Optional[str]
+    ) -> CommandResponse:
         working_dir = working_dir or os.getcwd()
         timestamp = datetime.datetime.now().isoformat()
 
@@ -47,7 +61,7 @@ class TerminalService:
                 capture_output=True,
                 text=True,
                 cwd=working_dir,
-                timeout=60
+                timeout=60,
             )
 
             output = result.stdout + result.stderr
@@ -59,12 +73,14 @@ class TerminalService:
                 timestamp=timestamp,
             )
 
-            self.command_history.append(CommandHistory(
-                command=command,
-                output=output.strip()[:],
-                timestamp=timestamp,
-                exit_code=exit_code,
-            ))
+            self.command_history.append(
+                CommandHistory(
+                    command=command,
+                    output=output.strip()[:],
+                    timestamp=timestamp,
+                    exit_code=exit_code,
+                )
+            )
 
             return response
 
@@ -73,12 +89,14 @@ class TerminalService:
         except Exception as e:
             raise ValueError(f"Command execution failed: {str(e)}")
 
-    def _run_codex_instruction(self, prompt: str, working_dir: Optional[str]) -> CommandResponse:
+    def _run_codex_instruction(
+        self, prompt: str, working_dir: Optional[str]
+    ) -> CommandResponse:
         """Use Codex CLI to process natural-language instructions"""
         working_dir = working_dir or os.getcwd()
         timestamp = datetime.datetime.now().isoformat()
         context = to_single_line(CODEX_FALLBACK_SYSTEM_PROMPT)
-        
+
         codex_cmd = f'codex "{context}" exec -m {settings.OPENAI_CODEX_MODEL} --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check "{prompt}"'
 
         logger.info(f"Codex command: {codex_cmd}")
@@ -103,12 +121,14 @@ class TerminalService:
                 timestamp=timestamp,
             )
 
-            self.command_history.append(CommandHistory(
-                command=f"[codex] {prompt}",
-                output=output.strip()[:],
-                timestamp=timestamp,
-                exit_code=exit_code,
-            ))
+            self.command_history.append(
+                CommandHistory(
+                    command=f"[codex] {prompt}",
+                    output=output.strip()[:],
+                    timestamp=timestamp,
+                    exit_code=exit_code,
+                )
+            )
 
             # Run Tailwind CSS build in same working directory
             cmd = f"npx tailwindcss -i {TAILWIND_CSS_IN_DIR} -o {TAILWIND_CSS_OUT_DIR}"
@@ -121,7 +141,7 @@ class TerminalService:
                 timeout=60,
                 env=os.environ.copy(),
             )
-    
+
             if tailwind_result.returncode != 0:
                 logger.warning(f"Tailwind build failed:\n{tailwind_result.stderr}")
             else:

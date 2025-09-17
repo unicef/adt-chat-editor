@@ -165,7 +165,6 @@ First, you need to install Docker
        brew install make
        ```
    - Linux
-
      - Debian/Ubuntu:
        ```bash
        sudo apt-get update && sudo apt-get install -y make
