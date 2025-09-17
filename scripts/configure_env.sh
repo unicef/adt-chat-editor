@@ -107,6 +107,8 @@ while IFS= read -r line; do
     
     # Get current ADTS value and split into array
     current_adts=$(grep -E "^${key}=" "$ENV_FILE" | sed "s/^${key}=//" || true)
+    # Strip any surrounding/embedded quotes to avoid quote accumulation across runs
+    current_adts=${current_adts//\"/}
     adts_array=()
     
     # If current value exists, populate array
@@ -179,10 +181,15 @@ while IFS= read -r line; do
     # Re-enable exit on error after the loop
     set -e
     
-    # Join array into space-separated string and quote it
+    # Join array into space-separated string and quote it once
     value=$(printf "%s " "${adts_array[@]}")
     value=${value% }
-    value="\"$value\""
+    if [[ -n "$value" ]]; then
+      value="\"$value\""
+    else
+      # Keep empty (no quotes) for clarity
+      value=""
+    fi
     
     # Update or append the key in .env
     if grep -qE "^${key}=" "$ENV_FILE"; then
