@@ -447,36 +447,8 @@ async def finalize_task_execution(state: ADTState, config: RunnableConfig) -> AD
     state.plan_shown_to_user = False
     state.status = WorkflowStatus.SUCCESS
 
-    git_manager = await get_git_manager()
-    if git_manager is None:
-        logger.debug("Git manager unavailable; skipping commit and checkout steps")
-        return state
-
-    try:
-        message = "New Change Saved"
-        committed = await git_manager.commit_changes(message=message)
-        if committed:
-            logger.debug(f"Committed changes with message: {message}")
-        else:
-            logger.debug("No changes to commit")
-    except Exception as e:
-        logger.error(f"Error committing changes: {e}")
-
-    commits = []
-    try:
-        current_branch = await git_manager.current_branch()
-        commits = await git_manager.list_commits(branch_name=current_branch)
-        logger.debug(f"Commits retrieved successfully: {commits}")
-    except Exception as e:
-        logger.debug(f"Error fetching commits: {e}")
-
-    try:
-        if commits:
-            commit_hash = commits[-1].get("hash")
-            await git_manager.checkout_commit(commit_hash)
-            logger.debug(f"Checkout commit successfully: {commit_hash}")
-    except Exception as e:
-        logger.debug(f"Error checking out commit: {e}")
+    # Handle Git-related finalization in a dedicated helper
+    await _finalize_git_operations()
 
     return state
 
@@ -525,3 +497,49 @@ async def _format_html_files(html_files: list[str], all_files: bool = False) -> 
 
     except Exception as e:
         logger.error(f"Error in _format_html_files: {e}")
+
+
+async def _finalize_git_operations() -> None:
+    """Commit changes and checkout the latest commit using the git manager.
+
+    This helper encapsulates all Git-related functionality used during
+    finalization so that finalize_task_execution remains focused on workflow
+    state updates and delegating side effects.
+    """
+    try:
+        git_manager = await get_git_manager()
+    except Exception as e:
+        logger.debug(f"Failed to obtain git manager: {e}")
+        return
+
+    if git_manager is None:
+        logger.debug("Git manager unavailable; skipping commit and checkout steps")
+        return
+
+    try:
+        message = "New Change Saved"
+        committed = await git_manager.commit_changes(message=message)
+        if committed:
+            logger.debug(f"Committed changes with message: {message}")
+        else:
+            logger.debug("No changes to commit")
+    except Exception as e:
+        logger.error(f"Error committing changes: {e}")
+        # Continue to attempt commit list/checkout even if commit failed
+
+    commits = []
+    try:
+        current_branch = await git_manager.current_branch()
+        commits = await git_manager.list_commits(branch_name=current_branch)
+        logger.debug(f"Commits retrieved successfully: {commits}")
+    except Exception as e:
+        logger.debug(f"Error fetching commits: {e}")
+
+    try:
+        if commits:
+            commit_hash = commits[-1].get("hash")
+            if commit_hash:
+                await git_manager.checkout_commit(commit_hash)
+                logger.debug(f"Checkout commit successfully: {commit_hash}")
+    except Exception as e:
+        logger.debug(f"Error checking out commit: {e}")
