@@ -104,38 +104,73 @@ clone-repos:
 	@echo "📋 Creating data directory if it doesn't exist..."
 	@mkdir -p data
 	@set -a; . ./$(ENV_FILE); set +a; \
-	for repo_url in $$ADTS; do \
-		https_url=$$(echo "$$repo_url" | sed -E 's#git@([^:]+):([^/]+)/([^\.]+)\.git#https://\1/\2/\3.git#'); \
-		repo_name=$$(basename $$https_url .git); \
+for repo_url in $$ADTS; do \
+    https_url=$$(echo "$$repo_url" | sed -E 's#git@([^:]+):([^/]+)/([^\.]+)\.git#https://\1/\2/\3.git#'); \
+    ssh_url=$$(echo "$$https_url" | sed -E 's#https://([^/]+)/([^/]+)/([^\.]+)\.git#git@\1:\2/\3.git#'); \
+    repo_name=$$(basename $$https_url .git); \
 		echo "📋 Processing repository: $$repo_name"; \
 		repo_dir="data/$$repo_name"; \
 		echo "📋 Checking repository status: $$repo_dir"; \
-		if [ -d "$$repo_dir/.git" ]; then \
-			echo "📋 Repository already exists: $$repo_dir"; \
-			echo "📥 Pulling latest changes from $$https_url..."; \
-			(cd "$$repo_dir" && rm -f .git/config.lock && git remote set-url origin "$$https_url" && git pull origin main || git pull origin master || git pull || { \
-				echo "❌ Failed to pull latest changes from $$https_url"; \
-				exit 1; \
-			}); \
+    if [ -d "$$repo_dir/.git" ]; then \
+        echo "📋 Repository already exists: $$repo_dir"; \
+        echo "📥 Pulling latest changes (keeping existing remote)..."; \
+        (cd "$$repo_dir" && rm -f .git/config.lock && git pull origin main || git pull origin master || git pull || { \
+            echo "❌ Failed to pull latest changes"; \
+            exit 1; \
+        }); \
 			echo "✅ Successfully updated $$repo_name"; \
 		elif [ -d "$$repo_dir" ] && [ "$$(ls -A $$repo_dir 2>/dev/null)" ]; then \
 			echo "⚠️  Directory exists but is not a git repository: $$repo_dir"; \
 			echo "📋 Removing non-git directory and cloning fresh..."; \
-			rm -rf "$$repo_dir"; \
-			if git clone "$$https_url" "$$repo_dir"; then \
-				echo "✅ Successfully cloned $$repo_name"; \
-			else \
-				echo "❌ Failed to clone repo $$https_url into $$repo_dir"; \
-				exit 1; \
-			fi; \
+        rm -rf "$$repo_dir"; \
+        echo "📥 Cloning (try HTTPS → SSH → PAT if available)..."; \
+        if git clone "$$https_url" "$$repo_dir"; then \
+            echo "✅ Successfully cloned $$repo_name (HTTPS)"; \
+        else \
+            echo "⚠️  HTTPS clone failed. Trying SSH..."; \
+            if git clone "$$ssh_url" "$$repo_dir"; then \
+                echo "✅ Successfully cloned $$repo_name (SSH)"; \
+            else \
+                if [ -n "$$GITHUB_TOKEN" ]; then \
+                    pat_url=$$(echo "$$https_url" | sed -E "s#https://#https://x-access-token:$${GITHUB_TOKEN}@#"); \
+                    echo "⚠️  SSH clone failed. Trying PAT..."; \
+                    if git clone "$$pat_url" "$$repo_dir"; then \
+                        echo "✅ Successfully cloned $$repo_name (PAT)"; \
+                    else \
+                        echo "❌ Failed to clone repo using HTTPS, SSH or PAT into $$repo_dir"; \
+                        exit 1; \
+                    fi; \
+                else \
+                    echo "❌ Failed to clone repo using HTTPS or SSH into $$repo_dir (no PAT provided)"; \
+                    exit 1; \
+                fi; \
+            fi; \
+        fi; \
 		else \
-			echo "📥 Cloning $$https_url into $$repo_dir..."; \
-			if git clone "$$https_url" "$$repo_dir"; then \
-				echo "✅ Successfully cloned $$repo_name"; \
-			else \
-				echo "❌ Failed to clone repo $$https_url into $$repo_dir"; \
-				exit 1; \
-			fi; \
+        echo "📥 Cloning $$https_url into $$repo_dir..."; \
+        echo "📥 Cloning (try HTTPS → SSH → PAT if available)..."; \
+        if git clone "$$https_url" "$$repo_dir"; then \
+            echo "✅ Successfully cloned $$repo_name (HTTPS)"; \
+        else \
+            echo "⚠️  HTTPS clone failed. Trying SSH..."; \
+            if git clone "$$ssh_url" "$$repo_dir"; then \
+                echo "✅ Successfully cloned $$repo_name (SSH)"; \
+            else \
+                if [ -n "$$GITHUB_TOKEN" ]; then \
+                    pat_url=$$(echo "$$https_url" | sed -E "s#https://#https://x-access-token:$${GITHUB_TOKEN}@#"); \
+                    echo "⚠️  SSH clone failed. Trying PAT..."; \
+                    if git clone "$$pat_url" "$$repo_dir"; then \
+                        echo "✅ Successfully cloned $$repo_name (PAT)"; \
+                    else \
+                        echo "❌ Failed to clone repo using HTTPS, SSH or PAT into $$repo_dir"; \
+                        exit 1; \
+                    fi; \
+                else \
+                    echo "❌ Failed to clone repo using HTTPS or SSH into $$repo_dir (no PAT provided)"; \
+                    exit 1; \
+                fi; \
+            fi; \
+        fi; \
 		fi; \
 	done; \
 	echo "✅ All ADT repositories are ready."
@@ -149,15 +184,16 @@ clone-utils:
 		exit 0; \
 	fi; \
 	repo_url=$$(echo "$$ADT_UTILS_REPO" | sed -E 's#git@([^:]+):([^/]+)/([^\.]+)\.git#https://\1/\2/\3.git#'); \
+	ssh_url=$$(echo "$$repo_url" | sed -E 's#https://([^/]+)/([^/]+)/([^\.]+)\.git#git@\1:\2/\3.git#'); \
 	repo_name="adt-utils"; \
 	repo_dir="data/$$repo_name"; \
 	echo "📋 Processing repository: $$repo_name"; \
 	echo "📋 Checking repository status: $$repo_dir"; \
 	if [ -d "$$repo_dir/.git" ]; then \
 		echo "📋 Repository already exists: $$repo_dir"; \
-		echo "📥 Pulling latest changes from $$repo_url..."; \
-		(cd "$$repo_dir" && git pull || { \
-			echo "❌ Failed to pull latest changes from $$repo_url"; \
+		echo "📥 Pulling latest changes (keeping existing remote)..."; \
+		(cd "$$repo_dir" && git pull origin main || git pull origin master || git pull || { \
+			echo "❌ Failed to pull latest changes"; \
 			exit 1; \
 		}); \
 		echo "✅ Successfully updated $$repo_name"; \
@@ -165,19 +201,53 @@ clone-utils:
 		echo "⚠️  Directory exists but is not a git repository: $$repo_dir"; \
 		echo "📋 Removing non-git directory and cloning fresh..."; \
 		rm -rf "$$repo_dir"; \
+		echo "📥 Cloning (try HTTPS → SSH → PAT if available)..."; \
 		if git clone "$$repo_url" "$$repo_dir"; then \
-			echo "✅ Successfully cloned $$repo_name"; \
+			echo "✅ Successfully cloned $$repo_name (HTTPS)"; \
 		else \
-			echo "❌ Failed to clone repo $$repo_url into $$repo_dir"; \
-			exit 1; \
+			echo "⚠️  HTTPS clone failed. Trying SSH..."; \
+			if git clone "$$ssh_url" "$$repo_dir"; then \
+				echo "✅ Successfully cloned $$repo_name (SSH)"; \
+			else \
+				if [ -n "$$GITHUB_TOKEN" ]; then \
+					pat_url=$$(echo "$$repo_url" | sed -E "s#https://#https://x-access-token:$${GITHUB_TOKEN}@#"); \
+					echo "⚠️  SSH clone failed. Trying PAT..."; \
+					if git clone "$$pat_url" "$$repo_dir"; then \
+						echo "✅ Successfully cloned $$repo_name (PAT)"; \
+					else \
+						echo "❌ Failed to clone repo using HTTPS, SSH or PAT into $$repo_dir"; \
+						exit 1; \
+					fi; \
+				else \
+					echo "❌ Failed to clone repo using HTTPS or SSH into $$repo_dir (no PAT provided)"; \
+					exit 1; \
+				fi; \
+			fi; \
 		fi; \
 	else \
 		echo "📥 Cloning $$repo_url into $$repo_dir..."; \
+		echo "📥 Cloning (try HTTPS → SSH → PAT if available)..."; \
 		if git clone "$$repo_url" "$$repo_dir"; then \
-			echo "✅ Successfully cloned $$repo_name"; \
+			echo "✅ Successfully cloned $$repo_name (HTTPS)"; \
 		else \
-			echo "❌ Failed to clone repo $$repo_url into $$repo_dir"; \
-			exit 1; \
+			echo "⚠️  HTTPS clone failed. Trying SSH..."; \
+			if git clone "$$ssh_url" "$$repo_dir"; then \
+				echo "✅ Successfully cloned $$repo_name (SSH)"; \
+			else \
+				if [ -n "$$GITHUB_TOKEN" ]; then \
+					pat_url=$$(echo "$$repo_url" | sed -E "s#https://#https://x-access-token:$${GITHUB_TOKEN}@#"); \
+					echo "⚠️  SSH clone failed. Trying PAT..."; \
+					if git clone "$$pat_url" "$$repo_dir"; then \
+						echo "✅ Successfully cloned $$repo_name (PAT)"; \
+					else \
+						echo "❌ Failed to clone repo using HTTPS, SSH or PAT into $$repo_dir"; \
+						exit 1; \
+					fi; \
+				else \
+					echo "❌ Failed to clone repo using HTTPS or SSH into $$repo_dir (no PAT provided)"; \
+					exit 1; \
+				fi; \
+			fi; \
 		fi; \
 	fi; \
 	echo "✅ ADT Utils repository is ready."
