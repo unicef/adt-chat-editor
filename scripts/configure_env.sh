@@ -213,7 +213,8 @@ while IFS= read -r line; do
   # Current value in .env (if any) and default from example
   current=$(grep -E "^${key}=" "$ENV_FILE" | sed "s/^${key}=//" || true)
   default=$(grep -E "^${key}=" "$EXAMPLE_FILE" | sed "s/^${key}=//" || true)
-  show=${current:-$default}
+  raw_fallback=${current:-$default}
+  show="$raw_fallback"
   
   # Truncate sensitive values for display
   if [[ "$key" == "OPENAI_API_KEY" || "$key" == "GITHUB_TOKEN" ]]; then
@@ -236,7 +237,7 @@ while IFS= read -r line; do
 
     # If input is empty, use the default value (for fields with defaults) or empty (for truly optional fields)
     if [[ -z "$input" ]]; then
-      value="$show"  # Use the default/current value
+      value="$raw_fallback"
       break
     fi
     
