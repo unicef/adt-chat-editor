@@ -443,6 +443,9 @@ async def finalize_task_execution(state: ADTState, config: RunnableConfig) -> AD
     if html_files:
         await _format_html_files(html_files)
 
+    # Run ADT Utils post-processing script to fix missing data-id attributes
+    await _run_fix_missing_data_ids_script()
+
     # Save the state
     state.plan_shown_to_user = False
     state.status = WorkflowStatus.SUCCESS
@@ -497,6 +500,35 @@ async def _format_html_files(html_files: list[str], all_files: bool = False) -> 
 
     except Exception as e:
         logger.error(f"Error in _format_html_files: {e}")
+
+
+async def _run_fix_missing_data_ids_script() -> None:
+    """Run the 'fix_missing_data_ids' script from adt-utils if available.
+
+    This leverages the existing API route implementation to ensure consistent
+    behavior and argument handling.
+    """
+    try:
+        # Import lazily to avoid import cycles during module import time
+        from src.api.routes.adt_utils import RunScriptRequest, run_script
+
+        request = RunScriptRequest(script_id="fix_missing_data_ids", arguments={})
+        result = await run_script(request)
+        # result is a RunAllResponse pydantic model
+        try:
+            status = getattr(result, "status", None)
+            message = getattr(result, "message", "")
+            if status == "success":
+                logger.info(f"fix_missing_data_ids executed: {message}")
+            else:
+                logger.warning(
+                    f"fix_missing_data_ids reported an error status: {message}"
+                )
+        except Exception:
+            # If it's not a pydantic model in some context, just log the object
+            logger.info(f"fix_missing_data_ids result: {result}")
+    except Exception as e:
+        logger.debug(f"Could not run fix_missing_data_ids script: {e}")
 
 
 async def _finalize_git_operations() -> None:
