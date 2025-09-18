@@ -215,22 +215,18 @@ class AsyncGitVersionManager:
     ) -> List[Dict[str, str]]:
         """List commits on a branch, optionally since last published tag."""
         try:
-            await self.checkout_branch(branch_name)
-    
-            # If asking only for unpublished changes (since last push)
+            # Avoid checking out branches to prevent index.lock contention.
+            # Build the log range explicitly using refs.
             if since_last_push:
                 try:
-                    # Check if the tag exists
-                    _ = await self._run_git("rev-parse", "last_published")
-                    range_arg = "last_published..HEAD"
+                    # Ensure the tag exists; otherwise, no unpublished commit range
+                    await self._run_git("rev-parse", "last_published")
+                    range_arg = f"last_published..{branch_name}"
                 except Exception:
-                    # Tag does not exist → no published point → return empty list
                     return []
-    
             else:
-                # Include all commits in branch
                 range_arg = branch_name
-    
+
             output = await self._run_git(
                 "log",
                 range_arg,
@@ -244,7 +240,7 @@ class AsyncGitVersionManager:
                     commit_hash, message = line.split("|", 1)
                     commits.append({"hash": commit_hash, "message": message})
             return commits[::-1]
-    
+
         except Exception as e:
             raise RuntimeError(f"Failed to list commits: {e}")
 
