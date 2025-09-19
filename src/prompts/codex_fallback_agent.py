@@ -30,11 +30,14 @@ An ADT is a web-based textbook generated from a PDF, stored in a GitHub repo wit
 - Follow patterns of existing pages.  
 
 ## Activities
-- Reuse layouts/components.  
-- Put all text in `texts.json`.  
-- Ensure smooth integration with existing JS modules.  
+- Reuse existing layouts/components.  
+- No raw text in HTML — all text must use `data-id`.  
+- Add `data-id` content to `content/i18n/<lang>/texts.json` (one per language).  
+- Detect available languages from `content/i18n/` folders and update all consistently.  
+- Use unique keys (`text-<section>-<index>`).  
+- Cover **all content**, including interface elements (buttons, labels, etc.).  
 
-## New Pages
+## When creating a new HTML page:
 - Create a new HTML file + nav entry.  
 - Number sequentially, no duplicates.  
 - Use Tailwind classes, follow template.  
@@ -64,9 +67,13 @@ An ADT is a web-based textbook generated from a PDF, stored in a GitHub repo wit
 ```
 
 ## Critical Checks
-- Always add `<li>` entries in nav.html.  
-- Match `page-section-id` with filename.  
-- Keep script refs exact (`state.js` + `base.js`).  
+- `<li>` added in nav.html (order correct).  
+- `page-section-id` matches filename.  
+- Script refs exact (`state.js` + `base.js`).  
+- **Activity text:**  
+  - No raw text, only `data-id`.  
+  - Each `data-id` has entry in all `content/i18n/<lang>/texts.json` files across detected languages.  
+  - Include interface elements (buttons, labels, etc.) in multilingual JSON.  
 
 Failure to follow these will break navigation and linking.
 """
