@@ -1,7 +1,16 @@
-import os
-import subprocess
+"""Terminal service: execute limited shell commands or delegate to Codex.
+
+This module powers the /terminal API endpoints by providing a small
+whitelist-based shell executor and a Codex-backed fallback for
+natural‑language instructions.
+"""
+
 import datetime
+import os
+import shlex
+import subprocess
 from typing import List, Optional
+
 from src.prompts import CODEX_FALLBACK_SYSTEM_PROMPT
 from src.settings import (
     OUTPUT_DIR,
@@ -10,7 +19,7 @@ from src.settings import (
     custom_logger,
     settings,
 )
-from src.structs.terminal import ExecuteCommandRequest, CommandResponse, CommandHistory
+from src.structs.terminal import CommandHistory, CommandResponse, ExecuteCommandRequest
 from src.utils import to_single_line
 
 # Initialize logger
@@ -18,7 +27,10 @@ logger = custom_logger("Terminal Service")
 
 
 class TerminalService:
+    """Service that executes commands and maintains a simple history."""
+
     def __init__(self):
+        """Initialize in-memory history and the allowlist of shell commands."""
         self.command_history: List[CommandHistory] = []
         self.allowed_commands = [
             "ls",
@@ -38,10 +50,12 @@ class TerminalService:
         ]
 
     def is_command_allowed(self, command: str) -> bool:
+        """Return True if the command's base program is in the allowlist."""
         base_command = command.split()[0]
         return base_command in self.allowed_commands
 
     def execute_command(self, request: ExecuteCommandRequest) -> CommandResponse:
+        """Execute a shell command or delegate to Codex when not allowed."""
         if self.is_command_allowed(request.command):
             return self._run_shell_command(request.command, OUTPUT_DIR)
         else:
@@ -51,6 +65,7 @@ class TerminalService:
     def _run_shell_command(
         self, command: str, working_dir: Optional[str]
     ) -> CommandResponse:
+        """Run a shell command within the configured working directory."""
         working_dir = working_dir or os.getcwd()
         timestamp = datetime.datetime.now().isoformat()
 
@@ -92,19 +107,30 @@ class TerminalService:
     def _run_codex_instruction(
         self, prompt: str, working_dir: Optional[str]
     ) -> CommandResponse:
-        """Use Codex CLI to process natural-language instructions"""
+        """Use Codex CLI to process natural‑language instructions."""
         working_dir = working_dir or os.getcwd()
         timestamp = datetime.datetime.now().isoformat()
         context = to_single_line(CODEX_FALLBACK_SYSTEM_PROMPT)
 
-        codex_cmd = f'codex "{context}" exec -m {settings.OPENAI_CODEX_MODEL} --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check "{prompt}"'
+        codex_cmd = [
+            "codex",
+            context,
+            "exec",
+            "-m",
+            settings.OPENAI_CODEX_MODEL,
+            "--dangerously-bypass-approvals-and-sandbox",
+            "--skip-git-repo-check",
+            prompt,
+        ]
 
-        logger.info(f"Codex command: {codex_cmd}")
+        logger.info(
+            "Codex command: " + " ".join(shlex.quote(arg) for arg in codex_cmd)
+        )
 
         try:
             result = subprocess.run(
                 codex_cmd,
-                shell=True,
+                shell=False,
                 capture_output=True,
                 text=True,
                 cwd=working_dir,
@@ -157,7 +183,9 @@ class TerminalService:
             raise ValueError(f"Codex execution failed: {str(e)}")
 
     def get_history(self) -> List[CommandHistory]:
+        """Return the list of previous command executions."""
         return self.command_history
 
     def clear_history(self):
+        """Clear the in-memory command history."""
         self.command_history.clear()
