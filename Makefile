@@ -21,17 +21,24 @@ GLOBAL_REQUIRED_VARS=OPENAI_API_KEY OPENAI_MODEL OPENAI_CODEX_MODEL
 REVIEWER_REQUIRED_VARS=ADTS
 
 # Define all available targets (commands that can be run with 'make')
-.PHONY: check ensure-env configure-env check-reviewer check-creator docker-up initialize run stop clone-repos select-adt reviewer creator test install-test-deps
+.PHONY: check ensure-env configure-env check-reviewer check-creator docker-up initialize run stop clone-repos select-adt reviewer creator test install-test-deps install-adt-utils-deps
 
 # Determine docker compose command for better cross-platform support
 # Prefer docker-compose if available, otherwise use 'docker compose'
 DOCKER_COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then echo docker-compose; else echo docker compose; fi)
 
+# Control verbosity of in-container installation (set VERBOSE=1 to see full logs)
+ifeq ($(VERBOSE),1)
+REDIRECT :=
+else
+REDIRECT := >/dev/null 2>&1
+endif
+
 # Reviewer mode - works with multiple repositories from ADTS
-reviewer: check-reviewer stop clone-repos clone-utils select-adt ensure-data-dirs docker-up initialize
+reviewer: check-reviewer stop clone-repos clone-utils select-adt ensure-data-dirs docker-up install-adt-utils-deps initialize
 
 # Creator mode - works with a single local repository (can be non-git)
-creator: check-creator stop clone-utils setup-creator ensure-data-dirs docker-up initialize
+creator: check-creator stop clone-utils setup-creator ensure-data-dirs docker-up install-adt-utils-deps initialize
 
 # Validate basic prerequisites (Docker) and ensure minimal env setup
 check:
@@ -352,6 +359,25 @@ docker-up:
 	else \
 		echo "❌ Failed to start Docker containers"; \
 		exit 1; \
+	fi
+
+# Install ADT Utils dependencies inside the running container (runtime install)
+install-adt-utils-deps:
+	@echo "📦 Ensuring adt-utils dependencies are installed inside the container..."
+	@# Verify adt-utils exists locally before attempting container install
+	@if [ ! -d "data/adt-utils" ]; then \
+		echo "ℹ️  data/adt-utils not found locally. Skipping dependency installation."; \
+		exit 0; \
+	fi
+	@# Ensure the fastapi service is up before exec (silent)
+	@$(DOCKER_COMPOSE) ps -q fastapi >/dev/null || { echo "ℹ️  fastapi service not running yet. Skipping dependency installation."; exit 0; }
+	@CID=$$($(DOCKER_COMPOSE) ps -q fastapi); state=$$(docker inspect -f '{{.State.Running}}' $$CID 2>/dev/null || echo false); if [ "$$state" != "true" ]; then sleep 2; fi
+	@echo "🔧 Installing adt-utils dependencies inside container..."
+	@# Run installation commands inside the container; do not fail the whole make if this step fails
+	@if $(DOCKER_COMPOSE) exec -T fastapi /bin/sh -lc 'set -e; if [ ! -d /app/data/adt-utils ]; then echo "ℹ️  /app/data/adt-utils not present in container. Skipping."; exit 0; fi; python -m pip install -U pip setuptools wheel >/dev/null 2>&1 || true; if [ -f /app/data/adt-utils/pyproject.toml ]; then pip install -q -e /app/data/adt-utils; elif [ -f /app/data/adt-utils/requirements.txt ]; then pip install -q -r /app/data/adt-utils/requirements.txt; else echo "ℹ️  No pyproject.toml or requirements.txt found in adt-utils. Nothing to install."; fi' $(REDIRECT); then \
+		echo "✅ adt-utils dependencies installed"; \
+	else \
+		echo "⚠️  Failed to install adt-utils dependencies inside container. Continuing..."; \
 	fi
 
 # Initialize the application after containers are running
