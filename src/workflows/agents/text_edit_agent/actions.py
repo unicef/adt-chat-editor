@@ -1,5 +1,9 @@
-import os
+"""Actions for the Text Edit Agent, including detection, application, and TTS regeneration."""
+
+import asyncio
 import json
+import os
+import subprocess
 from typing import List
 
 from langchain_core.messages import AIMessage, SystemMessage
@@ -13,21 +17,20 @@ from src.prompts import (
     TEXT_EDIT_USER_PROMPT,
 )
 from src.settings import (
-    custom_logger,
+    ADT_UTILS_DIR,
     OUTPUT_DIR,
     TRANSLATIONS_DIR,
+    custom_logger,
 )
 from src.structs import StepStatus, TextEdit, TextEditResponse
-from src.workflows.state import ADTState
 from src.utils import (
-    get_html_files,
-    read_html_file,
-    write_html_file,
-    load_translated_html_contents,
     extract_layout_properties_async,
+    get_html_files,
     get_message,
+    load_translated_html_contents,
+    read_html_file,
 )
-
+from src.workflows.state import ADTState
 
 # Initialize logger
 logger = custom_logger("Text Edit Agent")
@@ -38,8 +41,7 @@ text_edits_parser = PydanticOutputParser(pydantic_object=TextEditResponse)
 
 # Actions
 async def detect_text_edits(state: ADTState, config: RunnableConfig) -> ADTState:
-    """
-    Detect text edits based on the instruction while preserving HTML structure.
+    """Detect text edits based on the instruction while preserving HTML structure.
 
     Args:
         state: The current state of the workflow
@@ -48,7 +50,6 @@ async def detect_text_edits(state: ADTState, config: RunnableConfig) -> ADTState
     Returns:
         The updated state of the workflow
     """
-
     # Create prompt
     messages = ChatPromptTemplate.from_messages(
         [
@@ -113,8 +114,7 @@ async def detect_text_edits(state: ADTState, config: RunnableConfig) -> ADTState
 
 
 def edit_texts(state: ADTState, config: RunnableConfig) -> ADTState:
-    """
-    Edit text in files based on the instruction while preserving HTML structure.
+    """Edit text in files based on the instruction while preserving HTML structure.
 
     Args:
         state: The current state of the workflow
@@ -138,7 +138,7 @@ def edit_texts(state: ADTState, config: RunnableConfig) -> ADTState:
             )
 
             # Read and update the translation file
-            with open(file_path, "r") as file:
+            with open(file_path) as file:
                 data = json.load(file)
 
             # Update the text
@@ -166,5 +166,109 @@ def edit_texts(state: ADTState, config: RunnableConfig) -> ADTState:
     # Update step status
     if state.current_step_index >= 0 and state.current_step_index < len(state.steps):
         state.steps[state.current_step_index].status = StepStatus.SUCCESS
+
+    return state
+
+
+async def regenerate_tts_for_edits(state: ADTState, config: RunnableConfig) -> ADTState:
+    """Regenerate TTS audio only for edited data-ids across all available languages.
+
+    This node triggers the existing adt-utils regeneration script with the
+    --data-ids flag so it only processes the affected keys.
+    """
+    # Collect data-ids from the current step's text edits
+    edits = state.steps[state.current_step_index].text_edits or []
+    data_ids = sorted({edit.element_id for edit in edits})
+
+    if not data_ids:
+        logger.info("No data-ids to regenerate TTS for. Skipping TTS regeneration.")
+        return state
+
+    if not state.available_languages:
+        logger.warning("No available languages found. Skipping TTS regeneration.")
+        return state
+
+    # Ensure API key is available
+    if not os.getenv("OPENAI_API_KEY"):
+        msg = (
+            "Skipping TTS regeneration: OPENAI_API_KEY is not set. "
+            "Set it in the environment or .env to enable TTS generation."
+        )
+        logger.warning(msg)
+        state.add_message(SystemMessage(content=msg))
+        return state
+
+    # Build command to call the adt-utils regenerate_tts script
+    # Use path relative to ADT_UTILS_DIR (cwd) to avoid duplicating directory segments
+    script_rel_path = os.path.join("src", "regeneration", "scripts", "regenerate_tts.py")
+    script_fs_path = os.path.join(ADT_UTILS_DIR, script_rel_path)
+
+    if not os.path.exists(script_fs_path):
+        logger.error(
+            f"regenerate_tts script not found at {script_fs_path}. Skipping."
+        )
+        return state
+
+    abs_output_dir = os.path.abspath(OUTPUT_DIR)
+    languages_csv = ",".join(state.available_languages)
+    ids_csv = ",".join(data_ids)
+
+    command = [
+        "python",
+        script_rel_path,
+        abs_output_dir,
+        "--language",
+        languages_csv,
+        "--data-ids",
+        ids_csv,
+    ]
+
+    logger.info(
+        "Executing TTS regeneration for edited data-ids: "
+        + f"{len(data_ids)} ids across languages [{languages_csv}]"
+    )
+
+    # Run the script asynchronously without blocking the event loop
+    def _run():
+        return subprocess.run(
+            command,
+            cwd=ADT_UTILS_DIR,
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+
+    try:
+        result = await asyncio.to_thread(_run)
+    except subprocess.TimeoutExpired:
+        logger.error("TTS regeneration timed out after 300s")
+        return state
+    except Exception as e:
+        logger.error(f"Error executing TTS regeneration: {e}")
+        return state
+
+    # Summarize outcome in workflow messages
+    if result.returncode == 0:
+        summary = (
+            "TTS regeneration completed for edited items.\n\n"
+            "Summary:\n" + (result.stdout or "(no output)")
+        )
+        state.add_message(SystemMessage(content=summary))
+        logger.info("TTS regeneration completed successfully")
+    else:
+        error_details = []
+        if result.stderr:
+            error_details.append(f"STDERR:\n{result.stderr}")
+        if result.stdout:
+            error_details.append(f"STDOUT:\n{result.stdout}")
+        message = (
+            "TTS regeneration encountered an error.\n\n" + "\n\n".join(error_details)
+        )
+        state.add_message(SystemMessage(content=message))
+        logger.error(f"TTS regeneration failed with return code {result.returncode}.")
+        if result.stderr:
+            logger.error(f"STDERR: {result.stderr}")
+        if result.stdout:
+            logger.error(f"STDOUT: {result.stdout}")
 
     return state
