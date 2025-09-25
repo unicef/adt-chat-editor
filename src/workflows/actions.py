@@ -1,5 +1,6 @@
 """Main workflow actions for planning, showing, and executing steps."""
 
+import json
 import os
 import subprocess
 import textwrap
@@ -18,6 +19,7 @@ from src.prompts import (
     ORCHESTRATOR_SYSTEM_PROMPT,
 )
 from src.settings import (
+    ADT_UTILS_DIR,
     OUTPUT_DIR,
     custom_logger,
 )
@@ -444,7 +446,11 @@ async def finalize_task_execution(state: ADTState, config: RunnableConfig) -> AD
         await _format_html_files(html_files)
 
     # Run ADT Utils post-processing script to fix missing data-id attributes
-    await _run_fix_missing_data_ids_script()
+    added = await _run_fix_missing_data_ids_script()
+
+    # If there were added/backfilled translations, regenerate TTS for those ids/languages
+    if added:
+        await _run_regenerate_tts_for_added(added)
 
     # Save the state
     state.plan_shown_to_user = False
@@ -502,33 +508,116 @@ async def _format_html_files(html_files: list[str], all_files: bool = False) -> 
         logger.error(f"Error in _format_html_files: {e}")
 
 
-async def _run_fix_missing_data_ids_script() -> None:
-    """Run the 'fix_missing_data_ids' script from adt-utils if available.
+async def _run_fix_missing_data_ids_script() -> dict[str, list[str]]:
+    """Run the fixer in an isolated subprocess and return added translations.
 
-    This leverages the existing API route implementation to ensure consistent
-    behavior and argument handling.
+    Returns a mapping {language: [data_id, ...]} for all keys added/backfilled
+    by the fixer. If the fixer fails or returns no data, returns an empty dict.
     """
+    added: dict[str, list[str]] = {}
     try:
-        # Import lazily to avoid import cycles during module import time
-        from src.api.routes.adt_utils import RunScriptRequest, run_script
-
-        request = RunScriptRequest(script_id="fix_missing_data_ids", arguments={})
-        result = await run_script(request)
-        # result is a RunAllResponse pydantic model
-        try:
-            status = getattr(result, "status", None)
-            message = getattr(result, "message", "")
-            if status == "success":
-                logger.info(f"fix_missing_data_ids executed: {message}")
-            else:
-                logger.warning(
-                    f"fix_missing_data_ids reported an error status: {message}"
+        fix_runner = os.path.join(
+            os.getcwd(), "src", "api", "startup_fix_and_collect.py"
+        )
+        result = subprocess.run(
+            [
+                "python",
+                fix_runner,
+                os.path.abspath(OUTPUT_DIR),
+                os.path.abspath(ADT_UTILS_DIR),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+        if result.returncode == 0:
+            try:
+                payload = json.loads(result.stdout or "{}")
+                meta = payload.get("metadata", {}) or {}
+                added = meta.get("added_translations", {}) or {}
+                logger.info(
+                    f"fix_missing_data_ids executed: added_languages={list(added.keys())}"
                 )
-        except Exception:
-            # If it's not a pydantic model in some context, just log the object
-            logger.info(f"fix_missing_data_ids result: {result}")
+            except Exception as parse_err:
+                logger.error(f"Failed to parse fix_missing_data_ids output: {parse_err}")
+        else:
+            if result.stderr:
+                logger.error(
+                    f"fix_missing_data_ids STDERR: {result.stderr}"
+                )
+            if result.stdout:
+                logger.error(
+                    f"fix_missing_data_ids STDOUT: {result.stdout}"
+                )
     except Exception as e:
         logger.debug(f"Could not run fix_missing_data_ids script: {e}")
+
+    return added
+
+
+async def _run_regenerate_tts_for_added(added: dict[str, list[str]]) -> None:
+    """Run regenerate_tts for the specific languages and data-ids provided."""
+    try:
+        if not added:
+            return
+        # Compose language list and union of ids
+        languages = sorted(added.keys())
+        ids_set: set[str] = set()
+        for _lang, _ids in added.items():
+            try:
+                ids_set.update(_ids)
+            except Exception:
+                continue
+        data_ids = sorted(ids_set)
+
+        if not data_ids or not languages:
+            logger.info("No data-ids/languages to regenerate TTS for in finalize")
+            return
+
+        if not os.getenv("OPENAI_API_KEY"):
+            logger.warning(
+                "Skipping TTS regeneration in finalize: OPENAI_API_KEY is not set"
+            )
+            return
+
+        cmd = [
+            "python",
+            os.path.join(
+                "src",
+                "regeneration",
+                "scripts",
+                "regenerate_tts.py",
+            ),
+            os.path.abspath(OUTPUT_DIR),
+            "--language",
+            ",".join(languages),
+            "--data-ids",
+            ",".join(data_ids),
+        ]
+
+        logger.info(
+            "Executing TTS regeneration in finalize: "
+            + f"langs={languages}, ids={len(data_ids)}"
+        )
+        result = subprocess.run(
+            cmd,
+            cwd=ADT_UTILS_DIR,
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        if result.returncode == 0:
+            logger.info("Finalize TTS regeneration completed successfully")
+        else:
+            logger.error(
+                f"Finalize TTS regeneration failed (code {result.returncode})"
+            )
+            if result.stderr:
+                logger.error(f"Finalize TTS STDERR: {result.stderr}")
+            if result.stdout:
+                logger.error(f"Finalize TTS STDOUT: {result.stdout}")
+    except Exception as e:
+        logger.error(f"Error running TTS regeneration in finalize: {e}")
 
 
 async def _finalize_git_operations() -> None:

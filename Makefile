@@ -121,7 +121,7 @@ for repo_url in $$ADTS; do \
     if [ -d "$$repo_dir/.git" ]; then \
         echo "📋 Repository already exists: $$repo_dir"; \
         echo "📥 Pulling latest changes (keeping existing remote)..."; \
-        (cd "$$repo_dir" && rm -f .git/config.lock && git pull origin main || git pull origin master || git pull || { \
+        (cd "$$repo_dir" && rm -f .git/config.lock && git pull -q origin main || git pull -q origin master || git pull -q || { \
             echo "❌ Failed to pull latest changes"; \
             exit 1; \
         }); \
@@ -131,17 +131,17 @@ for repo_url in $$ADTS; do \
 			echo "📋 Removing non-git directory and cloning fresh..."; \
         rm -rf "$$repo_dir"; \
         echo "📥 Cloning (try HTTPS → SSH → PAT if available)..."; \
-        if git clone "$$https_url" "$$repo_dir"; then \
+        if git clone --quiet "$$https_url" "$$repo_dir"; then \
             echo "✅ Successfully cloned $$repo_name (HTTPS)"; \
         else \
             echo "⚠️  HTTPS clone failed. Trying SSH..."; \
-            if git clone "$$ssh_url" "$$repo_dir"; then \
+            if git clone --quiet "$$ssh_url" "$$repo_dir"; then \
                 echo "✅ Successfully cloned $$repo_name (SSH)"; \
             else \
                 if [ -n "$$GITHUB_TOKEN" ]; then \
                     pat_url=$$(echo "$$https_url" | sed -E "s#https://#https://x-access-token:$${GITHUB_TOKEN}@#"); \
                     echo "⚠️  SSH clone failed. Trying PAT..."; \
-                    if git clone "$$pat_url" "$$repo_dir"; then \
+                    if git clone --quiet "$$pat_url" "$$repo_dir"; then \
                         echo "✅ Successfully cloned $$repo_name (PAT)"; \
                     else \
                         echo "❌ Failed to clone repo using HTTPS, SSH or PAT into $$repo_dir"; \
@@ -156,17 +156,17 @@ for repo_url in $$ADTS; do \
 		else \
         echo "📥 Cloning $$https_url into $$repo_dir..."; \
         echo "📥 Cloning (try HTTPS → SSH → PAT if available)..."; \
-        if git clone "$$https_url" "$$repo_dir"; then \
+        if git clone --quiet "$$https_url" "$$repo_dir"; then \
             echo "✅ Successfully cloned $$repo_name (HTTPS)"; \
         else \
             echo "⚠️  HTTPS clone failed. Trying SSH..."; \
-            if git clone "$$ssh_url" "$$repo_dir"; then \
+            if git clone --quiet "$$ssh_url" "$$repo_dir"; then \
                 echo "✅ Successfully cloned $$repo_name (SSH)"; \
             else \
                 if [ -n "$$GITHUB_TOKEN" ]; then \
                     pat_url=$$(echo "$$https_url" | sed -E "s#https://#https://x-access-token:$${GITHUB_TOKEN}@#"); \
                     echo "⚠️  SSH clone failed. Trying PAT..."; \
-                    if git clone "$$pat_url" "$$repo_dir"; then \
+                    if git clone --quiet "$$pat_url" "$$repo_dir"; then \
                         echo "✅ Successfully cloned $$repo_name (PAT)"; \
                     else \
                         echo "❌ Failed to clone repo using HTTPS, SSH or PAT into $$repo_dir"; \
@@ -199,7 +199,7 @@ clone-utils:
 	if [ -d "$$repo_dir/.git" ]; then \
 		echo "📋 Repository already exists: $$repo_dir"; \
 		echo "📥 Pulling latest changes (keeping existing remote)..."; \
-		(cd "$$repo_dir" && git pull origin main || git pull origin master || git pull || { \
+		(cd "$$repo_dir" && git pull -q origin main || git pull -q origin master || git pull -q || { \
 			echo "❌ Failed to pull latest changes"; \
 			exit 1; \
 		}); \
@@ -209,17 +209,17 @@ clone-utils:
 		echo "📋 Removing non-git directory and cloning fresh..."; \
 		rm -rf "$$repo_dir"; \
 		echo "📥 Cloning (try HTTPS → SSH → PAT if available)..."; \
-		if git clone "$$repo_url" "$$repo_dir"; then \
+		if git clone --quiet "$$repo_url" "$$repo_dir"; then \
 			echo "✅ Successfully cloned $$repo_name (HTTPS)"; \
 		else \
 			echo "⚠️  HTTPS clone failed. Trying SSH..."; \
-			if git clone "$$ssh_url" "$$repo_dir"; then \
+			if git clone --quiet "$$ssh_url" "$$repo_dir"; then \
 				echo "✅ Successfully cloned $$repo_name (SSH)"; \
 			else \
 				if [ -n "$$GITHUB_TOKEN" ]; then \
 					pat_url=$$(echo "$$repo_url" | sed -E "s#https://#https://x-access-token:$${GITHUB_TOKEN}@#"); \
 					echo "⚠️  SSH clone failed. Trying PAT..."; \
-					if git clone "$$pat_url" "$$repo_dir"; then \
+					if git clone --quiet "$$pat_url" "$$repo_dir"; then \
 						echo "✅ Successfully cloned $$repo_name (PAT)"; \
 					else \
 						echo "❌ Failed to clone repo using HTTPS, SSH or PAT into $$repo_dir"; \
@@ -234,11 +234,11 @@ clone-utils:
 	else \
 		echo "📥 Cloning $$repo_url into $$repo_dir..."; \
 		echo "📥 Cloning (try HTTPS → SSH → PAT if available)..."; \
-		if git clone "$$repo_url" "$$repo_dir"; then \
+		if git clone --quiet "$$repo_url" "$$repo_dir"; then \
 			echo "✅ Successfully cloned $$repo_name (HTTPS)"; \
 		else \
 			echo "⚠️  HTTPS clone failed. Trying SSH..."; \
-			if git clone "$$ssh_url" "$$repo_dir"; then \
+			if git clone --quiet "$$ssh_url" "$$repo_dir"; then \
 				echo "✅ Successfully cloned $$repo_name (SSH)"; \
 			else \
 				if [ -n "$$GITHUB_TOKEN" ]; then \
@@ -263,7 +263,7 @@ clone-utils:
 select-adt:
 	@echo "📂 Available ADTs:"; \
 	echo "📋 Checking data directory contents..."; \
-	ls -la data/ 2>/dev/null || echo "📋 Data directory is empty or doesn't exist"; \
+	if [ "$(VERBOSE)" = "1" ]; then ls -la data/ 2>/dev/null || echo "📋 Data directory is empty or doesn't exist"; fi; \
 		if [ ! -d "data" ] || [ -z "$$(ls -A data 2>/dev/null)" ]; then \
 			echo "❌ No repositories found in data directory. Please check your ADTS environment variable."; \
 			exit 1; \
@@ -385,10 +385,7 @@ initialize:
 	@echo "🚀 Initializing app..."
 	@STARTUP_TIMEOUT=$${STARTUP_TIMEOUT:-120}; \
 	echo "⏳ Waiting for FastAPI to be ready (max $$STARTUP_TIMEOUT s)...";
-	@echo "📋 Checking Docker container status..."
-	@$(DOCKER_COMPOSE) ps
-	@echo "📋 Checking container logs..."
-	@$(DOCKER_COMPOSE) logs --tail=20
+	@if [ "$(VERBOSE)" = "1" ]; then echo "📋 Checking Docker container status..."; $(DOCKER_COMPOSE) ps; echo "📋 Checking container logs..."; $(DOCKER_COMPOSE) logs --tail=20; fi
 	@start=$$(date +%s); \
 	STARTUP_TIMEOUT=$${STARTUP_TIMEOUT:-120}; \
 	while ! curl -s http://localhost:8000/docs > /dev/null; do \
