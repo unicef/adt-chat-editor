@@ -436,15 +436,6 @@ async def finalize_task_execution(state: ADTState, config: RunnableConfig) -> AD
     """
     logger.info("Finalizing task execution")
 
-    # Format HTML files with prettier
-    html_files = []
-    for step in state.steps:
-        html_files.extend(step.html_files)
-    html_files = list(set(html_files))
-
-    if html_files:
-        await _format_html_files(html_files)
-
     # Run ADT Utils post-processing script to fix missing data-id attributes
     added = await _run_fix_missing_data_ids_script()
 
@@ -452,6 +443,15 @@ async def finalize_task_execution(state: ADTState, config: RunnableConfig) -> AD
     if added:
         await _run_regenerate_tts_for_added(added)
 
+    # Format HTML files with prettier
+    html_files = []
+    for step in state.steps:
+        html_files.extend(step.html_files)
+    html_files = list(set(html_files))
+    
+    if html_files:
+        await _format_html_files(html_files)
+    
     # Save the state
     state.plan_shown_to_user = False
     state.status = WorkflowStatus.SUCCESS
