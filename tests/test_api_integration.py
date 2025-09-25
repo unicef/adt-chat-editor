@@ -96,7 +96,7 @@ def test_adt_utils_run_script_success(monkeypatch, client):
         "/adt-utils/run-script",
         json={
             "script_id": "validate_adt",
-            "verbose": True,
+            "arguments": {"verbose": True},
         },
     )
     assert r.status_code == 200
