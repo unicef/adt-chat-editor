@@ -26,6 +26,7 @@ class JWTMiddleware(BaseHTTPMiddleware):
             "/redoc",
             "/openapi.json",
             "/health",
+            "/auth/login",
             "/assets",
             "/input",
             "/output",

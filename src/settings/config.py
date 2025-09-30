@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRATION_HOURS: int = 1
+    ADMIN_USERNAME: str
+    ADMIN_PASSWORD: str
 
     # Pydantic v2 settings configuration
     model_config = SettingsConfigDict(
