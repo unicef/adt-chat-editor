@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     GITHUB_TOKEN: str | None = None
     ADTS: str | None = None
     ACTIVE_ADT: str | None = None
+    JWT_SECRET_KEY: str
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRATION_HOURS: int = 1
 
     # Pydantic v2 settings configuration
     model_config = SettingsConfigDict(
