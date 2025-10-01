@@ -34,7 +34,7 @@ def test_health_ok(client):
     assert r.json() == {"status": "ok"}
 
 
-def test_chat_edit_minimal_flow(client):
+def test_chat_edit_minimal_flow(authorized_client):
     payload = {
         "session_id": "s1",
         "user_message": "hello",
@@ -43,7 +43,7 @@ def test_chat_edit_minimal_flow(client):
         "pages": [],
         "book_information": {"id": "b1", "version": "v1"},
     }
-    r = client.post("/chat/edit", json=payload)
+    r = authorized_client.post("/chat/edit", json=payload)
     assert r.status_code == 200
     data = r.json()
     assert data["status"] in {
@@ -55,7 +55,7 @@ def test_chat_edit_minimal_flow(client):
     assert "messages" in data and isinstance(data["messages"], list)
 
 
-def test_adt_utils_run_script_success(monkeypatch, client):
+def test_adt_utils_run_script_success(monkeypatch, authorized_client):
     # Simulate presence of directories and successful script run
     monkeypatch.setattr(os.path, "exists", lambda p: True)
     cp = subprocess.CompletedProcess(
@@ -92,7 +92,7 @@ def test_adt_utils_run_script_success(monkeypatch, client):
         lambda: {"PRODUCTION_SCRIPTS": [FakeScript()]},
     )
 
-    r = client.post(
+    r = authorized_client.post(
         "/adt-utils/run-script",
         json={
             "script_id": "validate_adt",

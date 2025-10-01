@@ -35,32 +35,36 @@ class FakeGitManager:
 
 
 @pytest.fixture
-def client(monkeypatch):
+def authorized_client(monkeypatch):
     # Patch provider to return our fake manager
     async def fake_get_git_manager():
         return FakeGitManager()
 
     publish_mod.get_git_manager = fake_get_git_manager
 
+    from src.utils.auth import create_jwt_token
     app = create_app()
-    return TestClient(app)
+    client = TestClient(app)
+    token = create_jwt_token(subject="api_access")
+    client.headers = {**client.headers, "Authorization": f"Bearer {token}"}
+    return client
 
 
-def test_publish_commit_endpoint(client):
+def test_publish_commit_endpoint(authorized_client):
     payload = {"message": "test", "book_information": {"id": "id", "version": "v"}}
-    r = client.post("/publish/commit", json=payload)
+    r = authorized_client.post("/publish/commit", json=payload)
     assert r.status_code == 200
     assert r.json()["status"] in {"committed", "not-committed", "error"}
 
 
-def test_publish_changes_endpoint(client):
+def test_publish_changes_endpoint(authorized_client):
     payload = {"message": "version_1", "book_information": {"id": "id", "version": "v"}}
-    r = client.post("/publish", json=payload)
+    r = authorized_client.post("/publish", json=payload)
     assert r.status_code == 200
     assert r.json()["status"] in {"published", "not-published", "error"}
 
 
-def test_publish_commits_list(client):
-    r = client.get("/publish/commits")
+def test_publish_commits_list(authorized_client):
+    r = authorized_client.get("/publish/commits")
     assert r.status_code == 200
     assert isinstance(r.json(), list)
