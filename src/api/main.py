@@ -14,6 +14,7 @@ from fastapi_pagination import add_pagination
 from starlette.responses import FileResponse
 from starlette.staticfiles import StaticFiles
 
+from src.api.middleware import JWTMiddleware
 from src.api.routes import router
 from src.settings import (
     ADT_UTILS_DIR,
@@ -188,7 +189,9 @@ def create_app() -> FastAPI:
                         else:
                             logger.info("No data-ids to regenerate TTS for at startup")
                     else:
-                        logger.info("No added translations detected by fixer at startup")
+                        logger.info(
+                            "No added translations detected by fixer at startup"
+                        )
                 except Exception as tts_err:
                     logger.error(f"Startup TTS regeneration error: {tts_err}")
 
@@ -214,6 +217,9 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Add JWT authentication middleware
+    app.add_middleware(JWTMiddleware)
 
     # Add pagination
     add_pagination(app)

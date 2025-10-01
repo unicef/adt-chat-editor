@@ -8,6 +8,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 import src.api.routes.chat as chat_route
 from src.api.main import create_app
 from src.structs.status import WorkflowStatus
+from src.utils.auth import create_jwt_token
 
 
 class FakeGraph:
@@ -25,7 +26,10 @@ def client(monkeypatch):
     # Patch the graph used by the chat router before app creates routes
     chat_route.graph = FakeGraph()
     app = create_app()
-    return TestClient(app)
+    client = TestClient(app)
+    token = create_jwt_token()
+    client.headers = {**client.headers, "Authorization": f"Bearer {token}"}
+    return client
 
 
 def test_health_ok(client):
