@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     JWT_EXPIRATION_HOURS: int = 1
     ADMIN_USERNAME: str
     ADMIN_PASSWORD: str
+    FRONTEND_URL: str
 
     # Pydantic v2 settings configuration
     model_config = SettingsConfigDict(

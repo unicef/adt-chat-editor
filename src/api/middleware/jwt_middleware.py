@@ -37,6 +37,9 @@ class JWTMiddleware(BaseHTTPMiddleware):
         # Check if the path should be excluded from JWT verification
         path = request.url.path
 
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         # Skip JWT check for excluded paths or static files
         if any(path.startswith(excluded) for excluded in self.exclude_paths):
             return await call_next(request)
