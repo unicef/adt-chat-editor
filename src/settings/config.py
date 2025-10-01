@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     GITHUB_TOKEN: str | None = None
     ADTS: str | None = None
     ACTIVE_ADT: str | None = None
-    JWT_SECRET_KEY: str | None = None
+    JWT_SECRET_KEY: str = "secret"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRATION_HOURS: int = 1
     ADMIN_USERNAME: str | None = None
