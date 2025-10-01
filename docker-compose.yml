@@ -6,7 +6,6 @@ services:
       - "8000:8000"
     volumes:
       - ./data:/app/data
-      - ./tmp:/app/tmp
       - ${EXTERNAL_REPO_PATH:-/tmp/nonexistent}:/app/external_repo
     env_file:
       - .env
