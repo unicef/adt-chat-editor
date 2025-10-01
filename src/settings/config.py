@@ -36,12 +36,12 @@ class Settings(BaseSettings):
     GITHUB_TOKEN: str | None = None
     ADTS: str | None = None
     ACTIVE_ADT: str | None = None
-    JWT_SECRET_KEY: str
+    JWT_SECRET_KEY: str | None = None
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRATION_HOURS: int = 1
-    ADMIN_USERNAME: str
-    ADMIN_PASSWORD: str
-    FRONTEND_URL: str
+    ADMIN_USERNAME: str | None = None
+    ADMIN_PASSWORD: str | None = None
+    FRONTEND_URL: str = "https://unicef.demos.marvik.cloud"
 
     # Pydantic v2 settings configuration
     model_config = SettingsConfigDict(
