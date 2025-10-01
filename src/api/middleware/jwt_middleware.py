@@ -30,6 +30,7 @@ class JWTMiddleware(BaseHTTPMiddleware):
             "/assets",
             "/input",
             "/output",
+            "/",
         ]
 
     async def dispatch(self, request: Request, call_next):
