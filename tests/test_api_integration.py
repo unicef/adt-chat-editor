@@ -27,7 +27,7 @@ def client(monkeypatch):
     chat_route.graph = FakeGraph()
     app = create_app()
     client = TestClient(app)
-    token = create_jwt_token(subject="api_access")
+    token = create_jwt_token()
     client.headers = {**client.headers, "Authorization": f"Bearer {token}"}
     return client
 
