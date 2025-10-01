@@ -52,6 +52,10 @@ RUN poetry lock || echo "Lock file created" \
 COPY src/ src/
 COPY frontend/ frontend/
 
+# Ensure directories exist and are writable
+RUN mkdir -p /app/tmp/state_checkpoints /app/tmp/html_contents
+RUN chmod -R 777 /app/tmp
+
 # Expose port and run FastAPI
 EXPOSE 8000
 CMD ["uvicorn", "src.api.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
