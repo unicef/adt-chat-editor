@@ -8,6 +8,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 import src.api.routes.chat as chat_route
 from src.api.main import create_app
 from src.structs.status import WorkflowStatus
+from src.utils.auth import create_jwt_token
 
 
 class FakeGraph:
@@ -25,7 +26,10 @@ def client(monkeypatch):
     # Patch the graph used by the chat router before app creates routes
     chat_route.graph = FakeGraph()
     app = create_app()
-    return TestClient(app)
+    client = TestClient(app)
+    token = create_jwt_token(subject="api_access")
+    client.headers = {**client.headers, "Authorization": f"Bearer {token}"}
+    return client
 
 
 def test_health_ok(client):
@@ -34,7 +38,7 @@ def test_health_ok(client):
     assert r.json() == {"status": "ok"}
 
 
-def test_chat_edit_minimal_flow(authorized_client):
+def test_chat_edit_minimal_flow(client):
     payload = {
         "session_id": "s1",
         "user_message": "hello",
@@ -43,7 +47,7 @@ def test_chat_edit_minimal_flow(authorized_client):
         "pages": [],
         "book_information": {"id": "b1", "version": "v1"},
     }
-    r = authorized_client.post("/chat/edit", json=payload)
+    r = client.post("/chat/edit", json=payload)
     assert r.status_code == 200
     data = r.json()
     assert data["status"] in {
@@ -55,7 +59,7 @@ def test_chat_edit_minimal_flow(authorized_client):
     assert "messages" in data and isinstance(data["messages"], list)
 
 
-def test_adt_utils_run_script_success(monkeypatch, authorized_client):
+def test_adt_utils_run_script_success(monkeypatch, client):
     # Simulate presence of directories and successful script run
     monkeypatch.setattr(os.path, "exists", lambda p: True)
     cp = subprocess.CompletedProcess(
@@ -92,7 +96,7 @@ def test_adt_utils_run_script_success(monkeypatch, authorized_client):
         lambda: {"PRODUCTION_SCRIPTS": [FakeScript()]},
     )
 
-    r = authorized_client.post(
+    r = client.post(
         "/adt-utils/run-script",
         json={
             "script_id": "validate_adt",
