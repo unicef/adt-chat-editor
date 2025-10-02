@@ -56,6 +56,11 @@ COPY frontend/ frontend/
 RUN mkdir -p /app/tmp/state_checkpoints /app/tmp/html_contents
 RUN chmod -R 777 /app/tmp
 
+# Copy Codex entrypoint script
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+ENTRYPOINT ["/app/entrypoint.sh"]
+
 # Expose port and run FastAPI
 EXPOSE 8000
 CMD ["uvicorn", "src.api.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
