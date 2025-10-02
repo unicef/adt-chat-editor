@@ -56,6 +56,9 @@ COPY frontend/ frontend/
 RUN mkdir -p /app/tmp/state_checkpoints /app/tmp/html_contents
 RUN chmod -R 777 /app/tmp
 
+RUN mkdir -p /app/data
+RUN chmod -R 777 /app/data
+
 # Copy Codex entrypoint script
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
