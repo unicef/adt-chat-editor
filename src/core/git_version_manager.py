@@ -25,7 +25,10 @@ class AsyncGitVersionManager:
         base_branch_name (str): Name of the base branch to work from.
         init_working_branch (bool): Whether to initialise the working branch on creation.
     """
-    def __init__(self, repo_path: str, base_branch_name: str, init_working_branch: bool = True):
+
+    def __init__(
+        self, repo_path: str, base_branch_name: str, init_working_branch: bool = True
+    ):
         """Initialize with repository path and base branch name.
 
         Note: Call `await setup()` or use `await AsyncGitVersionManager.create(...)`
@@ -33,12 +36,12 @@ class AsyncGitVersionManager:
         """
         self.repo_path = Path(repo_path).resolve()
         self.base_branch_name = base_branch_name
-        self.true_branch_name = None  
+        self.true_branch_name = None
         self.init_working_branch = init_working_branch
 
         if not self.repo_path.exists():
             raise FileNotFoundError(f"Repository path not found: {self.repo_path}")
-        if not (self.repo_path / '.git').exists():
+        if not (self.repo_path / ".git").exists():
             raise FileNotFoundError(f"No git repository found at: {self.repo_path}")
 
     @classmethod
@@ -46,7 +49,11 @@ class AsyncGitVersionManager:
         cls, repo_path: str, base_branch_name: str, init_working_branch: bool = True
     ) -> "AsyncGitVersionManager":
         """Instantiate and asynchronously set up the manager."""
-        self = cls(repo_path=repo_path, base_branch_name=base_branch_name, init_working_branch=init_working_branch)
+        self = cls(
+            repo_path=repo_path,
+            base_branch_name=base_branch_name,
+            init_working_branch=init_working_branch,
+        )
         await self.setup()
         return self
 
@@ -72,10 +79,10 @@ class AsyncGitVersionManager:
         path: str
         if remote_url.startswith("git@github.com:"):
             # SSH format: git@github.com:org/repo.git
-            path = remote_url[len("git@github.com:"):]
+            path = remote_url[len("git@github.com:") :]
         elif remote_url.startswith("https://github.com/"):
             # HTTPS without auth: https://github.com/org/repo.git
-            path = remote_url[len("https://github.com/"):]
+            path = remote_url[len("https://github.com/") :]
         elif "@github.com/" in remote_url:
             # HTTPS with embedded auth: https://token@github.com/org/repo.git
             path = remote_url.split("@github.com/")[-1]
@@ -120,11 +127,14 @@ class AsyncGitVersionManager:
             raise RuntimeError("Missing GITHUB_TOKEN in environment for gh auth login")
 
         process = await asyncio.create_subprocess_exec(
-            "gh", "auth", "login", "--with-token",
+            "gh",
+            "auth",
+            "login",
+            "--with-token",
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            cwd=self.repo_path
+            cwd=self.repo_path,
         )
         stdout, stderr = await process.communicate(input=f"{token}\n".encode())
 
@@ -133,10 +143,11 @@ class AsyncGitVersionManager:
 
     async def _run_git(self, *args):
         process = await asyncio.create_subprocess_exec(
-            'git', *args,
+            "git",
+            *args,
             cwd=self.repo_path,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            stderr=asyncio.subprocess.PIPE,
         )
         stdout, stderr = await process.communicate()
         if process.returncode != 0:
@@ -146,14 +157,15 @@ class AsyncGitVersionManager:
     async def _run_gh(self, *args):
         env = os.environ.copy()
         if GITHUB_TOKEN:
-            env['GITHUB_TOKEN'] = GITHUB_TOKEN
+            env["GITHUB_TOKEN"] = GITHUB_TOKEN
 
         process = await asyncio.create_subprocess_exec(
-            'gh', *args,
+            "gh",
+            *args,
             cwd=self.repo_path,
             env=env,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            stderr=asyncio.subprocess.PIPE,
         )
         stdout, stderr = await process.communicate()
         if process.returncode != 0:
@@ -163,7 +175,7 @@ class AsyncGitVersionManager:
     async def create_branch(self, branch_name: str):
         """Create and checkout a new branch locally."""
         try:
-            await self._run_git('checkout', '-b', branch_name)
+            await self._run_git("checkout", "-b", branch_name)
         except Exception as e:
             raise RuntimeError(f"Failed to create branch '{branch_name}': {e}")
 
@@ -171,47 +183,63 @@ class AsyncGitVersionManager:
         """Stage all changes and commit if there is a diff against HEAD."""
         try:
             # Stage all files
-            await self._run_git('add', '.')
-    
+            await self._run_git("add", ".")
+
             # Check if staged changes differ from HEAD (avoid empty commit)
             diff_process = await asyncio.create_subprocess_exec(
-                'git', 'diff', '--cached', '--exit-code', '--quiet', 'HEAD',
-                cwd=self.repo_path
+                "git",
+                "diff",
+                "--cached",
+                "--exit-code",
+                "--quiet",
+                "HEAD",
+                cwd=self.repo_path,
             )
             await diff_process.wait()
-    
+
             if diff_process.returncode == 0:
                 # No actual content changes to commit
                 return False
-    
+
             # Perform the commit
-            await self._run_git('commit', '-m', message)
+            await self._run_git("commit", "-m", message)
             return True
-    
+
         except Exception as e:
             raise RuntimeError(f"Failed to commit changes: {e}")
 
     async def first_commit(self, message: str) -> bool:
         """Create an empty initial commit with a message."""
-        try:            
+        try:
             # Perform the commit
-            await self._run_git('commit', '--allow-empty', '-m', message)    
+            await self._run_git("commit", "--allow-empty", "-m", message)
         except Exception as e:
             raise RuntimeError(f"Failed to create the first commit: {e}")
 
     async def checkout_commit(self, commit_hash: str):
         """Check out a specific commit in detached HEAD mode."""
         try:
-            await self._run_git('checkout', '-f', commit_hash)
+            await self._run_git("checkout", "-f", commit_hash)
         except Exception as e:
             raise RuntimeError(f"Failed to checkout commit {commit_hash}: {e}")
 
+    async def reset_to_main_branch(self):
+        """Reset the repository to the main branch in detached mode, dropping any changes."""
+        try:
+            # Drop any uncommitted changes
+            await self._run_git("reset", "--hard", "HEAD")
+
+            # Checkout to the main branch in detached mode
+            await self._run_git("checkout", "origin/main")
+        except Exception as e:
+            raise RuntimeError(f"Failed to reset to main branch: {e}")
+
     async def list_commits(
-        self, 
-        branch_name: str, 
-        limit: int = 50, 
-        author_email: str = "bot@example.com", 
-        since_last_push: bool = True
+        self,
+        branch_name: str,
+        limit: int = 50,
+        author_email: str = "bot@example.com",
+        since_last_push: bool = True,
     ) -> List[Dict[str, str]]:
         """List commits on a branch, optionally since last published tag."""
         try:
@@ -232,7 +260,7 @@ class AsyncGitVersionManager:
                 range_arg,
                 f"--max-count={limit}",
                 f"--author={author_email}",
-                "--pretty=format:%H|%s"
+                "--pretty=format:%H|%s",
             )
             commits = []
             for line in output.splitlines():
@@ -245,36 +273,38 @@ class AsyncGitVersionManager:
             raise RuntimeError(f"Failed to list commits: {e}")
 
     async def commit_versions_dict(
-        self, 
-        branch_name: str, 
-        limit: int = 50, 
-        author_email: str = "bot@example.com", 
-        since_last_push: bool = True
+        self,
+        branch_name: str,
+        limit: int = 50,
+        author_email: str = "bot@example.com",
+        since_last_push: bool = True,
     ) -> Dict[str, str]:
         """Return a mapping version_N -> commit hash from recent commits."""
-        commits = await self.list_commits(branch_name, limit, author_email, since_last_push)
+        commits = await self.list_commits(
+            branch_name, limit, author_email, since_last_push
+        )
         return {f"version_{i+1}": c["hash"] for i, c in enumerate(commits)}
 
     async def get_branches(self) -> Dict[str, str]:
         """Return mapping version_N -> branch name for all local branches."""
         try:
-            output = await self._run_git('branch', '--list')
-            branches = [line.strip().lstrip('* ') for line in output.splitlines()]
-            return {f'version_{i+1}': name for i, name in enumerate(branches)}
+            output = await self._run_git("branch", "--list")
+            branches = [line.strip().lstrip("* ") for line in output.splitlines()]
+            return {f"version_{i+1}": name for i, name in enumerate(branches)}
         except Exception as e:
             raise RuntimeError(f"Failed to list branches: {e}")
 
     async def checkout_branch(self, branch_name: str):
         """Check out an existing local branch by name."""
         try:
-            await self._run_git('checkout', branch_name)
+            await self._run_git("checkout", branch_name)
         except Exception as e:
             raise RuntimeError(f"Failed to checkout branch '{branch_name}': {e}")
 
     async def push_branch(self, branch_name: str):
         """Push a branch to origin, setting upstream if needed."""
         try:
-            await self._run_git('push', '--set-upstream', 'origin', branch_name)
+            await self._run_git("push", "--set-upstream", "origin", branch_name)
         except Exception as e:
             raise RuntimeError(f"Failed to push branch '{branch_name}': {e}")
 
@@ -323,20 +353,27 @@ class AsyncGitVersionManager:
     async def current_branch(self) -> str:
         """Return the current branch name or 'HEAD' if detached."""
         try:
-            return await self._run_git('rev-parse', '--abbrev-ref', 'HEAD')
+            return await self._run_git("rev-parse", "--abbrev-ref", "HEAD")
         except Exception as e:
             raise RuntimeError(f"Failed to get current branch: {e}")
 
-    async def create_pull_request(self, title: str, body: str = "", base: str = "main") -> str:
+    async def create_pull_request(
+        self, title: str, body: str = "", base: str = "main"
+    ) -> str:
         """Create a pull request from the current branch to `base`."""
         try:
             head = await self.current_branch()
             return await self._run_gh(
-                'pr', 'create',
-                '--title', title,
-                '--body', body,
-                '--base', base,
-                '--head', head
+                "pr",
+                "create",
+                "--title",
+                title,
+                "--body",
+                body,
+                "--base",
+                base,
+                "--head",
+                head,
             )
         except Exception as e:
             raise RuntimeError(f"Failed to create pull request: {e}")
@@ -345,14 +382,20 @@ class AsyncGitVersionManager:
         """Check if a pull request exists for the given head branch."""
         try:
             output = await self._run_gh(
-                "pr", "list",
-                "--head", branch_name,
-                "--json", "number",
-                "--jq", ".[0].number"
+                "pr",
+                "list",
+                "--head",
+                branch_name,
+                "--json",
+                "number",
+                "--jq",
+                ".[0].number",
             )
             return output.strip().isdigit()
         except Exception as e:
-            raise RuntimeError(f"Failed to check pull request existence for '{branch_name}': {e}")
+            raise RuntimeError(
+                f"Failed to check pull request existence for '{branch_name}': {e}"
+            )
 
     async def save_branch_versions_as_json(self, file_path: str):
         """Save local branch names as a JSON mapping to the given file path."""
@@ -370,7 +413,7 @@ class AsyncGitVersionManager:
             if current == branch_name:
                 raise RuntimeError("Cannot delete the branch currently checked out.")
 
-            flag = '-D' if force else '-d'
-            await self._run_git('branch', flag, branch_name)
+            flag = "-D" if force else "-d"
+            await self._run_git("branch", flag, branch_name)
         except Exception as e:
             raise RuntimeError(f"Failed to remove branch '{branch_name}': {e}")

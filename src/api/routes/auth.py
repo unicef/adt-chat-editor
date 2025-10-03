@@ -3,9 +3,11 @@
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel
 from urllib.parse import urlencode
-from src.settings import settings
 
+from src.core.git_manager_provider import get_git_manager
+from src.settings import settings
 from src.utils.auth import create_jwt_token
+
 
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -77,6 +79,10 @@ async def generate_frontend_link(request: Request):
 
     # Construct the frontend URL with token
     frontend_url = f"{settings.FRONTEND_URL}?{query_string}"
+
+    # Remove git changes and reset to main branch
+    git_manager = await get_git_manager()
+    await git_manager.reset_to_main_branch()
 
     return GenerateLinkResponse(
         frontend_url=frontend_url, token=token, expires_in=expires_in
