@@ -246,6 +246,9 @@ def create_app() -> FastAPI:
 
     logger.info("Mounting output folders with directory")
     output_dir = os.path.join("data", "output")
+    # Handle case where output_dir exists as a file or broken symlink
+    if os.path.lexists(output_dir) and not os.path.isdir(output_dir):
+        os.remove(output_dir)
     os.makedirs(output_dir, exist_ok=True)
     app.mount(
         "/output", NoCacheStaticFiles(directory=output_dir, html=True), name="output"

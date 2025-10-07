@@ -21,11 +21,24 @@ GLOBAL_REQUIRED_VARS=OPENAI_API_KEY OPENAI_MODEL OPENAI_CODEX_MODEL
 REVIEWER_REQUIRED_VARS=ADTS
 
 # Define all available targets (commands that can be run with 'make')
-.PHONY: check ensure-env configure-env check-reviewer check-creator docker-up initialize run stop clone-repos select-adt reviewer creator test install-test-deps install-adt-utils-deps
+.PHONY: check ensure-env configure-env check-reviewer check-creator docker-up initialize run stop clone-repos select-adt reviewer creator test install-test-deps install-adt-utils-deps --prod
+
+# Dummy target for --prod parameter (does nothing, just prevents make errors)
+--prod:
+	@:
+
+# Detect --prod parameter and set compose file accordingly
+ifneq (,$(findstring --prod,$(MAKECMDGOALS)))
+COMPOSE_FILE := docker-compose.yml
+PROD_MODE := true
+else
+COMPOSE_FILE := docker-compose-dev.yml
+PROD_MODE := false
+endif
 
 # Determine docker compose command for better cross-platform support
 # Prefer docker-compose if available, otherwise use 'docker compose'
-DOCKER_COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then echo docker-compose; else echo docker compose; fi)
+DOCKER_COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then echo docker-compose; else echo docker compose; fi) -f $(COMPOSE_FILE)
 
 # Control verbosity of in-container installation (set VERBOSE=1 to see full logs)
 ifeq ($(VERBOSE),1)
@@ -352,6 +365,7 @@ setup-creator:
 # Start Docker containers using docker-compose
 docker-up:
 	@echo "🐳 Starting Docker containers..."
+	@echo "📋 Using compose file: $(COMPOSE_FILE)"
 	@echo "📋 Loading environment variables..."
 	@set -a; . ./$(ENV_FILE); set +a; \
 	if $(DOCKER_COMPOSE) up --build -d; then \
@@ -484,6 +498,7 @@ set-adts:
 # Stop and remove Docker containers
 stop:
 	@echo "🛑 Stopping Docker containers..."
+	@echo "📋 Using compose file: $(COMPOSE_FILE)"
 	@if [ -f $(ENV_FILE) ]; then \
 		if $(DOCKER_COMPOSE) down; then \
 			echo "✅ Docker containers stopped successfully"; \
@@ -493,7 +508,8 @@ stop:
 		fi; \
 	else \
 		echo "ℹ️  $(ENV_FILE) not found. Attempting to stop containers without env file..."; \
-		$(DOCKER_COMPOSE) -f docker-compose.yml down >/dev/null 2>&1 || true; \
+		BASE_DOCKER_COMPOSE=$$(if command -v docker-compose >/dev/null 2>&1; then echo docker-compose; else echo docker compose; fi); \
+		$$BASE_DOCKER_COMPOSE -f $(COMPOSE_FILE) down >/dev/null 2>&1 || true; \
 		echo "✅ Stop attempted. If containers were running, they should now be stopped."; \
 	fi
 
