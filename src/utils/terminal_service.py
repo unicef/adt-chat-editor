@@ -21,6 +21,7 @@ from src.settings import (
 )
 from src.structs.terminal import CommandHistory, CommandResponse, ExecuteCommandRequest
 from src.utils import to_single_line
+from src.utils.command_sanitizer import sanitize_terminal_command
 
 # Initialize logger
 logger = custom_logger("Terminal Service")
@@ -56,11 +57,27 @@ class TerminalService:
 
     def execute_command(self, request: ExecuteCommandRequest) -> CommandResponse:
         """Execute a shell command or delegate to Codex when not allowed."""
-        if self.is_command_allowed(request.command):
-            return self._run_shell_command(request.command, OUTPUT_DIR)
+        # SECURITY: Validate and sanitize command before execution
+        validation = sanitize_terminal_command(request.command)
+
+        if not validation.is_valid:
+            # Return error response for invalid commands
+            timestamp = datetime.datetime.now().isoformat()
+            logger.warning(f"Command validation failed: {validation.error} - Command: {request.command}")
+            return CommandResponse(
+                output=f"Security validation failed: {validation.error}",
+                exit_code=1,
+                timestamp=timestamp,
+            )
+
+        # Use the sanitized command for execution
+        sanitized_cmd = validation.sanitized_command
+
+        if self.is_command_allowed(sanitized_cmd):
+            return self._run_shell_command(sanitized_cmd, OUTPUT_DIR)
         else:
             # Fallback to Codex
-            return self._run_codex_instruction(request.command, OUTPUT_DIR)
+            return self._run_codex_instruction(sanitized_cmd, OUTPUT_DIR)
 
     def _run_shell_command(
         self, command: str, working_dir: Optional[str]
