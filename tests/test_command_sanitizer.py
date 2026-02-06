@@ -75,7 +75,9 @@ class TestCommandSanitizer:
         for cmd in injection_attempts:
             result = sanitize_terminal_command(cmd)
             assert not result.is_valid, f"Injection attempt should be blocked: {cmd}"
-            assert "injection" in result.error.lower()
+            # Check for either metacharacter or injection in error message
+            assert ("metacharacter" in result.error.lower() or
+                    "injection" in result.error.lower())
 
     def test_command_substitution(self):
         """Test that command substitution is blocked."""
@@ -87,7 +89,10 @@ class TestCommandSanitizer:
         for cmd in substitution_attempts:
             result = sanitize_terminal_command(cmd)
             assert not result.is_valid, f"Command substitution should be blocked: {cmd}"
-            assert "injection" in result.error.lower()
+            # Check for either metacharacter, substitution, or injection in error
+            assert ("substitution" in result.error.lower() or
+                    "metacharacter" in result.error.lower() or
+                    "injection" in result.error.lower())
 
     def test_download_and_execute(self):
         """Test that download-and-execute patterns are blocked."""
@@ -99,7 +104,9 @@ class TestCommandSanitizer:
         for cmd in dangerous_commands:
             result = sanitize_terminal_command(cmd)
             assert not result.is_valid, f"Download-and-execute should be blocked: {cmd}"
-            assert "Dangerous command pattern" in result.error
+            # Can be blocked by either dangerous pattern or metacharacter check
+            assert ("Dangerous command pattern" in result.error or
+                    "metacharacter" in result.error.lower())
 
     def test_system_commands(self):
         """Test that system-level dangerous commands are blocked."""
@@ -127,7 +134,10 @@ class TestCommandSanitizer:
         for cmd in traversal_attempts:
             result = sanitize_terminal_command(cmd)
             assert not result.is_valid, f"Path traversal should be blocked: {cmd}"
-            assert "Path traversal" in result.error or "target" in result.error.lower()
+            # Can be blocked by path traversal, dangerous pattern, or target file detection
+            assert ("Path traversal" in result.error or
+                    "Dangerous command pattern" in result.error or
+                    "target" in result.error.lower())
 
     def test_overly_permissive_chmod(self):
         """Test that chmod 777 is blocked."""
@@ -147,7 +157,10 @@ class TestCommandSanitizer:
         chained = "ls; pwd; echo 1; echo 2; echo 3; echo 4"
         result = sanitize_terminal_command(chained)
         assert not result.is_valid
-        assert "command separators" in result.error.lower()
+        # Can be blocked by command separators check or metacharacter check
+        assert ("command separators" in result.error.lower() or
+                "metacharacter" in result.error.lower() or
+                "chaining" in result.error.lower())
 
     def test_whitespace_trimming(self):
         """Test that whitespace is properly trimmed."""
