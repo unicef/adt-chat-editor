@@ -56,7 +56,18 @@ class TerminalService:
         return base_command in self.allowed_commands
 
     def execute_command(self, request: ExecuteCommandRequest) -> CommandResponse:
-        """Execute a shell command or delegate to Codex when not allowed."""
+        """Execute a shell command or delegate to Codex based on mode.
+
+        Args:
+            request: ExecuteCommandRequest with command, working_directory, and is_prompt flag
+
+        Returns:
+            CommandResponse with output, exit_code, and timestamp
+
+        Behavior:
+            - If is_prompt=True (Prompt Mode): Send to Codex for natural language processing
+            - If is_prompt=False (Command Mode): Execute as shell command if in allowlist, otherwise reject
+        """
         # SECURITY: Validate and sanitize command before execution
         validation = sanitize_terminal_command(request.command)
 
@@ -73,11 +84,24 @@ class TerminalService:
         # Use the sanitized command for execution
         sanitized_cmd = validation.sanitized_command
 
+        # Check if user is in Prompt Mode (explicitly wants to use Codex)
+        if request.is_prompt:
+            logger.info(f"Prompt Mode: Sending to Codex - {sanitized_cmd}")
+            return self._run_codex_instruction(sanitized_cmd, OUTPUT_DIR)
+
+        # Command Mode: Only execute if command is in allowlist
         if self.is_command_allowed(sanitized_cmd):
+            logger.info(f"Command Mode: Executing shell command - {sanitized_cmd}")
             return self._run_shell_command(sanitized_cmd, OUTPUT_DIR)
         else:
-            # Fallback to Codex
-            return self._run_codex_instruction(sanitized_cmd, OUTPUT_DIR)
+            # Command not in allowlist and not in Prompt Mode
+            timestamp = datetime.datetime.now().isoformat()
+            logger.warning(f"Command not allowed in Command Mode: {sanitized_cmd}")
+            return CommandResponse(
+                output=f"Command '{sanitized_cmd.split()[0]}' is not in the allowlist. Switch to Prompt Mode to use Codex for this task.",
+                exit_code=1,
+                timestamp=timestamp,
+            )
 
     def _run_shell_command(
         self, command: str, working_dir: Optional[str]
